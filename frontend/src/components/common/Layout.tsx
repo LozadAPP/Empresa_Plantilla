@@ -154,7 +154,7 @@ const Layout: React.FC = () => {
       bgcolor: isDarkMode ? '#060b28' : '#f8fafc',
     }}>
       {/* FPS Counter - Solo en desarrollo */}
-      {process.env.NODE_ENV === 'development' && <FPSCounter isDarkMode={isDarkMode} />}
+      {import.meta.env.DEV && <FPSCounter isDarkMode={isDarkMode} />}
 
       {/* Sidebar - OPTIMIZADO */}
       <Box
