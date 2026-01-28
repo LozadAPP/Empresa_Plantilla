@@ -1,0 +1,21 @@
+{
+  "name": "movicar-mcp-servers",
+  "version": "1.0.0",
+  "description": "MCP servers para conexión a base de datos PostgreSQL de MOVICAR",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test-read": "node mcp-postgres-read.js postgresql://postgres:postgres123@localhost:5432/movicar_db",
+    "test-write": "node mcp-postgres-write.js postgresql://postgres:postgres123@localhost:5432/movicar_db"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@testsprite/testsprite-mcp": "^0.0.19"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

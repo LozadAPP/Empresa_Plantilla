@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "postgres-movicar-readonly": {
+      "command": "node",
+      "args": [
+        "mcp-postgres-read.js",
+        "postgresql://TU_USUARIO:TU_PASSWORD@localhost:5432/movicar_db"
+      ],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
+    "postgres-movicar-write": {
+      "command": "node",
+      "args": [
+        "mcp-postgres-write.js",
+        "postgresql://TU_USUARIO:TU_PASSWORD@localhost:5432/movicar_db"
+      ],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}

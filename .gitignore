@@ -1,0 +1,42 @@
+# MCP Configuration (contiene credenciales)
+.mcp.json
+
+# Variables de entorno (IMPORTANTE: nunca subir credenciales)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+**/.env
+
+# Claude plans (local)
+.claude/
+
+# Windows reserved names
+nul
+NUL
+
+# TestSprite temp files
+testsprite_tests/
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
