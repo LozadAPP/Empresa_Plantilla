@@ -1,7 +1,19 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 
-type RoleName = 'admin' | 'director' | 'manager' | 'seller' | 'accountant' | 'inventory';
+type RoleName =
+  | 'admin'
+  | 'director_general'
+  | 'jefe_inventarios'
+  | 'jefe_ventas'
+  | 'jefe_finanzas'
+  | 'jefe_admin'
+  | 'encargado_inventario'
+  | 'tecnico'
+  | 'vendedor'
+  | 'contador'
+  | 'cajero'
+  | 'asistente_admin';
 
 /**
  * Middleware to check if user has required role(s)

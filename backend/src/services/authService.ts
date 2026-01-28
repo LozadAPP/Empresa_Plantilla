@@ -307,7 +307,7 @@ class AuthService {
   private generateToken(payload: IUserPayload): string {
     return jwt.sign(payload, jwtConfig.secret, {
       expiresIn: jwtConfig.expiresIn
-    });
+    } as jwt.SignOptions);
   }
 
   /**
@@ -316,7 +316,7 @@ class AuthService {
   private generateRefreshToken(payload: IUserPayload): string {
     return jwt.sign(payload, jwtConfig.secret, {
       expiresIn: jwtConfig.refreshExpiresIn
-    });
+    } as jwt.SignOptions);
   }
 
   /**
@@ -435,7 +435,7 @@ class AuthService {
       const hashedPassword = await bcrypt.hash(newPassword, salt);
 
       // Update password and clear reset token
-      await user.update({
+      await (user as any).update({
         password_hash: hashedPassword,
         reset_password_token: null,
         reset_password_expires: null
