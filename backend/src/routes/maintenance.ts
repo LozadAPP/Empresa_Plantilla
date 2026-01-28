@@ -466,9 +466,9 @@ const getAllOrdersValidation = [
 ];
 
 // Roles allowed to manage maintenance
-const maintenanceReadRoles = ['admin', 'director_general', 'jefe_inventarios', 'jefe_admin', 'tecnico', 'encargado_inventario'];
-const maintenanceWriteRoles = ['admin', 'director_general', 'jefe_inventarios', 'jefe_admin', 'tecnico'];
-const maintenanceAdminRoles = ['admin', 'director_general', 'jefe_inventarios', 'jefe_admin'];
+const maintenanceReadRoles = ['admin', 'director_general', 'jefe_inventarios', 'jefe_admin', 'tecnico', 'encargado_inventario'] as const;
+const maintenanceWriteRoles = ['admin', 'director_general', 'jefe_inventarios', 'jefe_admin', 'tecnico'] as const;
+const maintenanceAdminRoles = ['admin', 'director_general', 'jefe_inventarios', 'jefe_admin'] as const;
 
 // ====================================
 // MAINTENANCE TYPES ROUTES
