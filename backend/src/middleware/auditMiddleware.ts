@@ -35,16 +35,15 @@ export const auditLogger = (entityType: string) => {
           const newValues = data?.data || null;
 
           // Create audit log asynchronously (don't block response)
-          AuditLog.create({
-            userId: userId || null,
-            entityType,
-            entityId,
-            action,
-            oldValues: oldValues ? JSON.stringify(oldValues) : null,
-            newValues: newValues ? JSON.stringify(newValues) : null,
-            ipAddress: req.ip || req.connection.remoteAddress,
-            userAgent: req.get('user-agent'),
-          }).catch((error) => {
+          (AuditLog.create as any)({
+            user_id: userId || 0,
+            entity_type: entityType,
+            entity_id: entityId ? parseInt(entityId, 10) : 0,
+            action: action as 'create' | 'update' | 'delete',
+            old_values: oldValues || undefined,
+            new_values: newValues || undefined,
+            ip_address: req.ip || req.connection.remoteAddress,
+          }).catch((error: any) => {
             console.error('Error creating audit log:', error);
           });
         }
@@ -64,7 +63,7 @@ export const logCustomEvent = async (
   userId: number | null,
   entityType: string,
   entityId: string | null,
-  action: 'create' | 'update' | 'delete' | 'read',
+  action: 'create' | 'update' | 'delete',
   details?: {
     oldValues?: any;
     newValues?: any;
@@ -73,15 +72,14 @@ export const logCustomEvent = async (
   }
 ) => {
   try {
-    await AuditLog.create({
-      userId,
-      entityType,
-      entityId,
+    await (AuditLog.create as any)({
+      user_id: userId || 0,
+      entity_type: entityType,
+      entity_id: entityId ? parseInt(entityId, 10) : 0,
       action,
-      oldValues: details?.oldValues ? JSON.stringify(details.oldValues) : null,
-      newValues: details?.newValues ? JSON.stringify(details.newValues) : null,
-      ipAddress: details?.ipAddress || null,
-      userAgent: details?.userAgent || null,
+      old_values: details?.oldValues || undefined,
+      new_values: details?.newValues || undefined,
+      ip_address: details?.ipAddress || undefined,
     });
   } catch (error) {
     console.error('Error logging custom event:', error);

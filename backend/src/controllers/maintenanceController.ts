@@ -392,13 +392,13 @@ export const completeMaintenanceOrder = async (req: Request, res: Response) => {
     const t = await sequelize.transaction();
 
     try {
-      await order.update({
+      await (order as any).update({
         status: 'completed',
         completedDate: new Date(),
         actualCost,
         actualDuration,
         notes,
-        partsReplaced: partsReplaced ? JSON.stringify(partsReplaced) : null,
+        partsReplaced: partsReplaced ? JSON.stringify(partsReplaced) : undefined,
         mileageAtService,
         nextServiceMileage,
       }, { transaction: t });

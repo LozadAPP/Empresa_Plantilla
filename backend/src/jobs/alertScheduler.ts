@@ -14,7 +14,7 @@ import alertService from '../services/alertService';
  * - Verificación completa: Diariamente a las 6:00 AM
  */
 class AlertScheduler {
-  private tasks: cron.ScheduledTask[] = [];
+  private tasks: ReturnType<typeof cron.schedule>[] = [];
 
   /**
    * Inicia todos los cron jobs

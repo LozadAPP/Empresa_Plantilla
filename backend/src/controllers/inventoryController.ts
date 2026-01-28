@@ -495,6 +495,7 @@ export const createLocation = async (req: Request, res: Response) => {
       state,
       country,
       coordinates: coordinates || { lat: 19.4326, lng: -99.1332 },
+      type: 'warehouse',
       isActive,
     });
 

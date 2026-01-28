@@ -15,8 +15,8 @@ const router = Router();
 // Apply authentication to all report routes
 router.use(authMiddleware);
 
-// Only admin, director, and accountant roles can access reports
-router.use(requireRole('admin', 'director', 'accountant'));
+// Only admin, director_general, jefe_finanzas and contador roles can access reports
+router.use(requireRole('admin', 'director_general', 'jefe_finanzas', 'contador'));
 
 /**
  * @swagger

@@ -14,8 +14,8 @@ const router = Router();
 // Apply authentication to all audit routes
 router.use(authMiddleware);
 
-// Only admin and director can access audit logs
-router.use(requireRole('admin', 'director'));
+// Only admin and director_general can access audit logs
+router.use(requireRole('admin', 'director_general', 'jefe_admin'));
 
 /**
  * @swagger

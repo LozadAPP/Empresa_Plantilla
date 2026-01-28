@@ -15,7 +15,7 @@ interface AlertAttributes {
   resolvedBy?: number; // User ID
   resolvedAt?: Date;
   expiresAt?: Date;
-  metadata?: string; // JSON con datos adicionales
+  metadata?: Record<string, any> | string; // JSON con datos adicionales
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -36,7 +36,7 @@ class Alert extends Model<AlertAttributes, AlertCreationAttributes> implements A
   public resolvedBy?: number;
   public resolvedAt?: Date;
   public expiresAt?: Date;
-  public metadata?: string;
+  public metadata?: Record<string, any> | string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }

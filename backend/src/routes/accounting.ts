@@ -20,7 +20,7 @@ const router = Router();
 router.use(authMiddleware);
 
 // Roles allowed to access accounting
-router.use(requireRole('admin', 'director', 'accountant'));
+router.use(requireRole('admin', 'director_general', 'jefe_finanzas', 'contador'));
 
 /**
  * @swagger

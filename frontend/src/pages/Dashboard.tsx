@@ -260,7 +260,7 @@ const Dashboard: React.FC = () => {
         labels: {
           color: text.heading,
           padding: 8,
-          font: { size: 10, family: 'Poppins', weight: '500' as const },
+          font: { size: 10, family: 'Poppins', weight: 500 },
           usePointStyle: true,
           pointStyle: 'circle',
           boxWidth: 6,
@@ -291,8 +291,8 @@ const Dashboard: React.FC = () => {
         borderColor: tooltip.borderColor,
         borderWidth: 1,
         padding: 10,
-        bodyFont: { size: 12, family: 'Poppins', weight: '500' as const },
-        titleFont: { size: 13, family: 'Poppins', weight: '600' as const },
+        bodyFont: { size: 12, family: 'Poppins', weight: 500 },
+        titleFont: { size: 13, family: 'Poppins', weight: 600 },
         callbacks: {
           label: (context: any) => {
             const value = context.parsed;

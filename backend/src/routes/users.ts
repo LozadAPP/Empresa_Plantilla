@@ -392,27 +392,27 @@ const getAllUsersValidation = [
 router.use(authMiddleware);
 
 // GET /api/users - Get all users with filters and pagination
-router.get('/', requireRole('admin', 'director', 'manager'), getAllUsersValidation, getUsers);
+router.get('/', requireRole('admin', 'director_general', 'jefe_admin'), getAllUsersValidation, getUsers);
 
 // GET /api/users/stats - Get user statistics (solo admin)
-router.get('/stats', requireRole('admin', 'director', 'manager'), getUserStats);
+router.get('/stats', requireRole('admin', 'director_general', 'jefe_admin'), getUserStats);
 
 // GET /api/users/roles - Get all roles (for dropdown)
-router.get('/roles', requireRole('admin', 'director', 'manager'), getRoles);
+router.get('/roles', requireRole('admin', 'director_general', 'jefe_admin'), getRoles);
 
 // GET /api/users/:id - Get user by ID
-router.get('/:id', requireRole('admin', 'director', 'manager'), getUserByIdValidation, getUserById);
+router.get('/:id', requireRole('admin', 'director_general', 'jefe_admin'), getUserByIdValidation, getUserById);
 
-// POST /api/users - Create new user (solo admin/director)
-router.post('/', requireRole('admin', 'director'), createUserValidation, createUser);
+// POST /api/users - Create new user (solo admin/director_general)
+router.post('/', requireRole('admin', 'director_general'), createUserValidation, createUser);
 
-// PUT /api/users/:id - Update user (solo admin/director)
-router.put('/:id', requireRole('admin', 'director'), updateUserValidation, updateUser);
+// PUT /api/users/:id - Update user (solo admin/director_general)
+router.put('/:id', requireRole('admin', 'director_general'), updateUserValidation, updateUser);
 
-// POST /api/users/:id/toggle - Toggle user active status (solo admin/director)
-router.post('/:id/toggle', requireRole('admin', 'director'), toggleUserStatusValidation, toggleUserStatus);
+// POST /api/users/:id/toggle - Toggle user active status (solo admin/director_general)
+router.post('/:id/toggle', requireRole('admin', 'director_general'), toggleUserStatusValidation, toggleUserStatus);
 
-// POST /api/users/:id/reset-password - Reset user password (solo admin/director)
-router.post('/:id/reset-password', requireRole('admin', 'director'), resetPasswordValidation, resetUserPassword);
+// POST /api/users/:id/reset-password - Reset user password (solo admin/director_general)
+router.post('/:id/reset-password', requireRole('admin', 'director_general'), resetPasswordValidation, resetUserPassword);
 
 export default router;
