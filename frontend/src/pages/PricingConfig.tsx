@@ -97,8 +97,8 @@ const PricingConfig: React.FC = () => {
             depositAmount: config.depositAmount || 0,
             lateFeePerDay: config.lateFeePerDay || 0,
             season: config.season || 'regular',
-            effectiveFrom: config.effectiveFrom ? (typeof config.effectiveFrom === 'string' ? config.effectiveFrom.split('T')[0] : new Date(config.effectiveFrom).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0],
-            effectiveUntil: config.effectiveUntil ? (typeof config.effectiveUntil === 'string' ? config.effectiveUntil.split('T')[0] : new Date(config.effectiveUntil).toISOString().split('T')[0]) : '',
+            effectiveFrom: config.effectiveFrom ? String(config.effectiveFrom).split('T')[0] : new Date().toISOString().split('T')[0],
+            effectiveUntil: config.effectiveUntil ? String(config.effectiveUntil).split('T')[0] : '',
             createdBy: config.createdBy || 1,
             notes: config.notes || ''
           });
@@ -154,7 +154,7 @@ const PricingConfig: React.FC = () => {
       }
 
       if (isEdit && id) {
-        await configService.updatePriceConfig(Number(id), formData);
+        await configService.updatePriceConfig(Number(id), formData as any);
       } else {
         await configService.createPriceConfig(formData);
       }

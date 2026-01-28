@@ -668,7 +668,7 @@ const Dashboard: React.FC = () => {
                       font: {
                         size: 13,
                         family: 'Poppins',
-                        weight: '500' as const
+                        weight: 500
                       },
                       usePointStyle: true,
                       pointStyle: 'circle',
