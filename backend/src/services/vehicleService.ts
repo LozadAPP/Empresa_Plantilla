@@ -204,7 +204,7 @@ class VehicleService {
       }
     }
 
-    await vehicle.update(data);
+    await vehicle.update(data as any);
     return this.getById(id);
   }
 

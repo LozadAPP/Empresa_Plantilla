@@ -47,7 +47,7 @@ export class EmailService {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #2c3e50;">¡Renta Confirmada!</h2>
 
-          <p>Estimado/a ${customer.first_name} ${customer.last_name},</p>
+          <p>Estimado/a ${customer.name},</p>
 
           <p>Su renta ha sido confirmada exitosamente. A continuación los detalles:</p>
 
@@ -114,7 +114,7 @@ export class EmailService {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #27ae60;">¡Devolución Exitosa!</h2>
 
-          <p>Estimado/a ${customer.first_name} ${customer.last_name},</p>
+          <p>Estimado/a ${customer.name},</p>
 
           <p>La devolución de su vehículo ha sido procesada exitosamente.</p>
 
@@ -170,7 +170,7 @@ export class EmailService {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #2c3e50;">Nueva Factura</h2>
 
-          <p>Estimado/a ${customer.first_name} ${customer.last_name},</p>
+          <p>Estimado/a ${customer.name},</p>
 
           <p>Adjuntamos su factura correspondiente a la renta realizada.</p>
 
@@ -241,7 +241,7 @@ export class EmailService {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #e67e22;">Recordatorio de Pago</h2>
 
-          <p>Estimado/a ${customer.first_name} ${customer.last_name},</p>
+          <p>Estimado/a ${customer.name},</p>
 
           <p>Le recordamos que tiene un saldo pendiente por pagar.</p>
 

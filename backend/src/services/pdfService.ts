@@ -59,21 +59,21 @@ export class PDFService {
         doc.fontSize(14).text('DATOS DEL CLIENTE', { underline: true });
         doc.moveDown(0.5);
         doc.fontSize(10);
-        doc.text(`Nombre: ${customer.first_name} ${customer.last_name}`);
-        doc.text(`Email: ${customer.email}`);
-        doc.text(`Teléfono: ${customer.phone}`);
-        doc.text(`ID: ${customer.id_number}`);
-        doc.text(`Licencia: ${customer.license_number}`);
+        doc.text(`Nombre: ${customer.name}`);
+        doc.text(`Email: ${customer.email || 'N/A'}`);
+        doc.text(`Teléfono: ${customer.phone || 'N/A'}`);
+        doc.text(`RFC/ID: ${customer.tax_id || 'N/A'}`);
+        doc.text(`Contacto: ${customer.contact_person || 'N/A'}`);
         doc.moveDown(1.5);
 
         // Información del vehículo
         doc.fontSize(14).text('DATOS DEL VEHÍCULO', { underline: true });
         doc.moveDown(0.5);
         doc.fontSize(10);
-        doc.text(`Vehículo: ${vehicle.brand} ${vehicle.model} (${vehicle.year})`);
-        doc.text(`Placa: ${vehicle.plate}`);
-        doc.text(`Color: ${vehicle.color}`);
-        doc.text(`Categoría: ${vehicle.category}`);
+        doc.text(`Vehículo: ${vehicle.make} ${vehicle.model} (${vehicle.year})`);
+        doc.text(`Placa: ${vehicle.license_plate}`);
+        doc.text(`Color: ${vehicle.color || 'N/A'}`);
+        doc.text(`Tipo: ${vehicle.vehicle_type_id}`);
         if (vehicle.vin) doc.text(`VIN: ${vehicle.vin}`);
         doc.moveDown(1.5);
 
@@ -188,7 +188,7 @@ export class PDFService {
         // Información del cliente
         doc.fontSize(12).text('FACTURAR A:', { underline: true });
         doc.fontSize(10);
-        doc.text(`${customer.first_name} ${customer.last_name}`);
+        doc.text(`${customer.name}`);
         doc.text(`${customer.email}`);
         if (customer.address) doc.text(`${customer.address}`);
         doc.moveDown(1.5);

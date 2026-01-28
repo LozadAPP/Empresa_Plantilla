@@ -443,8 +443,8 @@ class DashboardService {
         [fn('TO_CHAR', col('transaction_date'), groupFormat), 'timeBucket'],
         [fn('SUM', col('amount')), 'revenue']
       ],
-      group: [literal('1')],
-      order: [[literal('1'), 'ASC']],
+      group: [literal('1') as any],
+      order: [[literal('1') as any, 'ASC']],
       raw: true
     });
 
@@ -458,8 +458,8 @@ class DashboardService {
         [fn('TO_CHAR', col('start_date'), groupFormat), 'timeBucket'],
         [fn('COUNT', fn('DISTINCT', col('vehicle_id'))), 'rentedCount']
       ],
-      group: [literal('1')],
-      order: [[literal('1'), 'ASC']],
+      group: [literal('1') as any],
+      order: [[literal('1') as any, 'ASC']],
       raw: true
     });
 
@@ -497,10 +497,10 @@ class DashboardService {
       where: {
         next_maintenance: {
           [Op.lt]: now,
-          [Op.ne]: null
+          [Op.ne]: null as any
         },
         status: { [Op.ne]: 'maintenance' }
-      },
+      } as any,
       attributes: ['id', 'make', 'model', 'license_plate', 'next_maintenance'],
       order: [['next_maintenance', 'ASC']]
     });
