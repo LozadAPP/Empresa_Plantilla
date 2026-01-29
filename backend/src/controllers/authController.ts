@@ -9,11 +9,15 @@ import { hashToken, getTokenExpiration, getUserIdFromToken } from '../utils/toke
 /**
  * Cookie configuration for secure JWT storage
  * HTTP-only cookies prevent XSS attacks from accessing tokens
+ *
+ * IMPORTANT: For cross-origin deployments (frontend on Vercel, backend on Render),
+ * we need sameSite: 'none' to allow cookies to be sent cross-origin.
+ * This requires secure: true (HTTPS).
  */
 const getCookieOptions = (maxAge: number) => ({
   httpOnly: true,  // Prevents JavaScript access (XSS protection)
   secure: env.NODE_ENV === 'production',  // HTTPS only in production
-  sameSite: (env.NODE_ENV === 'production' ? 'strict' : 'lax') as 'strict' | 'lax',
+  sameSite: (env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
   maxAge,
   path: '/'
 });
