@@ -309,8 +309,8 @@ const Returns: React.FC = () => {
               borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)',
               color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
               '&:hover': {
-                borderColor: '#8b5cf6',
-                color: '#8b5cf6'
+                borderColor: isDarkMode ? '#a78bfa' : '#8b5cf6',
+                color: isDarkMode ? '#a78bfa' : '#8b5cf6'
               }
             }}
           >
@@ -517,8 +517,8 @@ const Returns: React.FC = () => {
                 borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)',
                 color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
                 '&:hover': {
-                  borderColor: '#8b5cf6',
-                  color: '#8b5cf6'
+                  borderColor: isDarkMode ? '#a78bfa' : '#8b5cf6',
+                  color: isDarkMode ? '#a78bfa' : '#8b5cf6'
                 }
               }}
             >

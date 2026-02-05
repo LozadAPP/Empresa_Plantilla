@@ -764,7 +764,7 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
                         sx={{
                           fontSize: '0.65rem',
                           fontWeight: 600,
-                          color: '#6b7280',
+                          color: theme.palette.mode === 'dark' ? '#9ca3af' : '#6b7280',
                           textTransform: 'uppercase',
                           letterSpacing: '0.4px',
                           mb: 0.2,
@@ -783,7 +783,7 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
                         {getMaintenanceLabel(selectedItem.nextMaintenanceDate)}
                       </Typography>
                       {selectedItem.nextMaintenanceDate && (
-                        <Typography sx={{ fontSize: '0.65rem', color: '#9ca3af', mt: 0.2, fontWeight: 500 }}>
+                        <Typography sx={{ fontSize: '0.65rem', color: theme.palette.mode === 'dark' ? '#d1d5db' : '#9ca3af', mt: 0.2, fontWeight: 500 }}>
                           {new Date(selectedItem.nextMaintenanceDate).toLocaleDateString('es-MX', {
                             weekday: 'short',
                             day: 'numeric',

@@ -271,7 +271,7 @@ const Dashboard: React.FC = () => {
         display: true,
         position: 'bottom' as const,
         labels: {
-          color: text.heading,
+          color: isDarkMode ? '#ffffff' : '#1f2937',
           padding: 8,
           font: { size: 10, family: 'Poppins', weight: 500 },
           usePointStyle: true,
@@ -287,6 +287,7 @@ const Dashboard: React.FC = () => {
                 return {
                   text: `${label} ${percentage}%`,
                   fillStyle: data.datasets[0].backgroundColor[i],
+                  fontColor: isDarkMode ? '#ffffff' : '#1f2937',
                   hidden: false,
                   index: i,
                   pointStyle: 'circle'
@@ -321,7 +322,7 @@ const Dashboard: React.FC = () => {
       duration: 1000,
       easing: 'easeInOutQuart' as const
     }
-  }), [text.heading, tooltip.backgroundColor, tooltip.titleColor, tooltip.bodyColor, tooltip.borderColor, totalVehicles]);
+  }), [isDarkMode, tooltip.backgroundColor, tooltip.titleColor, tooltip.bodyColor, tooltip.borderColor, totalVehicles]);
 
   // OPTIMIZADO: Fleet Distribution Chart Data - Memoizado para evitar re-creación (movido antes de returns)
   const fleetTypes = useMemo(() => [
@@ -674,6 +675,7 @@ const Dashboard: React.FC = () => {
         <StyledSection title="Distribución de Flota" subtitle={isMobile ? undefined : `${totalVehicles} vehículos totales`}>
           <Box sx={{ height: { xs: 280, sm: 350, md: 400 }, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Doughnut
+              key={`fleet-distribution-${isDarkMode ? 'dark' : 'light'}`}
               data={fleetDistributionData}
               options={{
                 ...doughnutOptions,
@@ -683,7 +685,7 @@ const Dashboard: React.FC = () => {
                     display: true,
                     position: 'right' as const,
                     labels: {
-                      color: isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.87)',
+                      color: isDarkMode ? '#ffffff' : '#1f2937',
                       padding: 20,
                       font: {
                         size: 13,
@@ -703,6 +705,7 @@ const Dashboard: React.FC = () => {
                             return {
                               text: `${label}: ${value} (${percentage}%)`,
                               fillStyle: data.datasets[0].backgroundColor[i],
+                              fontColor: isDarkMode ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.87)',
                               hidden: false,
                               index: i,
                               pointStyle: 'circle'
@@ -1116,14 +1119,14 @@ const Dashboard: React.FC = () => {
                 borderRadius: '12px',
                 border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'}`,
                 bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)',
-                color: '#8b5cf6',
+                color: isDarkMode ? '#a78bfa' : '#8b5cf6',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
                 fontWeight: 600,
                 transition: 'background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
                 '&:hover': {
                   bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)',
-                  borderColor: '#8b5cf6',
+                  borderColor: isDarkMode ? '#a78bfa' : '#8b5cf6',
                   transform: 'translateY(-1px)',
                 },
                 '&:active': {
