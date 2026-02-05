@@ -107,17 +107,35 @@ const getMaintenanceLabel = (nextMaintenanceDate?: Date | string): string => {
   }
 };
 
-// Mantener la función original para el status del chip en InfoWindow
+// Función para obtener color basado en STATUS del artículo (con soporte dark/light mode)
+const getStatusColorWithTheme = (status: string, isDarkMode: boolean): { color: string; label: string } => {
+  const colors: Record<string, { dark: string; light: string; label: string }> = {
+    available: { dark: '#34d399', light: '#10b981', label: 'Disponible' },
+    rented: { dark: '#a78bfa', light: '#8b5cf6', label: 'Rentado' },
+    maintenance: { dark: '#fbbf24', light: '#f59e0b', label: 'Mantenimiento' },
+    sold: { dark: '#9ca3af', light: '#6b7280', label: 'Vendido' },
+    retired: { dark: '#f87171', light: '#ef4444', label: 'Retirado' },
+  };
+  const colorSet = colors[status] || colors.available;
+  return {
+    color: isDarkMode ? colorSet.dark : colorSet.light,
+    label: colorSet.label,
+  };
+};
+
+// Mantener la función original para el status del chip en InfoWindow (sin dark mode)
 const getStatusColor = (status: string): string => {
   switch (status) {
     case 'available':
       return '#10b981'; // Green
     case 'rented':
-      return '#f59e0b'; // Orange
+      return '#8b5cf6'; // Purple
     case 'maintenance':
-      return '#ef4444'; // Red
+      return '#f59e0b'; // Yellow/Orange
     case 'sold':
       return '#6b7280'; // Gray
+    case 'retired':
+      return '#ef4444'; // Red
     default:
       return '#8b5cf6'; // Purple
   }
@@ -128,6 +146,7 @@ interface InventoryMapProps {
   categories: ItemCategory[];
   onItemClick?: (item: InventoryItem) => void;
   selectedItem?: InventoryItem | null;
+  onViewItemDetails?: (item: InventoryItem) => void; // Callback para mostrar modal con imagen
 }
 
 const InventoryMap: React.FC<InventoryMapProps> = ({
@@ -135,6 +154,7 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
   categories,
   onItemClick,
   selectedItem: externalSelectedItem,
+  onViewItemDetails,
 }) => {
   const theme = useTheme();
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -228,8 +248,8 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   };
 
-  // Función para crear MARCADORES NATIVOS de Google Maps con COLOR POR MANTENIMIENTO y ANIMACIÓN CON AURA
-  const createNativeMarkers = useCallback((map: google.maps.Map, items: InventoryItem[]) => {
+  // Función para crear MARCADORES NATIVOS de Google Maps con COLOR POR STATUS y ANIMACIÓN PULSANTE
+  const createNativeMarkers = useCallback((map: google.maps.Map, items: InventoryItem[], isDarkMode: boolean) => {
 
     // Limpiar marcadores anteriores
     markersRef.current.forEach(marker => marker.setMap(null));
@@ -243,7 +263,7 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
     animationIntervalsRef.current.forEach(interval => clearInterval(interval));
     animationIntervalsRef.current = [];
 
-    items.forEach((item, idx) => {
+    items.forEach((item) => {
       const lat = Number(item.currentLocationCoordinates?.lat);
       const lng = Number(item.currentLocationCoordinates?.lng);
 
@@ -251,35 +271,32 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
         return;
       }
 
-      // USAR COLOR BASADO EN PROXIMIDAD DE MANTENIMIENTO
-      const { color, status: maintenanceStatus } = getMaintenanceProximityColor(item.nextMaintenanceDate);
+      // USAR COLOR BASADO EN STATUS DEL ARTÍCULO (con soporte dark/light mode)
+      const { color, label: statusLabel } = getStatusColorWithTheme(item.status, isDarkMode);
 
-      // Para marcadores con animación, crear un "aura" detrás
-      let glowMarker: google.maps.Marker | null = null;
-      if (maintenanceStatus === 'urgent' || maintenanceStatus === 'warning') {
-        glowMarker = new window.google.maps.Marker({
-          map: map,
-          position: { lat, lng },
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 20,
-            fillColor: color,
-            fillOpacity: 0.15,
-            strokeColor: color,
-            strokeWeight: 1,
-            strokeOpacity: 0.3,
-          },
-          zIndex: maintenanceStatus === 'urgent' ? 90 : 40,
-          clickable: false, // No intercepta clicks
-        });
-        glowMarkersRef.current.push(glowMarker);
-      }
+      // Crear "aura" pulsante para todos los marcadores (efecto radar)
+      const glowMarker = new window.google.maps.Marker({
+        map: map,
+        position: { lat, lng },
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 18,
+          fillColor: color,
+          fillOpacity: 0.2,
+          strokeColor: color,
+          strokeWeight: 1,
+          strokeOpacity: 0.4,
+        },
+        zIndex: 5,
+        clickable: false, // No intercepta clicks
+      });
+      glowMarkersRef.current.push(glowMarker);
 
       // Crear marcador principal con icono SVG
       const marker = new window.google.maps.Marker({
         map: map,
         position: { lat, lng },
-        title: `${item.name} - ${getMaintenanceLabel(item.nextMaintenanceDate)}`,
+        title: `${item.name} - ${statusLabel}`,
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
           scale: 10,
@@ -289,13 +306,38 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
           strokeWeight: 2.5,
           strokeOpacity: 1,
         },
-        zIndex: maintenanceStatus === 'urgent' ? 100 : (maintenanceStatus === 'warning' ? 50 : 10),
+        zIndex: 10,
       });
 
-      // OPTIMIZADO: Animación removida para mejor rendimiento
-      // Los marcadores urgentes/warning se muestran con color estático
-      // La leyenda del mapa muestra la animación CSS (más eficiente)
-      // Si se necesita animación en marcadores, usar CSS animations en lugar de setInterval
+      // ANIMACIÓN PULSANTE: Solo si hay menos de 30 marcadores para no afectar rendimiento
+      if (items.length < 30) {
+        let animationFrame = 0;
+        const animationDuration = 60; // frames (~2 segundos a 30fps)
+
+        const animationInterval = setInterval(() => {
+          animationFrame = (animationFrame + 1) % animationDuration;
+          const progress = animationFrame / animationDuration;
+          const easedProgress = easeInOutCubic(progress);
+
+          // Escala del glow: de 18 a 28 y de vuelta
+          const scale = 18 + (easedProgress * 10);
+          // Opacidad: de 0.2 a 0.05 y de vuelta
+          const fillOpacity = 0.2 - (easedProgress * 0.15);
+          const strokeOpacity = 0.4 - (easedProgress * 0.3);
+
+          glowMarker.setIcon({
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: scale,
+            fillColor: color,
+            fillOpacity: fillOpacity,
+            strokeColor: color,
+            strokeWeight: 1,
+            strokeOpacity: strokeOpacity,
+          });
+        }, 33); // ~30fps
+
+        animationIntervalsRef.current.push(animationInterval);
+      }
 
       // Agregar evento de click
       marker.addListener('click', () => {
@@ -321,25 +363,28 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
     });
   }, []);
 
+  // Obtener isDarkMode del tema
+  const isDarkMode = theme.palette.mode === 'dark';
+
   // Callback optimizado - usa ref para evitar re-renders
   const onLoad = useCallback((mapInstance: google.maps.Map) => {
     mapRef.current = mapInstance;
 
     // CRÍTICO: Crear marcadores NATIVOS después de que el mapa esté listo
     setTimeout(() => {
-      createNativeMarkers(mapInstance, filteredItems);
+      createNativeMarkers(mapInstance, filteredItems, isDarkMode);
       adjustMapBounds(mapInstance, filteredItems);
     }, 500);
-  }, [filteredItems, adjustMapBounds, createNativeMarkers]);
+  }, [filteredItems, adjustMapBounds, createNativeMarkers, isDarkMode]);
 
-  // Efecto para actualizar marcadores cuando cambian los items filtrados
+  // Efecto para actualizar marcadores cuando cambian los items filtrados o el tema
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded) return;
 
-    // Recrear marcadores cuando cambian los items
-    createNativeMarkers(map, filteredItems);
-  }, [filteredItems, isLoaded, createNativeMarkers]);
+    // Recrear marcadores cuando cambian los items o el tema (dark/light)
+    createNativeMarkers(map, filteredItems, isDarkMode);
+  }, [filteredItems, isLoaded, createNativeMarkers, isDarkMode]);
 
   const onUnmount = useCallback(() => {
     // Limpiar intervalos de animación
@@ -360,11 +405,16 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
   }, []);
 
   const handleViewDetails = useCallback(() => {
-    if (selectedItem && onItemClick) {
-      onItemClick(selectedItem);
+    if (selectedItem) {
+      // Priorizar onViewItemDetails para abrir modal con imagen
+      if (onViewItemDetails) {
+        onViewItemDetails(selectedItem);
+      } else if (onItemClick) {
+        onItemClick(selectedItem);
+      }
       setSelectedItem(null);
     }
-  }, [selectedItem, onItemClick]);
+  }, [selectedItem, onItemClick, onViewItemDetails]);
 
   // Obtener label del estado
   const getStatusLabel = (status: string): string => {
@@ -409,12 +459,12 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
         position: 'relative',
       }}
     >
-      {/* Leyenda de Mantenimiento - Colapsable, abajo a la izquierda */}
+      {/* Leyenda de Estado - Colapsable, abajo a la DERECHA (cerca del logo Google) */}
       <Box
         sx={{
           position: 'absolute',
           bottom: 28,
-          left: 16,
+          right: 70,
           zIndex: 1,
         }}
       >
@@ -424,102 +474,131 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
             bgcolor: 'background.paper',
             overflow: 'hidden',
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            minWidth: 180,
+            minWidth: 160,
           }}
         >
           {/* Lista expandible (se muestra arriba del botón) */}
           <Box
             sx={{
-              maxHeight: legendOpen ? 200 : 0,
+              maxHeight: legendOpen ? 220 : 0,
               overflow: 'hidden',
               transition: 'max-height 0.3s ease-in-out',
             }}
           >
-            <Stack spacing={0.5} sx={{ px: 2, py: 1.5 }}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#10b981' }} />
-                <Typography variant="caption" color="text.secondary">+30 días</Typography>
-              </Stack>
+            <Stack spacing={0.75} sx={{ px: 2, py: 1.5 }}>
+              {/* Disponible - Verde */}
               <Stack direction="row" spacing={1} alignItems="center">
                 <Box sx={{ position: 'relative', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {/* Aura - OPTIMIZADO: Solo animar cuando legend está abierta */}
                   <Box
                     sx={{
                       position: 'absolute',
                       width: 14,
                       height: 14,
                       borderRadius: '50%',
-                      bgcolor: '#f59e0b',
-                      opacity: 0.2,
-                      // OPTIMIZADO: animation solo cuando legendOpen
-                      animation: legendOpen ? 'breatheAura 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite' : 'none',
-                      '@keyframes breatheAura': {
-                        '0%, 100%': { transform: 'scale(1)', opacity: 0.15 },
-                        '50%': { transform: 'scale(1.6)', opacity: 0.08 },
+                      bgcolor: isDarkMode ? '#34d399' : '#10b981',
+                      opacity: 0.25,
+                      animation: legendOpen ? 'pulseAvailable 2s ease-in-out infinite' : 'none',
+                      '@keyframes pulseAvailable': {
+                        '0%, 100%': { transform: 'scale(1)', opacity: 0.25 },
+                        '50%': { transform: 'scale(1.5)', opacity: 0.1 },
                       },
                     }}
                   />
-                  {/* Punto principal */}
-                  <Box
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      bgcolor: '#f59e0b',
-                      border: '1.5px solid white',
-                      boxShadow: '0 0 4px rgba(245, 158, 11, 0.4)',
-                      // OPTIMIZADO: animation solo cuando legendOpen
-                      animation: legendOpen ? 'breatheMain 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite' : 'none',
-                      '@keyframes breatheMain': {
-                        '0%, 100%': { transform: 'scale(1)', opacity: 1 },
-                        '50%': { transform: 'scale(0.9)', opacity: 0.85 },
-                      },
-                    }}
-                  />
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: isDarkMode ? '#34d399' : '#10b981', border: '1.5px solid white', boxShadow: '0 0 4px rgba(16, 185, 129, 0.4)' }} />
                 </Box>
-                <Typography variant="caption" color="text.secondary">7-30 días</Typography>
+                <Typography variant="caption" color="text.secondary" fontWeight={500}>Disponible</Typography>
               </Stack>
+
+              {/* Rentado - Púrpura */}
               <Stack direction="row" spacing={1} alignItems="center">
                 <Box sx={{ position: 'relative', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {/* Aura - OPTIMIZADO: Solo animar cuando legend está abierta */}
                   <Box
                     sx={{
                       position: 'absolute',
                       width: 14,
                       height: 14,
                       borderRadius: '50%',
-                      bgcolor: '#ef4444',
-                      // OPTIMIZADO: animation solo cuando legendOpen
-                      animation: legendOpen ? 'breatheAuraFast 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite' : 'none',
-                      '@keyframes breatheAuraFast': {
-                        '0%, 100%': { transform: 'scale(1)', opacity: 0.2 },
-                        '50%': { transform: 'scale(1.7)', opacity: 0.08 },
+                      bgcolor: isDarkMode ? '#a78bfa' : '#8b5cf6',
+                      opacity: 0.25,
+                      animation: legendOpen ? 'pulseRented 2s ease-in-out infinite' : 'none',
+                      '@keyframes pulseRented': {
+                        '0%, 100%': { transform: 'scale(1)', opacity: 0.25 },
+                        '50%': { transform: 'scale(1.5)', opacity: 0.1 },
                       },
                     }}
                   />
-                  {/* Punto principal */}
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: isDarkMode ? '#a78bfa' : '#8b5cf6', border: '1.5px solid white', boxShadow: '0 0 4px rgba(139, 92, 246, 0.4)' }} />
+                </Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={500}>Rentado</Typography>
+              </Stack>
+
+              {/* Mantenimiento - Amarillo */}
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box sx={{ position: 'relative', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Box
                     sx={{
-                      width: 8,
-                      height: 8,
+                      position: 'absolute',
+                      width: 14,
+                      height: 14,
                       borderRadius: '50%',
-                      bgcolor: '#ef4444',
-                      border: '1.5px solid white',
-                      boxShadow: '0 0 4px rgba(239, 68, 68, 0.5)',
-                      // OPTIMIZADO: animation solo cuando legendOpen
-                      animation: legendOpen ? 'breatheMainFast 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite' : 'none',
-                      '@keyframes breatheMainFast': {
-                        '0%, 100%': { transform: 'scale(1)', opacity: 1 },
-                        '50%': { transform: 'scale(0.9)', opacity: 0.85 },
+                      bgcolor: isDarkMode ? '#fbbf24' : '#f59e0b',
+                      opacity: 0.25,
+                      animation: legendOpen ? 'pulseMaintenance 2s ease-in-out infinite' : 'none',
+                      '@keyframes pulseMaintenance': {
+                        '0%, 100%': { transform: 'scale(1)', opacity: 0.25 },
+                        '50%': { transform: 'scale(1.5)', opacity: 0.1 },
                       },
                     }}
                   />
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: isDarkMode ? '#fbbf24' : '#f59e0b', border: '1.5px solid white', boxShadow: '0 0 4px rgba(245, 158, 11, 0.4)' }} />
                 </Box>
-                <Typography variant="caption" color="text.secondary">&lt;7 días / Vencido</Typography>
+                <Typography variant="caption" color="text.secondary" fontWeight={500}>Mantenimiento</Typography>
               </Stack>
+
+              {/* Vendido - Gris */}
               <Stack direction="row" spacing={1} alignItems="center">
-                <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#6b7280' }} />
-                <Typography variant="caption" color="text.secondary">Sin programar</Typography>
+                <Box sx={{ position: 'relative', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
+                      bgcolor: isDarkMode ? '#9ca3af' : '#6b7280',
+                      opacity: 0.25,
+                      animation: legendOpen ? 'pulseSold 2s ease-in-out infinite' : 'none',
+                      '@keyframes pulseSold': {
+                        '0%, 100%': { transform: 'scale(1)', opacity: 0.25 },
+                        '50%': { transform: 'scale(1.5)', opacity: 0.1 },
+                      },
+                    }}
+                  />
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: isDarkMode ? '#9ca3af' : '#6b7280', border: '1.5px solid white', boxShadow: '0 0 4px rgba(107, 114, 128, 0.4)' }} />
+                </Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={500}>Vendido</Typography>
+              </Stack>
+
+              {/* Retirado - Rojo */}
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box sx={{ position: 'relative', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
+                      bgcolor: isDarkMode ? '#f87171' : '#ef4444',
+                      opacity: 0.25,
+                      animation: legendOpen ? 'pulseRetired 2s ease-in-out infinite' : 'none',
+                      '@keyframes pulseRetired': {
+                        '0%, 100%': { transform: 'scale(1)', opacity: 0.25 },
+                        '50%': { transform: 'scale(1.5)', opacity: 0.1 },
+                      },
+                    }}
+                  />
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: isDarkMode ? '#f87171' : '#ef4444', border: '1.5px solid white', boxShadow: '0 0 4px rgba(239, 68, 68, 0.4)' }} />
+                </Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={500}>Retirado</Typography>
               </Stack>
             </Stack>
             <Divider />
@@ -542,7 +621,7 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
             }}
           >
             <Stack direction="row" spacing={1} alignItems="center">
-              <MaintenanceIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+              <LocationIcon sx={{ fontSize: 16, color: 'primary.main' }} />
               <Typography variant="caption" fontWeight={600} color="text.secondary">
                 {filteredItems.length} artículos
               </Typography>

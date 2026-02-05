@@ -24,7 +24,10 @@ import {
   useMediaQuery,
   useTheme,
   Card,
-  CardContent
+  CardContent,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -39,7 +42,9 @@ import {
   Error as ErrorIcon,
   LocationOn as LocationIcon,
   Person as PersonIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Close as CloseIcon,
+  DirectionsCar as DirectionsCarIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import { dashboardService } from '../services/dashboardService';
@@ -93,6 +98,10 @@ const Dashboard: React.FC = () => {
   const [showAllMaintenance, setShowAllMaintenance] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
+  // Estados para modal de imagen del inventario
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedItemForImage, setSelectedItemForImage] = useState<InventoryItem | null>(null);
+
   // Estados para datos reales del backend (Fase 2.3)
   const [recentRentals, setRecentRentals] = useState<any[]>([]);
   const [topCustomers, setTopCustomers] = useState<any[]>([]);
@@ -109,6 +118,12 @@ const Dashboard: React.FC = () => {
   // OPTIMIZADO: useCallback para handler de click en inventario (movido antes de returns)
   const handleInventoryItemClick = useCallback((item: InventoryItem) => {
     setSelectedInventoryItem(item);
+  }, []);
+
+  // Callback para abrir modal de imagen desde el mapa
+  const handleViewItemDetails = useCallback((item: InventoryItem) => {
+    setSelectedItemForImage(item);
+    setImageModalOpen(true);
   }, []);
 
   // OPTIMIZADO: Calcular totalVehicles con useMemo (movido antes de returns)
@@ -993,6 +1008,7 @@ const Dashboard: React.FC = () => {
                 categories={categories}
                 selectedItem={selectedInventoryItem}
                 onItemClick={handleInventoryItemClick}
+                onViewItemDetails={handleViewItemDetails}
               />
             </Box>
           </Box>
@@ -1352,6 +1368,138 @@ const Dashboard: React.FC = () => {
           </Typography>
         </Paper>
       </Box>
+
+      {/* Modal de Imagen del Artículo de Inventario */}
+      <Dialog
+        open={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            bgcolor: 'background.paper',
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: `1px solid ${border.default}`,
+          pb: 2,
+        }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              {selectedItemForImage?.name || 'Detalle del Artículo'}
+            </Typography>
+            {selectedItemForImage && (
+              <Typography variant="body2" color="text.secondary">
+                {selectedItemForImage.categoryName} • {selectedItemForImage.serialNumber}
+              </Typography>
+            )}
+          </Box>
+          <IconButton
+            onClick={() => setImageModalOpen(false)}
+            sx={{
+              bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+              '&:hover': {
+                bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+              },
+            }}
+          >
+            <CloseIcon sx={{ color: '#ef4444' }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          {selectedItemForImage?.images && selectedItemForImage.images.length > 0 ? (
+            <Box
+              component="img"
+              src={selectedItemForImage.images[0]}
+              alt={selectedItemForImage.name}
+              sx={{
+                width: '100%',
+                maxHeight: '50vh',
+                objectFit: 'contain',
+                borderRadius: '12px',
+                bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+              }}
+            />
+          ) : (
+            <Box sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              py: 6,
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              borderRadius: '12px',
+              border: `1px dashed ${border.default}`,
+            }}>
+              <DirectionsCarIcon sx={{ fontSize: 80, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="body1" color="text.secondary">
+                Sin imagen disponible
+              </Typography>
+            </Box>
+          )}
+
+          {/* Información adicional del artículo */}
+          {selectedItemForImage && (
+            <Box sx={{ mt: 3 }}>
+              <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+                gap: 2,
+              }}>
+                <Box sx={{
+                  p: 2,
+                  borderRadius: '12px',
+                  bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)',
+                  border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'}`,
+                }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                    Estado
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600} sx={{ color: isDarkMode ? '#a78bfa' : '#8b5cf6' }}>
+                    {selectedItemForImage.status === 'available' ? 'Disponible' :
+                     selectedItemForImage.status === 'rented' ? 'Rentado' :
+                     selectedItemForImage.status === 'maintenance' ? 'Mantenimiento' :
+                     selectedItemForImage.status === 'sold' ? 'Vendido' : 'Retirado'}
+                  </Typography>
+                </Box>
+                <Box sx={{
+                  p: 2,
+                  borderRadius: '12px',
+                  bgcolor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)',
+                  border: `1px solid ${isDarkMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)'}`,
+                }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                    Ubicación
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600} sx={{ color: isDarkMode ? '#34d399' : '#10b981' }}>
+                    {selectedItemForImage.currentLocationCity}, {selectedItemForImage.currentLocationState}
+                  </Typography>
+                </Box>
+                <Box sx={{
+                  p: 2,
+                  borderRadius: '12px',
+                  bgcolor: isDarkMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)',
+                  border: `1px solid ${isDarkMode ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.2)'}`,
+                }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                    Condición
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600} sx={{ color: isDarkMode ? '#fbbf24' : '#f59e0b' }}>
+                    {selectedItemForImage.condition === 'excellent' ? 'Excelente' :
+                     selectedItemForImage.condition === 'good' ? 'Bueno' :
+                     selectedItemForImage.condition === 'fair' ? 'Regular' : 'Malo'}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </Box>
   );
