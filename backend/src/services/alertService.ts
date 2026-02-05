@@ -509,14 +509,14 @@ class AlertService {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Delete expired alerts
+    // Delete expired alerts (where expiresAt is not null AND expiresAt < now)
     const expiredDeleted = await Alert.destroy({
       where: {
         expiresAt: {
           [Op.lt]: now,
-          [Op.not]: null,
+          [Op.ne]: null as unknown as Date, // Type assertion for Sequelize strict types
         },
-      },
+      } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
     });
 
     // Delete old resolved alerts (older than 30 days)
