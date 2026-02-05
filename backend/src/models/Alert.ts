@@ -3,7 +3,7 @@ import sequelize from '../config/database';
 
 interface AlertAttributes {
   id: number;
-  alertType: 'rental_expiring' | 'rental_overdue' | 'payment_pending' | 'maintenance_due' | 'insurance_expiring' | 'low_inventory' | 'system' | 'custom';
+  alertType: 'rental_pending_approval' | 'rental_approved' | 'rental_rejected' | 'rental_expiring' | 'rental_overdue' | 'payment_pending' | 'maintenance_due' | 'insurance_expiring' | 'low_inventory' | 'system' | 'custom';
   severity: 'info' | 'warning' | 'critical';
   title: string;
   message: string;
@@ -24,7 +24,7 @@ interface AlertCreationAttributes extends Optional<AlertAttributes, 'id' | 'enti
 
 class Alert extends Model<AlertAttributes, AlertCreationAttributes> implements AlertAttributes {
   public id!: number;
-  public alertType!: 'rental_expiring' | 'rental_overdue' | 'payment_pending' | 'maintenance_due' | 'insurance_expiring' | 'low_inventory' | 'system' | 'custom';
+  public alertType!: 'rental_pending_approval' | 'rental_approved' | 'rental_rejected' | 'rental_expiring' | 'rental_overdue' | 'payment_pending' | 'maintenance_due' | 'insurance_expiring' | 'low_inventory' | 'system' | 'custom';
   public severity!: 'info' | 'warning' | 'critical';
   public title!: string;
   public message!: string;
@@ -50,6 +50,9 @@ Alert.init(
     },
     alertType: {
       type: DataTypes.ENUM(
+        'rental_pending_approval',
+        'rental_approved',
+        'rental_rejected',
         'rental_expiring',
         'rental_overdue',
         'payment_pending',

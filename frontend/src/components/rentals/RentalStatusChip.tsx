@@ -8,7 +8,8 @@ import {
   Schedule as ReservedIcon,
   Cancel as CancelledIcon,
   PlayArrow as ActiveIcon,
-  Warning as OverdueIcon
+  Warning as OverdueIcon,
+  HourglassEmpty as PendingIcon
 } from '@mui/icons-material';
 import { RentalStatus } from '../../types/rental';
 
@@ -19,6 +20,11 @@ interface RentalStatusChipProps {
 
 const RentalStatusChip: React.FC<RentalStatusChipProps> = ({ status, size = 'small' }) => {
   const statusConfig = {
+    pending_approval: {
+      label: 'Pendiente',
+      color: 'warning' as const,
+      icon: <PendingIcon sx={{ fontSize: 16 }} />
+    },
     active: {
       label: 'Activa',
       color: 'success' as const,

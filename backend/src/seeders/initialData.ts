@@ -1,4 +1,5 @@
-import { Location, Role, User, UserRole, VehicleType, Vehicle, Customer, MaintenanceType } from '../models';
+import { Location, Role, User, UserRole, VehicleType, Vehicle, Customer, MaintenanceType, ExtraService } from '../models';
+import { PriceType, ServiceCategory } from '../models/ExtraService';
 
 export const seedInitialData = async (): Promise<void> => {
   console.log('🌱 Seeding initial data...');
@@ -12,29 +13,25 @@ export const seedInitialData = async (): Promise<void> => {
     ], { ignoreDuplicates: true });
     console.log('✅ Locations created');
 
-    // Create Roles (16 roles completos del sistema)
+    // Create Roles (12 roles del sistema)
     const roles = await Role.bulkCreate([
-      // Roles base
+      // Alta dirección
       { name: 'admin', description: 'Administrador del Sistema - Acceso total', permissions: ['*'] },
-      { name: 'director', description: 'Director con acceso a todas las ubicaciones', permissions: ['read:*', 'write:*', 'delete:*'] },
-      { name: 'manager', description: 'Gerente con acceso específico por ubicación', permissions: ['read:*', 'write:rentals', 'write:vehicles', 'write:customers'] },
-      { name: 'seller', description: 'Seller (alias) con acceso a rentas', permissions: ['read:*', 'write:rentals', 'write:customers'] },
-      { name: 'vendedor', description: 'Vendedor - Crear rentas y clientes', permissions: ['read:*', 'write:rentals', 'write:customers'] },
-      { name: 'accountant', description: 'Contador con acceso financiero', permissions: ['read:*', 'write:payments', 'read:reports'] },
-      { name: 'inventory', description: 'Encargado de inventario', permissions: ['read:*', 'write:vehicles', 'write:maintenance'] },
-      // Roles adicionales del sistema de 12 roles
       { name: 'director_general', description: 'Director General - Ver todas las sedes, gestión completa', permissions: ['read:*', 'write:*', 'delete:*'] },
+      // Jefes de área
       { name: 'jefe_inventarios', description: 'Jefe de Inventarios - CRUD vehículos, estadísticas', permissions: ['read:*', 'write:vehicles', 'write:maintenance', 'read:reports'] },
       { name: 'jefe_ventas', description: 'Jefe de Ventas - Rentas, clientes, reportes ventas', permissions: ['read:*', 'write:rentals', 'write:customers', 'read:reports'] },
       { name: 'jefe_finanzas', description: 'Jefe de Finanzas - Contabilidad, pagos, reportes', permissions: ['read:*', 'write:payments', 'write:accounting', 'read:reports'] },
       { name: 'jefe_admin', description: 'Jefe Administrativo - Usuarios, configuración, auditoría', permissions: ['read:*', 'write:users', 'write:config', 'read:audit'] },
+      // Operativos
       { name: 'encargado_inventario', description: 'Encargado de Inventario - CRUD vehículos básico', permissions: ['read:vehicles', 'write:vehicles', 'read:maintenance'] },
       { name: 'tecnico', description: 'Técnico de Mantenimiento - Órdenes de mantenimiento', permissions: ['read:vehicles', 'read:maintenance', 'write:maintenance'] },
+      { name: 'vendedor', description: 'Vendedor - Crear rentas y clientes', permissions: ['read:*', 'write:rentals', 'write:customers'] },
       { name: 'contador', description: 'Contador - Ver finanzas, reportes', permissions: ['read:*', 'read:reports', 'read:accounting'] },
       { name: 'cajero', description: 'Cajero - Procesar pagos', permissions: ['read:rentals', 'read:customers', 'write:payments'] },
       { name: 'asistente_admin', description: 'Asistente Administrativo - Soporte administrativo', permissions: ['read:*'] }
     ], { ignoreDuplicates: true });
-    console.log('✅ Roles created (16 roles)');
+    console.log('✅ Roles created (12 roles)');
 
     // Create Maintenance Types
     await MaintenanceType.bulkCreate([
@@ -128,6 +125,28 @@ export const seedInitialData = async (): Promise<void> => {
       });
     }
     console.log('✅ Sample customers created');
+
+    // Create Extra Services (Servicios Adicionales)
+    await ExtraService.bulkCreate([
+      // Accesorios
+      { name: 'GPS / Navegador', description: 'Sistema de navegación GPS integrado', price: 150, price_type: PriceType.PER_DAY, category: ServiceCategory.ACCESSORY, is_active: true },
+      { name: 'WiFi Portátil', description: 'Dispositivo WiFi móvil con datos ilimitados', price: 100, price_type: PriceType.PER_DAY, category: ServiceCategory.ACCESSORY, is_active: true },
+      { name: 'Silla de Bebé', description: 'Silla de seguridad para bebé (0-12 meses)', price: 80, price_type: PriceType.PER_DAY, category: ServiceCategory.ACCESSORY, is_active: true },
+      { name: 'Silla de Niño', description: 'Asiento elevador para niño (1-4 años)', price: 70, price_type: PriceType.PER_DAY, category: ServiceCategory.ACCESSORY, is_active: true },
+      { name: 'Portaequipajes', description: 'Rack de techo para equipaje adicional', price: 50, price_type: PriceType.PER_DAY, category: ServiceCategory.ACCESSORY, is_active: true },
+      { name: 'Cadenas para Nieve', description: 'Cadenas para conducción en nieve', price: 100, price_type: PriceType.PER_DAY, category: ServiceCategory.ACCESSORY, is_active: true },
+      // Servicios
+      { name: 'Conductor Adicional', description: 'Registro de conductor adicional autorizado', price: 200, price_type: PriceType.FIXED, category: ServiceCategory.SERVICE, is_active: true },
+      { name: 'Entrega en Domicilio', description: 'Entrega del vehículo en dirección especificada', price: 300, price_type: PriceType.FIXED, category: ServiceCategory.SERVICE, is_active: true },
+      { name: 'Recogida en Domicilio', description: 'Recogida del vehículo en dirección especificada', price: 300, price_type: PriceType.FIXED, category: ServiceCategory.SERVICE, is_active: true },
+      { name: 'Lavado Premium', description: 'Servicio de lavado y detallado interior/exterior', price: 250, price_type: PriceType.FIXED, category: ServiceCategory.SERVICE, is_active: true },
+      { name: 'Tanque Lleno Prepagado', description: 'Pago anticipado del tanque de gasolina', price: 500, price_type: PriceType.FIXED, category: ServiceCategory.SERVICE, is_active: true },
+      // Seguros
+      { name: 'Seguro Básico', description: 'Cobertura básica contra daños y robo', price: 150, price_type: PriceType.PER_DAY, category: ServiceCategory.INSURANCE, is_active: true },
+      { name: 'Seguro Premium', description: 'Cobertura total sin deducible', price: 350, price_type: PriceType.PER_DAY, category: ServiceCategory.INSURANCE, is_active: true },
+      { name: 'Seguro de Terceros', description: 'Cobertura ampliada para daños a terceros', price: 200, price_type: PriceType.PER_DAY, category: ServiceCategory.INSURANCE, is_active: true },
+    ], { ignoreDuplicates: true });
+    console.log('✅ Extra services created (14 services)');
 
     console.log('🎉 Initial data seeding completed!');
   } catch (error) {

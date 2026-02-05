@@ -121,6 +121,36 @@ export const rentalService = {
    */
   getByVehicle: async (vehicleId: number): Promise<RentalResponse> => {
     return rentalService.getAll({ vehicle_id: vehicleId });
+  },
+
+  // ============================================
+  // MÉTODOS DE APROBACIÓN
+  // ============================================
+
+  /**
+   * Obtener rentas pendientes de aprobación
+   */
+  getPendingApprovals: async (): Promise<{ success: boolean; data: any[]; count: number }> => {
+    const response = await api.get<{ success: boolean; data: any[]; count: number }>(
+      '/rentals/pending-approvals'
+    );
+    return response.data;
+  },
+
+  /**
+   * Aprobar una renta pendiente
+   */
+  approveRental: async (id: number): Promise<SingleRentalResponse> => {
+    const response = await api.post<SingleRentalResponse>(`/rentals/${id}/approve`);
+    return response.data;
+  },
+
+  /**
+   * Rechazar una renta pendiente
+   */
+  rejectRental: async (id: number, reason: string): Promise<SingleRentalResponse> => {
+    const response = await api.post<SingleRentalResponse>(`/rentals/${id}/reject`, { reason });
+    return response.data;
   }
 };
 

@@ -12,6 +12,7 @@ import alertService from '../services/alertService';
  * - Seguros: Diariamente a las 7:30 AM
  * - Inventario bajo: Cada 12 horas
  * - Verificación completa: Diariamente a las 6:00 AM
+ * - Limpieza de alertas: Diariamente a las 3:00 AM (elimina expiradas y resueltas +30 días)
  */
 class AlertScheduler {
   private tasks: ReturnType<typeof cron.schedule>[] = [];
@@ -111,6 +112,19 @@ class AlertScheduler {
     });
     this.tasks.push(lowInventoryTask);
     console.log('[AlertScheduler] ✓ Verificación de inventario bajo programada (cada 12 horas)');
+
+    // 8. Limpieza de alertas antiguas - Diariamente a las 3:00 AM
+    const cleanupTask = cron.schedule('0 3 * * *', async () => {
+      console.log('[AlertScheduler] Ejecutando limpieza de alertas antiguas...');
+      try {
+        const result = await alertService.cleanupOldAlerts();
+        console.log(`[AlertScheduler] Limpieza completada: ${result.total} alerta(s) eliminada(s) (${result.expiredDeleted} expiradas, ${result.oldResolvedDeleted} resueltas antiguas)`);
+      } catch (error) {
+        console.error('[AlertScheduler] Error en limpieza de alertas:', error);
+      }
+    });
+    this.tasks.push(cleanupTask);
+    console.log('[AlertScheduler] ✓ Limpieza de alertas programada (3:00 AM)');
 
     console.log(`[AlertScheduler] ${this.tasks.length} tareas programadas activas`);
     console.log('[AlertScheduler] Programador de alertas iniciado correctamente');

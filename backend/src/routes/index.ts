@@ -15,6 +15,7 @@ import inventoryRoutes from './inventory';
 import userRoutes from './users';
 import locationRoutes from './locations';
 import auditRoutes from './audit';
+import extraServiceRoutes from './extraServices';
 
 const router = Router();
 
@@ -40,6 +41,7 @@ router.use('/inventory', inventoryRoutes);
 router.use('/users', userRoutes);
 router.use('/locations', locationRoutes);
 router.use('/audit', auditRoutes);
+router.use('/extra-services', extraServiceRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

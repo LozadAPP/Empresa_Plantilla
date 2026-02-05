@@ -1,9 +1,28 @@
 /**
- * Formulario de Devolucion (CHAT 2) - VERSION REFACTORIZADA
- * Reducido de 805 lineas a ~250 mediante extraccion de componentes
+ * Formulario de Devolución (CHAT 2)
+ * CONVERTIDO A MATERIAL UI - Soporte completo Dark/Light Mode
  */
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  Paper,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  Checkbox,
+  FormControlLabel,
+  CircularProgress
+} from '@mui/material';
+import {
+  ArrowBack as BackIcon,
+  Check as CheckIcon
+} from '@mui/icons-material';
 import { useReturnForm } from '../hooks/useReturnForm';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { formatCurrency } from '../utils/formatters';
@@ -39,239 +58,260 @@ const ReturnForm: React.FC = () => {
 
   const getFuelLevelLabel = (level: string) => FUEL_LEVEL_LABELS[level] || level;
 
-  const inputStyles = `w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${
-    isDarkMode
-      ? 'bg-gray-700 border-gray-600 text-white'
-      : 'bg-white border-gray-300 text-gray-900'
-  }`;
+  const paperStyles = {
+    p: { xs: 2, sm: 3 },
+    background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
+    borderRadius: { xs: '12px', sm: 2 },
+    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+  };
 
-  const labelStyles = `block text-sm font-medium mb-2 ${
-    isDarkMode ? 'text-gray-300' : 'text-gray-700'
-  }`;
-
-  const sectionHeaderStyles = `text-lg font-semibold mb-4 border-b pb-2 ${
-    isDarkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-200'
-  }`;
+  const sectionTitleStyles = {
+    fontSize: '1.1rem',
+    fontWeight: 600,
+    mb: 3,
+    pb: 1,
+    borderBottom: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+  };
 
   // Loading state
   if (!rental) {
     return (
-      <div className={`flex items-center justify-center h-64 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh' }}>
+        <CircularProgress sx={{ color: '#8b5cf6' }} />
+      </Box>
     );
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-          Registrar Devolucion
-        </h1>
-        <p className={`mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" fontWeight="700" sx={{ mb: 0.5 }}>
+          Registrar Devolución
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
           Renta: {rental.rental_code} - {rental.vehicle?.brand} {rental.vehicle?.model} ({rental.vehicle?.plate})
-        </p>
-      </div>
+        </Typography>
+      </Box>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Grid container spacing={3}>
         {/* FORMULARIO (2 columnas) */}
-        <div className="lg:col-span-2">
-          <form onSubmit={handleSubmit} className={`rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+        <Grid item xs={12} lg={8}>
+          <form onSubmit={handleSubmit}>
+            <Paper sx={{ ...paperStyles, mb: 3 }}>
+              {/* SECCIÓN 1: Información de Devolución */}
+              <Typography sx={sectionTitleStyles}>
+                Información de Devolución
+              </Typography>
 
-            {/* SECCION 1: Informacion de Devolucion */}
-            <div className="mb-6">
-              <h2 className={sectionHeaderStyles}>
-                Informacion de Devolucion
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Fecha de Devolucion */}
-                <div>
-                  <label className={labelStyles}>Fecha de Devolucion *</label>
-                  <input
+              <Grid container spacing={3}>
+                {/* Fecha de Devolución */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Fecha de Devolución *"
                     type="datetime-local"
                     name="return_date"
                     value={formData.return_date}
                     onChange={handleChange}
                     required
-                    className={inputStyles}
+                    InputLabelProps={{ shrink: true }}
+                    helperText={`Esperada: ${new Date(rental.end_date).toLocaleDateString('es-MX')}`}
                   />
-                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Esperada: {new Date(rental.end_date).toLocaleDateString('es-MX')}
-                  </p>
-                </div>
+                </Grid>
 
-                {/* Sucursal de Devolucion */}
-                <div>
-                  <label className={labelStyles}>Sucursal de Devolucion *</label>
-                  <select
-                    name="return_location_id"
-                    value={formData.return_location_id || ''}
-                    onChange={handleChange}
-                    required
-                    className={inputStyles}
-                  >
-                    {DUMMY_LOCATIONS.map(loc => (
-                      <option key={loc.id} value={loc.id}>{loc.name}</option>
-                    ))}
-                  </select>
-                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                {/* Sucursal de Devolución */}
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Sucursal de Devolución *</InputLabel>
+                    <Select
+                      name="return_location_id"
+                      value={formData.return_location_id || ''}
+                      onChange={(e) => handleChange({ target: { name: 'return_location_id', value: e.target.value } } as any)}
+                      label="Sucursal de Devolución *"
+                      required
+                    >
+                      {DUMMY_LOCATIONS.map(loc => (
+                        <MenuItem key={loc.id} value={loc.id}>{loc.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
                     Recogida en: {DUMMY_LOCATIONS.find(l => l.id === rental.location_id)?.name || 'N/A'}
-                  </p>
-                </div>
-              </div>
-            </div>
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Paper>
 
-            {/* SECCION 2: Condiciones del Vehiculo */}
-            <div className="mb-6">
-              <h2 className={sectionHeaderStyles}>
-                Condiciones del Vehiculo
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Paper sx={{ ...paperStyles, mb: 3 }}>
+              {/* SECCIÓN 2: Condiciones del Vehículo */}
+              <Typography sx={sectionTitleStyles}>
+                Condiciones del Vehículo
+              </Typography>
+
+              <Grid container spacing={3}>
                 {/* Kilometraje Final */}
-                <div>
-                  <label className={labelStyles}>Kilometraje Final *</label>
-                  <input
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Kilometraje Final *"
                     type="number"
                     name="end_mileage"
                     value={formData.end_mileage}
                     onChange={handleChange}
                     required
-                    min={rental.start_mileage || 0}
-                    className={inputStyles}
+                    inputProps={{ min: rental.start_mileage || 0 }}
                   />
-                  <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
                     Inicial: <strong>{rental.start_mileage || 'N/A'}</strong> km
                     {formData.end_mileage > 0 && rental.start_mileage && (
-                      <span className="ml-2 text-blue-600">
+                      <Box component="span" sx={{ ml: 1, color: '#3b82f6' }}>
                         (Recorridos: {formData.end_mileage - rental.start_mileage} km)
-                      </span>
+                      </Box>
                     )}
-                  </p>
-                </div>
+                  </Typography>
+                </Grid>
 
                 {/* Nivel de Combustible */}
-                <div>
-                  <label className={labelStyles}>Nivel de Combustible Final *</label>
-                  <select
-                    name="fuel_level"
-                    value={formData.fuel_level}
-                    onChange={handleChange}
-                    required
-                    className={inputStyles}
-                  >
-                    <option value="empty">Vacio</option>
-                    <option value="quarter">1/4</option>
-                    <option value="half">1/2</option>
-                    <option value="three_quarters">3/4</option>
-                    <option value="full">Lleno</option>
-                  </select>
-                  <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Nivel de Combustible Final *</InputLabel>
+                    <Select
+                      name="fuel_level"
+                      value={formData.fuel_level}
+                      onChange={(e) => handleChange({ target: { name: 'fuel_level', value: e.target.value } } as any)}
+                      label="Nivel de Combustible Final *"
+                      required
+                    >
+                      <MenuItem value="empty">Vacío</MenuItem>
+                      <MenuItem value="quarter">1/4</MenuItem>
+                      <MenuItem value="half">1/2</MenuItem>
+                      <MenuItem value="three_quarters">3/4</MenuItem>
+                      <MenuItem value="full">Lleno</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
                     Inicial: <strong>{getFuelLevelLabel(rental.fuel_level_start || 'full')}</strong>
                     {rental.fuel_level_start && formData.fuel_level !== rental.fuel_level_start && (
-                      <span className="ml-2 text-orange-600">Diferente al inicial</span>
+                      <Box component="span" sx={{ ml: 1, color: '#f59e0b' }}>
+                        Diferente al inicial
+                      </Box>
                     )}
-                  </p>
-                </div>
+                  </Typography>
+                </Grid>
 
-                {/* Condicion del Vehiculo */}
-                <div>
-                  <label className={labelStyles}>Condicion General *</label>
-                  <select
-                    name="vehicle_condition"
-                    value={formData.vehicle_condition}
-                    onChange={handleChange}
-                    required
-                    className={inputStyles}
-                  >
-                    <option value="excellent">Excelente</option>
-                    <option value="good">Bueno</option>
-                    <option value="fair">Regular</option>
-                    <option value="poor">Malo</option>
-                    <option value="damaged">Danado</option>
-                  </select>
-                </div>
+                {/* Condición del Vehículo */}
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Condición General *</InputLabel>
+                    <Select
+                      name="vehicle_condition"
+                      value={formData.vehicle_condition}
+                      onChange={(e) => handleChange({ target: { name: 'vehicle_condition', value: e.target.value } } as any)}
+                      label="Condición General *"
+                      required
+                    >
+                      <MenuItem value="excellent">Excelente</MenuItem>
+                      <MenuItem value="good">Bueno</MenuItem>
+                      <MenuItem value="fair">Regular</MenuItem>
+                      <MenuItem value="poor">Malo</MenuItem>
+                      <MenuItem value="damaged">Dañado</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
 
                 {/* Limpieza Requerida */}
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="cleaning_required"
-                    checked={formData.cleaning_required}
-                    onChange={handleChange}
-                    className={`h-4 w-4 text-blue-600 focus:ring-blue-500 rounded ${
-                      isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300'
-                    }`}
+                <Grid item xs={12} md={6}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        name="cleaning_required"
+                        checked={formData.cleaning_required}
+                        onChange={handleChange}
+                        sx={{ color: '#8b5cf6', '&.Mui-checked': { color: '#8b5cf6' } }}
+                      />
+                    }
+                    label={`Requiere limpieza profunda (+${formatCurrency(50)})`}
                   />
-                  <label className={`ml-2 block text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Requiere limpieza profunda (+{formatCurrency(50)})
-                  </label>
-                </div>
-              </div>
-            </div>
+                </Grid>
+              </Grid>
+            </Paper>
 
-            {/* SECCION 3: Danos y Costos - Componente extraido */}
-            <DamageSection
-              selectedDamageType={selectedDamageType}
-              damageDescription={formData.damage_description || ''}
-              damageCost={formData.damage_cost || 0}
-              photos={formData.photos || []}
-              isDarkMode={isDarkMode}
-              onDamageTypeChange={handleDamageTypeChange}
-              onDescriptionChange={handleChange}
-              onCostChange={handleChange}
-              onPhotoUpload={handlePhotoUpload}
-              onRemovePhoto={removePhoto}
-            />
+            {/* SECCIÓN 3: Daños y Costos - Componente extraído */}
+            <Paper sx={{ ...paperStyles, mb: 3 }}>
+              <DamageSection
+                selectedDamageType={selectedDamageType}
+                damageDescription={formData.damage_description || ''}
+                damageCost={formData.damage_cost || 0}
+                photos={formData.photos || []}
+                isDarkMode={isDarkMode}
+                onDamageTypeChange={handleDamageTypeChange}
+                onDescriptionChange={handleChange}
+                onCostChange={handleChange}
+                onPhotoUpload={handlePhotoUpload}
+                onRemovePhoto={removePhoto}
+              />
+            </Paper>
 
-            {/* SECCION 4: Notas de Inspeccion */}
-            <div className="mb-6">
-              <h2 className={sectionHeaderStyles}>Notas de Inspeccion</h2>
-              <textarea
+            <Paper sx={{ ...paperStyles, mb: 3 }}>
+              {/* SECCIÓN 4: Notas de Inspección */}
+              <Typography sx={sectionTitleStyles}>
+                Notas de Inspección
+              </Typography>
+
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
                 name="inspection_notes"
                 value={formData.inspection_notes}
                 onChange={handleChange}
-                rows={4}
-                className={inputStyles}
-                placeholder="Observaciones generales de la inspeccion, condiciones especiales, comentarios del cliente, etc."
+                placeholder="Observaciones generales de la inspección, condiciones especiales, comentarios del cliente, etc."
               />
-            </div>
+            </Paper>
 
             {/* Botones */}
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+              <Button
+                variant="outlined"
+                startIcon={<BackIcon />}
                 onClick={handleCancel}
-                className={`px-6 py-2 border rounded-lg ${
-                  isDarkMode
-                    ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+                sx={{
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)',
+                  color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
+                }}
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
+                variant="contained"
                 disabled={loading}
-                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:opacity-50"
+                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CheckIcon />}
+                sx={{
+                  bgcolor: '#10b981',
+                  '&:hover': { bgcolor: '#059669' }
+                }}
               >
-                {loading ? 'Registrando...' : 'Registrar Devolucion'}
-              </button>
-            </div>
+                {loading ? 'Registrando...' : 'Registrar Devolución'}
+              </Button>
+            </Box>
           </form>
-        </div>
+        </Grid>
 
-        {/* PANEL DE PENALIDADES (1 columna) - Componente extraido */}
-        <div className="lg:col-span-1">
+        {/* PANEL DE PENALIDADES (1 columna) - Componente extraído */}
+        <Grid item xs={12} lg={4}>
           <ReturnPenaltySummary
             penaltyCalculation={penaltyCalculation}
             dailyRate={rental.daily_rate}
             isDarkMode={isDarkMode}
           />
-        </div>
-      </div>
+        </Grid>
+      </Grid>
 
-      {/* MODAL DE CONFIRMACION - Componente extraido */}
+      {/* MODAL DE CONFIRMACIÓN - Componente extraído */}
       {showConfirmModal && penaltyCalculation && (
         <ReturnConfirmModal
           isOpen={showConfirmModal}
@@ -284,7 +324,7 @@ const ReturnForm: React.FC = () => {
           onClose={closeConfirmModal}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

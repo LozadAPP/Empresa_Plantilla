@@ -14,9 +14,8 @@
  */
 
 import React from 'react';
-import { Paper, Box, Typography } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import { useTheme } from '@mui/material/styles';
+import { Paper, Box, Typography, useMediaQuery } from '@mui/material';
+import { styled, useTheme } from '@mui/material/styles';
 
 interface StyledKPIPaperProps {
   customColor?: string;
@@ -25,17 +24,33 @@ interface StyledKPIPaperProps {
 const KPIPaper = styled(Paper, {
   shouldForwardProp: (prop) => prop !== 'customColor',
 })<StyledKPIPaperProps>(({ theme }) => ({
-  padding: theme.spacing(3),
-  borderRadius: '20px',
+  // RESPONSIVE: Padding escalable
+  padding: theme.spacing(2),
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(2.5),
+  },
+  [theme.breakpoints.up('md')]: {
+    padding: theme.spacing(3),
+  },
+  borderRadius: '16px',
+  [theme.breakpoints.up('sm')]: {
+    borderRadius: '20px',
+  },
   display: 'flex',
   alignItems: 'center',
-  gap: theme.spacing(2.5),
+  // RESPONSIVE: Gap escalable
+  gap: theme.spacing(1.5),
+  [theme.breakpoints.up('sm')]: {
+    gap: theme.spacing(2),
+  },
+  [theme.breakpoints.up('md')]: {
+    gap: theme.spacing(2.5),
+  },
   transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
 
   // OPTIMIZADO AGRESIVO: Color sólido sin backdrop-filter para mejor FPS
   ...(theme.palette.mode === 'dark' ? {
     background: 'rgba(6, 11, 40, 0.95)',
-    // REMOVIDO: backdropFilter causa lag durante scroll
     border: '1.5px solid rgba(255, 255, 255, 0.12)',
     boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
   } : {
@@ -45,10 +60,10 @@ const KPIPaper = styled(Paper, {
   }),
 
   '&:hover': {
-    transform: 'translateY(-2px)',  // Reducido de -4px a -2px
+    transform: 'translateY(-2px)',
     ...(theme.palette.mode === 'dark' ? {
       border: '1.5px solid rgba(0, 117, 255, 0.35)',
-      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.35)',  // Simplificado sin glow
+      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.35)',
     } : {
       boxShadow: '0 6px 20px rgba(0, 0, 0, 0.08)',
     }),
@@ -58,9 +73,20 @@ const KPIPaper = styled(Paper, {
 const IconContainer = styled(Box, {
   shouldForwardProp: (prop) => prop !== 'iconColor',
 })<{ iconColor: string }>(({ theme, iconColor }) => ({
-  width: 64,
-  height: 64,
-  borderRadius: '16px',
+  // RESPONSIVE: Tamaño escalable
+  width: 48,
+  height: 48,
+  borderRadius: '12px',
+  [theme.breakpoints.up('sm')]: {
+    width: 56,
+    height: 56,
+    borderRadius: '14px',
+  },
+  [theme.breakpoints.up('md')]: {
+    width: 64,
+    height: 64,
+    borderRadius: '16px',
+  },
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -75,15 +101,21 @@ const IconContainer = styled(Box, {
   // Border visible
   border: `2px solid ${iconColor}50`,
 
-  // OPTIMIZADO: glow simplificado (un solo shadow más pequeño)
+  // OPTIMIZADO: glow simplificado
   ...(theme.palette.mode === 'dark' && {
     boxShadow: `0 0 12px ${iconColor}25`,
   }),
 
+  // RESPONSIVE: Icono escalable
   '& > svg': {
-    fontSize: 32,
+    fontSize: 24,
+    [theme.breakpoints.up('sm')]: {
+      fontSize: 28,
+    },
+    [theme.breakpoints.up('md')]: {
+      fontSize: 32,
+    },
     color: iconColor,
-    // OPTIMIZADO: drop-shadow simple (de doble a simple, valores reducidos)
     filter: theme.palette.mode === 'dark'
       ? `drop-shadow(0 0 6px ${iconColor}50)`
       : `drop-shadow(0 0 3px ${iconColor}30)`,
@@ -114,6 +146,7 @@ export const StyledKPI: React.FC<StyledKPIProps> = ({
   extra,
 }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
     <KPIPaper elevation={0}>
@@ -125,9 +158,14 @@ export const StyledKPI: React.FC<StyledKPIProps> = ({
           variant="body2"
           color="text.secondary"
           sx={{
-            fontSize: '0.8rem',
+            // RESPONSIVE: Label escalable
+            fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
             fontWeight: 500,
-            mb: 0.5,
+            mb: { xs: 0.25, sm: 0.5 },
+            // Truncar en móvil si es muy largo
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           {label}
@@ -136,7 +174,8 @@ export const StyledKPI: React.FC<StyledKPIProps> = ({
           variant="h3"
           sx={{
             fontWeight: 700,
-            fontSize: '2rem',
+            // RESPONSIVE: Valor escalable
+            fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' },
             lineHeight: 1.2,
             color: color,
             letterSpacing: '-0.02em',
@@ -152,12 +191,16 @@ export const StyledKPI: React.FC<StyledKPIProps> = ({
           <Typography
             variant="caption"
             color="text.secondary"
-            sx={{ fontSize: '0.75rem' }}
+            sx={{
+              // RESPONSIVE: Subtitle escalable
+              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+              display: { xs: isMobile ? 'none' : 'block', sm: 'block' }, // Ocultar en móvil muy pequeño
+            }}
           >
             {subtitle}
           </Typography>
         )}
-        {extra && <Box sx={{ mt: 0.5 }}>{extra}</Box>}
+        {extra && <Box sx={{ mt: { xs: 0.25, sm: 0.5 } }}>{extra}</Box>}
       </Box>
     </KPIPaper>
   );

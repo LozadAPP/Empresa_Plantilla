@@ -50,7 +50,7 @@ const FPSCounter: React.FC<FPSCounterProps> = ({ isDarkMode = true }) => {
         position: 'fixed',
         top: 8,
         right: 8,
-        zIndex: 9999,
+        zIndex: 1400, // Por encima de modals (1300) pero no excesivo
         px: 1.5,
         py: 0.5,
         borderRadius: '8px',

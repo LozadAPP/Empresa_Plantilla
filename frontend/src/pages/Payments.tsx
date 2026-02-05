@@ -23,7 +23,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Button
+  Button,
+  Card,
+  CardContent,
+  Divider,
+  Stack,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -43,23 +49,40 @@ import { AppDispatch, RootState } from '../store';
 import { fetchPayments } from '../store/slices/paymentSlice';
 import { PaymentStatus, PaymentType } from '../types/payment';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
+import { useThemeStyles } from '../hooks/useThemeStyles';
 import TableSkeleton from '../components/common/TableSkeleton';
 import { exportToCSV, PAYMENTS_COLUMNS } from '../utils/exportCSV';
 import { formatDateTime, formatCurrency } from '../utils/formatters';
+
+// Función para calcular fechas por defecto (últimos 30 días)
+const getDefaultDates = () => {
+  const today = new Date();
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+  return {
+    startDate: thirtyDaysAgo.toISOString().split('T')[0],
+    endDate: today.toISOString().split('T')[0]
+  };
+};
 
 const Payments: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { isDarkMode } = useCustomTheme();
+  const themeStyles = useThemeStyles();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   const { payments, loading, error, paymentPagination } = useSelector((state: RootState) => state.payments);
 
+  const defaultDates = getDefaultDates();
   const [filters, setFilters] = useState({
     status: '' as PaymentStatus | '',
     payment_type: '' as PaymentType | '',
     payment_method: '',
-    startDate: '',
-    endDate: '',
+    startDate: defaultDates.startDate,
+    endDate: defaultDates.endDate,
     page: 1,
     limit: 20
   });
@@ -97,8 +120,10 @@ const Payments: React.FC = () => {
     exportToCSV(payments, PAYMENTS_COLUMNS, 'pagos');
   }, [payments]);
 
+  // Handler para restaurar filtros de fecha a valores por defecto
   const handleClearDateFilters = useCallback(() => {
-    setFilters(prev => ({ ...prev, startDate: '', endDate: '', page: 1 }));
+    const defaults = getDefaultDates();
+    setFilters(prev => ({ ...prev, startDate: defaults.startDate, endDate: defaults.endDate, page: 1 }));
   }, []);
 
   const handleChangePage = useCallback((_: unknown, newPage: number) => {
@@ -224,13 +249,24 @@ const Payments: React.FC = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
+      {/* Header - Responsive */}
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'flex-start' },
+        gap: { xs: 2, sm: 0 },
+        mb: { xs: 3, sm: 4 }
+      }}>
         <Box>
-          <Typography variant="h3" fontWeight="700" sx={{ fontSize: '2rem', letterSpacing: '-0.02em', mb: 0.5 }}>
+          <Typography
+            variant="h3"
+            fontWeight="700"
+            sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }, letterSpacing: '-0.02em', mb: 0.5 }}
+          >
             Pagos
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', display: { xs: 'none', sm: 'block' } }}>
             Historial de pagos y transacciones
           </Typography>
         </Box>
@@ -238,32 +274,34 @@ const Payments: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => navigate('/payments/new')}
+          fullWidth={isMobile}
           sx={{
             bgcolor: '#8b5cf6',
             color: '#fff',
+            py: { xs: 1.25, sm: 1 },
             '&:hover': {
               bgcolor: '#7c3aed'
             }
           }}
         >
-          Registrar Pago
+          {isMobile ? 'Registrar' : 'Registrar Pago'}
         </Button>
       </Box>
 
       {/* Stats Cards */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' }, gap: 2, mb: 4 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: { xs: 1.5, sm: 2 }, mb: { xs: 2, sm: 3, md: 4 } }}>
         {[
-          { id: 'total', label: 'Total Pagos', value: stats.total, color: '#8b5cf6', icon: <PaymentIcon /> },
-          { id: 'completed', label: 'Completados', value: stats.completed, color: '#10b981', icon: <CompletedIcon /> },
-          { id: 'pending', label: 'Pendientes', value: stats.pending, color: '#f59e0b', icon: <PendingIcon /> },
-          { id: 'amount', label: 'Monto Total', value: formatCurrency(stats.totalAmount), color: '#3b82f6', icon: <CashIcon /> }
+          { id: 'total', label: isMobile ? 'Total' : 'Total Pagos', value: stats.total, color: themeStyles.purple.main, icon: <PaymentIcon /> },
+          { id: 'completed', label: isMobile ? 'Completos' : 'Completados', value: stats.completed, color: themeStyles.status.success.main, icon: <CompletedIcon /> },
+          { id: 'pending', label: 'Pendientes', value: stats.pending, color: themeStyles.status.warning.main, icon: <PendingIcon /> },
+          { id: 'amount', label: isMobile ? 'Monto' : 'Monto Total', value: formatCurrency(stats.totalAmount), color: themeStyles.status.info.main, icon: <CashIcon /> }
         ].map((stat) => (
           <Paper
             key={stat.id}
             sx={{
-              p: 3,
+              p: { xs: 2, sm: 3 },
               background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
-              borderRadius: 2,
+              borderRadius: { xs: '12px', sm: 2 },
               border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
               position: 'relative',
               overflow: 'hidden'
@@ -297,15 +335,21 @@ const Payments: React.FC = () => {
         </Paper>
       )}
 
-      {/* Filters Row 1 */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+      {/* Filters - Responsive */}
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', md: 'row' },
+        gap: { xs: 1.5, sm: 2 },
+        mb: 2,
+        alignItems: { xs: 'stretch', md: 'center' }
+      }}>
         <TextField
           id="payments-search"
-          placeholder="Buscar por código, cliente, renta, factura..."
+          placeholder={isMobile ? "Buscar..." : "Buscar por código, cliente, renta, factura..."}
           size="small"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          sx={{ flexGrow: 1, minWidth: 250 }}
+          sx={{ flexGrow: 1, minWidth: { xs: 'auto', md: 250 } }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -316,95 +360,106 @@ const Payments: React.FC = () => {
           aria-label="Buscar pagos"
         />
 
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel>Método</InputLabel>
-          <Select
-            value={filters.payment_method}
-            label="Método"
-            onChange={(e) => handleFilterChange('payment_method', e.target.value)}
-          >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="cash">Efectivo</MenuItem>
-            <MenuItem value="credit_card">Tarjeta de Crédito</MenuItem>
-            <MenuItem value="debit_card">Tarjeta de Débito</MenuItem>
-            <MenuItem value="transfer">Transferencia</MenuItem>
-            <MenuItem value="check">Cheque</MenuItem>
-          </Select>
-        </FormControl>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <FormControl size="small" sx={{ minWidth: { xs: 'calc(50% - 4px)', sm: 130 }, flex: { xs: 1, sm: 'none' } }}>
+            <InputLabel>Método</InputLabel>
+            <Select
+              value={filters.payment_method}
+              label="Método"
+              onChange={(e) => handleFilterChange('payment_method', e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="cash">Efectivo</MenuItem>
+              <MenuItem value="credit_card">T. Crédito</MenuItem>
+              <MenuItem value="debit_card">T. Débito</MenuItem>
+              <MenuItem value="transfer">Transferencia</MenuItem>
+              <MenuItem value="check">Cheque</MenuItem>
+            </Select>
+          </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel>Estado</InputLabel>
-          <Select
-            value={filters.status}
-            label="Estado"
-            onChange={(e) => handleFilterChange('status', e.target.value)}
-          >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="pending">Pendiente</MenuItem>
-            <MenuItem value="completed">Completado</MenuItem>
-            <MenuItem value="failed">Fallido</MenuItem>
-            <MenuItem value="refunded">Reembolsado</MenuItem>
-          </Select>
-        </FormControl>
+          <FormControl size="small" sx={{ minWidth: { xs: 'calc(50% - 4px)', sm: 120 }, flex: { xs: 1, sm: 'none' } }}>
+            <InputLabel>Estado</InputLabel>
+            <Select
+              value={filters.status}
+              label="Estado"
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="pending">Pendiente</MenuItem>
+              <MenuItem value="completed">Completado</MenuItem>
+              <MenuItem value="failed">Fallido</MenuItem>
+              <MenuItem value="refunded">Reembolsado</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
       </Box>
 
-      {/* Filters Row 2 */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel>Tipo de Pago</InputLabel>
-          <Select
-            value={filters.payment_type}
-            label="Tipo de Pago"
-            onChange={(e) => handleFilterChange('payment_type', e.target.value)}
-          >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="rental_payment">Pago de Renta</MenuItem>
-            <MenuItem value="deposit">Depósito</MenuItem>
-            <MenuItem value="penalty">Penalidad</MenuItem>
-            <MenuItem value="refund">Reembolso</MenuItem>
-          </Select>
-        </FormControl>
+      {/* Filters Row 2 - Responsive */}
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', md: 'row' },
+        gap: { xs: 1.5, sm: 2 },
+        mb: 3,
+        alignItems: { xs: 'stretch', md: 'center' }
+      }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 140 }, flex: { xs: 1, sm: 'none' } }}>
+            <InputLabel>Tipo</InputLabel>
+            <Select
+              value={filters.payment_type}
+              label="Tipo"
+              onChange={(e) => handleFilterChange('payment_type', e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="rental_payment">Pago de Renta</MenuItem>
+              <MenuItem value="deposit">Depósito</MenuItem>
+              <MenuItem value="penalty">Penalidad</MenuItem>
+              <MenuItem value="refund">Reembolso</MenuItem>
+            </Select>
+          </FormControl>
 
-        <TextField
-          id="payments-start-date"
-          label="Fecha Desde"
-          type="date"
-          size="small"
-          value={filters.startDate}
-          onChange={(e) => handleFilterChange('startDate', e.target.value)}
-          sx={{ minWidth: 160 }}
-          InputLabelProps={{ shrink: true }}
-        />
-
-        <TextField
-          id="payments-end-date"
-          label="Fecha Hasta"
-          type="date"
-          size="small"
-          value={filters.endDate}
-          onChange={(e) => handleFilterChange('endDate', e.target.value)}
-          sx={{ minWidth: 160 }}
-          InputLabelProps={{ shrink: true }}
-        />
-
-        {(filters.startDate || filters.endDate) && (
-          <IconButton
+          <TextField
+            id="payments-start-date"
+            label="Desde"
+            type="date"
             size="small"
-            onClick={handleClearDateFilters}
-            sx={{ color: 'text.secondary' }}
-            aria-label="Limpiar filtros de fecha"
-          >
-            <ClearIcon />
-          </IconButton>
-        )}
+            value={filters.startDate}
+            onChange={(e) => handleFilterChange('startDate', e.target.value)}
+            sx={{ minWidth: { xs: 'calc(50% - 4px)', sm: 140 }, flex: { xs: 1, sm: 'none' } }}
+            InputLabelProps={{ shrink: true }}
+          />
 
-        <Box sx={{ flexGrow: 1 }} />
+          <TextField
+            id="payments-end-date"
+            label="Hasta"
+            type="date"
+            size="small"
+            value={filters.endDate}
+            onChange={(e) => handleFilterChange('endDate', e.target.value)}
+            sx={{ minWidth: { xs: 'calc(50% - 4px)', sm: 140 }, flex: { xs: 1, sm: 'none' } }}
+            InputLabelProps={{ shrink: true }}
+          />
+
+          {(filters.startDate || filters.endDate) && (
+            <IconButton
+              size="small"
+              onClick={handleClearDateFilters}
+              sx={{ color: 'text.secondary', alignSelf: 'center' }}
+              aria-label="Limpiar filtros de fecha"
+            >
+              <ClearIcon />
+            </IconButton>
+          )}
+        </Box>
+
+        <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'block' } }} />
 
         <Button
           variant="outlined"
-          startIcon={<ExportIcon />}
+          startIcon={!isMobile && <ExportIcon />}
           onClick={handleExportCSV}
           disabled={payments.length === 0}
+          fullWidth={isMobile}
           sx={{
             borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)',
             color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
@@ -414,7 +469,7 @@ const Payments: React.FC = () => {
             }
           }}
         >
-          Exportar CSV
+          {isMobile ? <ExportIcon /> : 'Exportar CSV'}
         </Button>
       </Box>
 
@@ -427,7 +482,7 @@ const Payments: React.FC = () => {
           border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
         }}
       >
-        <Table>
+        <Table sx={{ minWidth: 800 }}>
           <TableHead>
             <TableRow>
               <TableCell><strong>Código</strong></TableCell>

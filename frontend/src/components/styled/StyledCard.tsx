@@ -53,6 +53,8 @@ export const StyledCard = styled(Paper, {
 })<StyledCardProps>(({ theme, hover, padding = 3, glow, glowColor = 'primary' }) => ({
   padding: theme.spacing(padding),
   borderRadius: '20px',
+  overflow: 'hidden', // Previene que contenido salga del border-radius
+  position: 'relative', // Para elementos posicionados absolutamente dentro
   transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
 
   // OPTIMIZADO AGRESIVO: Color sólido sin backdrop-filter para mejor FPS

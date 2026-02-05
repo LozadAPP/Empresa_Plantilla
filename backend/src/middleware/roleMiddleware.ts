@@ -109,8 +109,8 @@ export const requireLocation = (locationIdParam: string = 'locationId') => {
 
     const userRoles = req.user.roles || [];
 
-    // Admin and Director have access to all locations
-    if (userRoles.includes('admin') || userRoles.includes('director')) {
+    // Admin and Director General have access to all locations
+    if (userRoles.includes('admin') || userRoles.includes('director_general')) {
       next();
       return;
     }

@@ -10,6 +10,8 @@ export interface RentalCalculation {
   discount_amount: number;
   insurance_amount: number;
   extras_amount: number;
+  shipping_cost: number;
+  price_adjustment: number;
   total_amount: number;
 }
 
@@ -21,6 +23,8 @@ export interface RentalCalculationInput {
   discount_percentage?: number;
   insurance_amount?: number;
   extras_amount?: number;
+  shipping_cost?: number;
+  price_adjustment?: number;
 }
 
 /**
@@ -31,6 +35,7 @@ export class RentalCalculator {
 
   /**
    * Calcula todos los montos de una renta
+   * Fórmula: (subtotal - descuento + seguro + extras + envío + ajuste) × (1 + IVA)
    */
   static calculate(input: RentalCalculationInput): RentalCalculation {
     // Calcular días de renta (mínimo 1 día)
@@ -41,6 +46,8 @@ export class RentalCalculator {
     const discountPercentage = input.discount_percentage ?? 0;
     const insuranceAmount = input.insurance_amount ?? 0;
     const extrasAmount = input.extras_amount ?? 0;
+    const shippingCost = input.shipping_cost ?? 0;
+    const priceAdjustment = input.price_adjustment ?? 0;
 
     // Subtotal (días * tarifa diaria)
     const subtotal = days * input.daily_rate;
@@ -52,11 +59,17 @@ export class RentalCalculator {
     // Agregar seguro y extras
     const subtotalWithExtras = subtotalAfterDiscount + insuranceAmount + extrasAmount;
 
-    // Impuestos (sobre subtotal + extras)
-    const taxAmount = subtotalWithExtras * (taxPercentage / 100);
+    // Agregar envío
+    const subtotalWithShipping = subtotalWithExtras + shippingCost;
+
+    // Agregar ajuste de precio (+/-)
+    const subtotalWithAdjustment = subtotalWithShipping + priceAdjustment;
+
+    // Impuestos (sobre subtotal completo)
+    const taxAmount = subtotalWithAdjustment * (taxPercentage / 100);
 
     // Total final
-    const totalAmount = subtotalWithExtras + taxAmount;
+    const totalAmount = subtotalWithAdjustment + taxAmount;
 
     return {
       days,
@@ -68,6 +81,8 @@ export class RentalCalculator {
       discount_amount: parseFloat(discountAmount.toFixed(2)),
       insurance_amount: insuranceAmount,
       extras_amount: extrasAmount,
+      shipping_cost: shippingCost,
+      price_adjustment: priceAdjustment,
       total_amount: parseFloat(totalAmount.toFixed(2))
     };
   }

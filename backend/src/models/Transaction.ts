@@ -6,6 +6,7 @@ interface TransactionAttributes {
   transactionCode: string;
   transactionType: 'income' | 'expense' | 'transfer';
   accountId: number;
+  destinationAccountId?: number; // For transfers: destination account
   amount: number;
   description: string;
   referenceType?: string; // 'rental', 'maintenance', 'payment', etc.
@@ -22,13 +23,14 @@ interface TransactionAttributes {
   updatedAt?: Date;
 }
 
-interface TransactionCreationAttributes extends Optional<TransactionAttributes, 'id' | 'referenceType' | 'referenceId' | 'paymentMethod' | 'status' | 'locationId' | 'approvedBy' | 'approvedAt' | 'notes' | 'createdAt' | 'updatedAt'> {}
+interface TransactionCreationAttributes extends Optional<TransactionAttributes, 'id' | 'destinationAccountId' | 'referenceType' | 'referenceId' | 'paymentMethod' | 'status' | 'locationId' | 'approvedBy' | 'approvedAt' | 'notes' | 'createdAt' | 'updatedAt'> {}
 
 class Transaction extends Model<TransactionAttributes, TransactionCreationAttributes> implements TransactionAttributes {
   public id!: number;
   public transactionCode!: string;
   public transactionType!: 'income' | 'expense' | 'transfer';
   public accountId!: number;
+  public destinationAccountId?: number;
   public amount!: number;
   public description!: string;
   public referenceType?: string;
@@ -69,6 +71,15 @@ Transaction.init(
         model: 'accounts',
         key: 'id',
       },
+    },
+    destinationAccountId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'accounts',
+        key: 'id',
+      },
+      comment: 'For transfers: destination account ID',
     },
     amount: {
       type: DataTypes.DECIMAL(12, 2),

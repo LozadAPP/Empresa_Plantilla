@@ -1,17 +1,48 @@
 /**
  * Formulario para Crear/Editar Renta (CHAT 2)
- * VERSIÓN MEJORADA - Con todos los campos necesarios para operación real
+ * CONVERTIDO A MATERIAL UI - Soporte completo Dark/Light Mode
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useSnackbar } from 'notistack';
+import {
+  Box,
+  Typography,
+  Paper,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Divider,
+  CircularProgress,
+  useMediaQuery,
+  useTheme,
+  Checkbox,
+  Chip,
+  Collapse,
+  IconButton
+} from '@mui/material';
+import {
+  ArrowBack as BackIcon,
+  Check as CheckIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
+} from '@mui/icons-material';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { AppDispatch } from '../store';
 import { createRental } from '../store/slices/rentalSlice';
 import { CreateRentalDTO, PaymentMethod } from '../types/rental';
+import { ExtraService, SelectedService } from '../types/extraService';
 import customerService from '../services/customerService';
 import vehicleService from '../services/vehicleService';
+import extraServiceService from '../services/extraServiceService';
 import { differenceInDays } from 'date-fns';
 
 const RentalForm: React.FC = () => {
@@ -19,11 +50,16 @@ const RentalForm: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { isDarkMode } = useCustomTheme();
   const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
+  const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
+  const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
+  const [servicesExpanded, setServicesExpanded] = useState(true);
 
   const [formData, setFormData] = useState<CreateRentalDTO>({
     customer_id: 0,
@@ -34,6 +70,9 @@ const RentalForm: React.FC = () => {
     end_date: '',
     insurance_amount: 0,
     deposit_amount: 0,
+    shipping_cost: 0,
+    price_adjustment: 0,
+    adjustment_reason: '',
     payment_method: undefined,
     start_mileage: undefined,
     fuel_level_start: '',
@@ -48,6 +87,8 @@ const RentalForm: React.FC = () => {
     discount: 0,
     insurance: 0,
     extras: 0,
+    shipping: 0,
+    adjustment: 0,
     subtotalWithExtras: 0,
     tax: 0,
     total: 0
@@ -57,6 +98,7 @@ const RentalForm: React.FC = () => {
     loadCustomers();
     loadVehicles();
     loadLocations();
+    loadExtraServices();
   }, []);
 
   useEffect(() => {
@@ -67,7 +109,9 @@ const RentalForm: React.FC = () => {
     formData.vehicle_id,
     formData.insurance_amount,
     formData.discount_percentage,
-    formData.extras_amount
+    formData.shipping_cost,
+    formData.price_adjustment,
+    selectedServices
   ]);
 
   const loadCustomers = async () => {
@@ -90,8 +134,7 @@ const RentalForm: React.FC = () => {
 
   const loadLocations = async () => {
     try {
-      // TODO: Crear servicio de locations cuando CHAT 1 lo implemente
-      // Por ahora, usamos datos dummy
+      // TODO: Crear servicio de locations cuando esté disponible
       setLocations([
         { id: 1, name: 'CDMX - Norte', city: 'Ciudad de México' },
         { id: 2, name: 'CDMX - Sur', city: 'Ciudad de México' },
@@ -104,107 +147,129 @@ const RentalForm: React.FC = () => {
     }
   };
 
+  const loadExtraServices = async () => {
+    try {
+      const response = await extraServiceService.getActiveServices();
+      setExtraServices(response.data || []);
+    } catch (error) {
+      console.error('Error loading extra services:', error);
+    }
+  };
+
+  // Handle service selection
+  const handleServiceToggle = (service: ExtraService) => {
+    setSelectedServices(prev => {
+      const existingIndex = prev.findIndex(s => s.extra_service_id === service.id);
+      if (existingIndex >= 0) {
+        // Remove service
+        return prev.filter(s => s.extra_service_id !== service.id);
+      } else {
+        // Add service
+        const days = calculated.days || 1;
+        const subtotal = service.price_type === 'per_day'
+          ? service.price * days
+          : service.price;
+        return [...prev, {
+          extra_service_id: service.id,
+          quantity: 1,
+          unit_price: service.price,
+          days: service.price_type === 'per_day' ? days : 1,
+          subtotal,
+          service
+        }];
+      }
+    });
+  };
+
+  // Calculate total for selected services
+  const calculateServicesTotal = (): number => {
+    return selectedServices.reduce((total, s) => {
+      const days = calculated.days || 1;
+      if (s.service?.price_type === 'per_day') {
+        return total + (s.unit_price * days);
+      }
+      return total + s.subtotal;
+    }, 0);
+  };
+
+  // Get category label in Spanish
+  const getCategoryLabel = (category: string): string => {
+    switch (category) {
+      case 'accessory': return 'Accesorios';
+      case 'insurance': return 'Seguros';
+      case 'service': return 'Servicios';
+      default: return category;
+    }
+  };
+
+  // Get category color
+  const getCategoryColor = (category: string): string => {
+    switch (category) {
+      case 'accessory': return '#3b82f6';
+      case 'insurance': return '#10b981';
+      case 'service': return '#f59e0b';
+      default: return '#8b5cf6';
+    }
+  };
+
   const calculateTotals = () => {
     if (!formData.start_date || !formData.end_date || !formData.vehicle_id) return;
 
     const start = new Date(formData.start_date);
     const end = new Date(formData.end_date);
-
-    // CORREGIDO: Usar differenceInDays + 1 (misma lógica que backend)
     const days = Math.max(1, differenceInDays(end, start) + 1);
 
     const selectedVehicle = vehicles.find(v => v.id === Number(formData.vehicle_id));
     if (!selectedVehicle) return;
 
     const dailyRate = selectedVehicle.daily_rate || 0;
-
-    // Subtotal (días * tarifa)
     const subtotal = days * dailyRate;
-
-    // Descuento
     const discountPercentage = Number(formData.discount_percentage) || 0;
     const discount = subtotal * (discountPercentage / 100);
     const subtotalAfterDiscount = subtotal - discount;
-
-    // Extras (seguro + extras)
     const insurance = Number(formData.insurance_amount) || 0;
-    const extras = Number(formData.extras_amount) || 0;
-    const subtotalWithExtras = subtotalAfterDiscount + insurance + extras;
 
-    // IVA (16%)
+    // Calculate extras from selected services
+    const extras = selectedServices.reduce((total, s) => {
+      if (s.service?.price_type === 'per_day') {
+        return total + (s.unit_price * days);
+      }
+      return total + s.subtotal;
+    }, 0);
+
+    // New fields: shipping and adjustment
+    const shipping = Number(formData.shipping_cost) || 0;
+    const adjustment = Number(formData.price_adjustment) || 0;
+
+    const subtotalWithExtras = subtotalAfterDiscount + insurance + extras + shipping + adjustment;
     const tax = subtotalWithExtras * 0.16;
-
-    // Total
     const total = subtotalWithExtras + tax;
 
-    setCalculated({
-      days,
-      subtotal,
-      discount,
-      insurance,
-      extras,
-      subtotalWithExtras,
-      tax,
-      total
-    });
+    setCalculated({ days, subtotal, discount, insurance, extras, shipping, adjustment, subtotalWithExtras, tax, total });
+
+    // Update formData extras_amount
+    setFormData(prev => ({ ...prev, extras_amount: extras }));
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { name: string; value: unknown } }) => {
     const { name, value } = e.target;
-
-    // Normalizar fechas a formato ISO (yyyy-MM-dd)
-    if (name === 'start_date' || name === 'end_date') {
-      // Si ya es formato ISO, usar tal cual
-      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-        setFormData(prev => ({ ...prev, [name]: value }));
-        return;
-      }
-
-      // Si es formato MM/DD/YYYY (localización US), convertir a ISO
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
-        const [month, day, year] = value.split('/');
-        const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        setFormData(prev => ({ ...prev, [name]: isoDate }));
-        return;
-      }
-
-      // Si es formato DD/MM/YYYY (localización EU), convertir a ISO
-      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value)) {
-        const parts = value.split('/');
-        // Asumir DD/MM/YYYY si el primer número es > 12
-        if (Number.parseInt(parts[0], 10) > 12) {
-          const [day, month, year] = parts;
-          const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          setFormData(prev => ({ ...prev, [name]: isoDate }));
-          return;
-        }
-      }
-
-      // Valor vacío o cualquier otro caso
-      setFormData(prev => ({ ...prev, [name]: value }));
-      return;
-    }
-
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name as string]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validaciones
     if (!formData.customer_id || !formData.vehicle_id || !formData.location_id) {
       enqueueSnackbar('Por favor completa todos los campos requeridos', { variant: 'warning' });
       return;
     }
 
-    // Validar formato de fechas (debe ser yyyy-MM-dd)
     const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!isoDateRegex.test(formData.start_date) || !isoDateRegex.test(formData.end_date)) {
       enqueueSnackbar('Formato de fecha inválido. Use el selector de calendario.', { variant: 'warning' });
       return;
     }
 
-    // Validar fechas
     const startDate = new Date(formData.start_date);
     const endDate = new Date(formData.end_date);
     const today = new Date();
@@ -220,6 +285,12 @@ const RentalForm: React.FC = () => {
       return;
     }
 
+    // Validar razón del ajuste si hay ajuste de precio
+    if (Number(formData.price_adjustment) !== 0 && !formData.adjustment_reason?.trim()) {
+      enqueueSnackbar('Debe proporcionar una razón para el ajuste de precio', { variant: 'warning' });
+      return;
+    }
+
     setLoading(true);
     try {
       await dispatch(createRental(formData)).unwrap();
@@ -232,444 +303,712 @@ const RentalForm: React.FC = () => {
     }
   };
 
+  // Estilos comunes
+  const paperStyles = {
+    p: { xs: 2, sm: 3 },
+    background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
+    borderRadius: 2,
+    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+  };
+
+  // Input styles para touch-friendly
+  const inputProps = {
+    sx: { minHeight: { xs: 48, sm: 40 } }
+  };
+
+  const sectionTitleStyles = {
+    fontSize: '1.1rem',
+    fontWeight: 600,
+    mb: 3,
+    pb: 1,
+    borderBottom: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+  };
+
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Nueva Renta</h1>
-        <p className={`mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Completa todos los campos para crear una nueva renta</p>
-      </div>
+    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" fontWeight="700" sx={{ mb: 0.5 }}>
+          Nueva Renta
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Completa todos los campos para crear una nueva renta
+        </Typography>
+      </Box>
 
-      <form onSubmit={handleSubmit} data-testid="rental-form" className={`rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-
-        {/* SECCIÓN 1: Información Básica */}
-        <div className="mb-8">
-          <h2 className={`text-xl font-semibold mb-4 pb-2 border-b ${isDarkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-200'}`}>
+      <form onSubmit={handleSubmit} data-testid="rental-form">
+        <Paper sx={{ ...paperStyles, mb: 3 }}>
+          {/* SECCIÓN 1: Información Básica */}
+          <Typography sx={sectionTitleStyles}>
             1. Información Básica
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          </Typography>
 
+          <Grid container spacing={{ xs: 2, sm: 3 }}>
             {/* Cliente */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Cliente *
-              </label>
-              <select
-                name="customer_id"
-                value={formData.customer_id}
-                onChange={handleChange}
-                required
-                data-testid="rental-customer-select"
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-900'}`}
-              >
-                <option value="">Seleccionar cliente</option>
-                {customers.map(customer => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.first_name} {customer.last_name} - {customer.email}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size={isMobile ? "medium" : "small"}>
+                <InputLabel>Cliente *</InputLabel>
+                <Select
+                  name="customer_id"
+                  value={formData.customer_id || ''}
+                  onChange={(e) => handleChange({ target: { name: 'customer_id', value: e.target.value } })}
+                  label="Cliente *"
+                  required
+                  data-testid="rental-customer-select"
+                  sx={inputProps.sx}
+                >
+                  <MenuItem value="">Seleccionar cliente</MenuItem>
+                  {customers.map(customer => (
+                    <MenuItem key={customer.id} value={customer.id}>
+                      {customer.first_name} {customer.last_name} - {customer.email}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
 
             {/* Vehículo */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Vehículo *
-              </label>
-              <select
-                name="vehicle_id"
-                value={formData.vehicle_id}
-                onChange={handleChange}
-                required
-                data-testid="rental-vehicle-select"
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-900'}`}
-              >
-                <option value="">Seleccionar vehículo</option>
-                {vehicles.map(vehicle => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.brand} {vehicle.model} ({vehicle.plate}) - ${vehicle.daily_rate}/día
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size={isMobile ? "medium" : "small"}>
+                <InputLabel>Vehículo *</InputLabel>
+                <Select
+                  name="vehicle_id"
+                  value={formData.vehicle_id || ''}
+                  onChange={(e) => handleChange({ target: { name: 'vehicle_id', value: e.target.value } })}
+                  label="Vehículo *"
+                  required
+                  data-testid="rental-vehicle-select"
+                  sx={inputProps.sx}
+                >
+                  <MenuItem value="">Seleccionar vehículo</MenuItem>
+                  {vehicles.map(vehicle => (
+                    <MenuItem key={vehicle.id} value={vehicle.id}>
+                      {vehicle.brand} {vehicle.model} ({vehicle.plate}) - ${vehicle.daily_rate}/día
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
 
-            {/* Location Pickup */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Sucursal de Recolección *
-              </label>
-              <select
-                name="location_id"
-                value={formData.location_id}
-                onChange={handleChange}
-                required
-                data-testid="rental-location-select"
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-900'}`}
-              >
-                <option value="">Seleccionar sucursal</option>
-                {locations.map(location => (
-                  <option key={location.id} value={location.id}>
-                    {location.name} - {location.city}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Sucursal de Recolección */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size={isMobile ? "medium" : "small"}>
+                <InputLabel>Sucursal de Recolección *</InputLabel>
+                <Select
+                  name="location_id"
+                  value={formData.location_id || ''}
+                  onChange={(e) => handleChange({ target: { name: 'location_id', value: e.target.value } })}
+                  label="Sucursal de Recolección *"
+                  required
+                  data-testid="rental-location-select"
+                  sx={inputProps.sx}
+                >
+                  <MenuItem value="">Seleccionar sucursal</MenuItem>
+                  {locations.map(location => (
+                    <MenuItem key={location.id} value={location.id}>
+                      {location.name} - {location.city}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
 
-            {/* Location Dropoff */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Sucursal de Devolución (opcional)
-              </label>
-              <select
-                name="return_location_id"
-                value={formData.return_location_id || ''}
-                onChange={handleChange}
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-900'}`}
-              >
-                <option value="">Misma sucursal de recolección</option>
-                {locations.map(location => (
-                  <option key={location.id} value={location.id}>
-                    {location.name} - {location.city}
-                  </option>
-                ))}
-              </select>
-              <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            {/* Sucursal de Devolución */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size={isMobile ? "medium" : "small"}>
+                <InputLabel>Sucursal de Devolución</InputLabel>
+                <Select
+                  name="return_location_id"
+                  value={formData.return_location_id || ''}
+                  onChange={(e) => handleChange({ target: { name: 'return_location_id', value: e.target.value } })}
+                  label="Sucursal de Devolución"
+                  sx={inputProps.sx}
+                >
+                  <MenuItem value="">Misma sucursal de recolección</MenuItem>
+                  {locations.map(location => (
+                    <MenuItem key={location.id} value={location.id}>
+                      {location.name} - {location.city}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
                 Si el cliente devolverá en otra sucursal (one-way rental)
-              </p>
-            </div>
-          </div>
-        </div>
+              </Typography>
+            </Grid>
+          </Grid>
+        </Paper>
 
-        {/* SECCIÓN 2: Fechas y Condiciones Iniciales */}
-        <div className="mb-8">
-          <h2 className={`text-xl font-semibold mb-4 pb-2 border-b ${isDarkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-200'}`}>
+        <Paper sx={{ ...paperStyles, mb: 3 }}>
+          {/* SECCIÓN 2: Fechas y Condiciones */}
+          <Typography sx={sectionTitleStyles}>
             2. Fechas y Condiciones Iniciales del Vehículo
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          </Typography>
 
+          <Grid container spacing={{ xs: 2, sm: 3 }}>
             {/* Fecha inicio */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Fecha de Inicio *
-              </label>
-              <input
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size={isMobile ? "medium" : "small"}
+                label="Fecha de Inicio *"
                 type="date"
                 name="start_date"
                 value={formData.start_date}
                 onChange={handleChange}
                 required
-                min={new Date().toISOString().split('T')[0]}
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                InputProps={{ sx: inputProps.sx }}
                 data-testid="rental-start-date-input"
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-900'}`}
               />
-            </div>
+            </Grid>
 
             {/* Fecha fin */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Fecha de Fin *
-              </label>
-              <input
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size={isMobile ? "medium" : "small"}
+                label="Fecha de Fin *"
                 type="date"
                 name="end_date"
                 value={formData.end_date}
                 onChange={handleChange}
                 required
-                min={formData.start_date || new Date().toISOString().split('T')[0]}
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ min: formData.start_date || new Date().toISOString().split('T')[0] }}
+                InputProps={{ sx: inputProps.sx }}
                 data-testid="rental-end-date-input"
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-900'}`}
               />
-            </div>
+            </Grid>
 
             {/* Kilometraje Inicial */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Kilometraje Inicial (KM) *
-              </label>
-              <input
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size={isMobile ? "medium" : "small"}
+                label="Kilometraje Inicial (KM) *"
                 type="number"
                 name="start_mileage"
                 value={formData.start_mileage || ''}
                 onChange={handleChange}
                 required
-                min="0"
+                inputProps={{ min: 0 }}
+                InputProps={{ sx: inputProps.sx }}
                 placeholder="Ej: 45000"
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border border-gray-300 text-gray-900'}`}
+                helperText="Registra el KM actual del vehículo antes de entregarlo"
               />
-              <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Registra el KM actual del vehículo antes de entregarlo
-              </p>
-            </div>
+            </Grid>
 
-            {/* Nivel de Combustible Inicial */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Nivel de Combustible Inicial *
-              </label>
-              <select
-                name="fuel_level_start"
-                value={formData.fuel_level_start}
-                onChange={handleChange}
-                required
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-900'}`}
-              >
-                <option value="">Seleccionar nivel</option>
-                <option value="Empty">Vacío</option>
-                <option value="1/4">1/4 Tanque</option>
-                <option value="1/2">1/2 Tanque</option>
-                <option value="3/4">3/4 Tanque</option>
-                <option value="Full">Tanque Lleno</option>
-              </select>
-              <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            {/* Nivel de Combustible */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size={isMobile ? "medium" : "small"}>
+                <InputLabel>Nivel de Combustible Inicial *</InputLabel>
+                <Select
+                  name="fuel_level_start"
+                  value={formData.fuel_level_start}
+                  onChange={(e) => handleChange({ target: { name: 'fuel_level_start', value: e.target.value } })}
+                  label="Nivel de Combustible Inicial *"
+                  required
+                  sx={inputProps.sx}
+                >
+                  <MenuItem value="">Seleccionar nivel</MenuItem>
+                  <MenuItem value="Empty">Vacío</MenuItem>
+                  <MenuItem value="1/4">1/4 Tanque</MenuItem>
+                  <MenuItem value="1/2">1/2 Tanque</MenuItem>
+                  <MenuItem value="3/4">3/4 Tanque</MenuItem>
+                  <MenuItem value="Full">Tanque Lleno</MenuItem>
+                </Select>
+              </FormControl>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
                 Nivel de combustible al momento de entregar el vehículo
-              </p>
-            </div>
-          </div>
-        </div>
+              </Typography>
+            </Grid>
+          </Grid>
+        </Paper>
 
-        {/* SECCIÓN 3: Costos y Pagos */}
-        <div className="mb-8">
-          <h2 className={`text-xl font-semibold mb-4 pb-2 border-b ${isDarkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-200'}`}>
-            3. Costos y Método de Pago
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* SECCIÓN 3: Servicios Adicionales */}
+        <Paper sx={{ ...paperStyles, mb: 3 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              cursor: 'pointer',
+              mb: servicesExpanded ? 2 : 0
+            }}
+            onClick={() => setServicesExpanded(!servicesExpanded)}
+          >
+            <Typography sx={{ ...sectionTitleStyles, mb: 0, pb: 0, borderBottom: 'none' }}>
+              3. Servicios Adicionales
+              {selectedServices.length > 0 && (
+                <Chip
+                  label={`${selectedServices.length} seleccionados`}
+                  size="small"
+                  sx={{
+                    ml: 2,
+                    backgroundColor: isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)',
+                    color: isDarkMode ? '#a78bfa' : '#8b5cf6'
+                  }}
+                />
+              )}
+            </Typography>
+            <IconButton size="small">
+              {servicesExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          </Box>
 
+          <Collapse in={servicesExpanded}>
+            {extraServices.length === 0 ? (
+              <Typography color="text.secondary" sx={{ py: 2 }}>
+                Cargando servicios disponibles...
+              </Typography>
+            ) : (
+              <Grid container spacing={2}>
+                {/* Group services by category */}
+                {['accessory', 'insurance', 'service'].map(category => {
+                  const categoryServices = extraServices.filter(s => s.category === category);
+                  if (categoryServices.length === 0) return null;
+
+                  return (
+                    <Grid item xs={12} key={category}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          color: getCategoryColor(category),
+                          fontWeight: 600,
+                          mb: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1
+                        }}
+                      >
+                        {getCategoryLabel(category)}
+                      </Typography>
+                      <Grid container spacing={1}>
+                        {categoryServices.map(service => {
+                          const isSelected = selectedServices.some(s => s.extra_service_id === service.id);
+                          const days = calculated.days || 1;
+                          const serviceTotal = service.price_type === 'per_day'
+                            ? service.price * days
+                            : service.price;
+
+                          return (
+                            <Grid item xs={12} sm={6} md={4} key={service.id}>
+                              <Paper
+                                sx={{
+                                  p: 1.5,
+                                  cursor: 'pointer',
+                                  border: `1px solid ${isSelected ? getCategoryColor(category) : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)')}`,
+                                  borderRadius: 1,
+                                  background: isSelected
+                                    ? (isDarkMode ? `${getCategoryColor(category)}15` : `${getCategoryColor(category)}10`)
+                                    : 'transparent',
+                                  transition: 'all 0.2s',
+                                  '&:hover': {
+                                    borderColor: getCategoryColor(category),
+                                    background: isDarkMode ? `${getCategoryColor(category)}10` : `${getCategoryColor(category)}05`
+                                  }
+                                }}
+                                onClick={() => handleServiceToggle(service)}
+                              >
+                                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                                  <Checkbox
+                                    checked={isSelected}
+                                    size="small"
+                                    sx={{
+                                      p: 0,
+                                      color: getCategoryColor(category),
+                                      '&.Mui-checked': { color: getCategoryColor(category) }
+                                    }}
+                                  />
+                                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography variant="body2" fontWeight={500} noWrap>
+                                      {service.name}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
+                                      <Typography variant="caption" color="text.secondary">
+                                        ${service.price.toFixed(2)}
+                                        {service.price_type === 'per_day' ? '/día' : ' único'}
+                                      </Typography>
+                                      {isSelected && (
+                                        <Typography
+                                          variant="caption"
+                                          fontWeight={600}
+                                          sx={{ color: getCategoryColor(category) }}
+                                        >
+                                          ${serviceTotal.toFixed(2)}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  </Box>
+                                </Box>
+                              </Paper>
+                            </Grid>
+                          );
+                        })}
+                      </Grid>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            )}
+
+            {/* Selected services summary */}
+            {selectedServices.length > 0 && (
+              <Box
+                sx={{
+                  mt: 2,
+                  pt: 2,
+                  borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Total Servicios Adicionales:
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600} sx={{ color: isDarkMode ? '#a78bfa' : '#8b5cf6' }}>
+                    ${calculated.extras.toFixed(2)}
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+          </Collapse>
+        </Paper>
+
+        <Paper sx={{ ...paperStyles, mb: 3 }}>
+          {/* SECCIÓN 4: Costos y Pagos */}
+          <Typography sx={sectionTitleStyles}>
+            4. Costos y Método de Pago
+          </Typography>
+
+          <Grid container spacing={{ xs: 2, sm: 3 }}>
             {/* Descuento */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Descuento (%)
-              </label>
-              <input
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size={isMobile ? "medium" : "small"}
+                label="Descuento (%)"
                 type="number"
                 name="discount_percentage"
                 value={formData.discount_percentage}
                 onChange={handleChange}
-                min="0"
-                max="100"
-                step="0.01"
+                inputProps={{ min: 0, max: 100, step: 0.01 }}
+                InputProps={{ sx: inputProps.sx }}
                 placeholder="Ej: 10 para 10%"
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border border-gray-300 text-gray-900'}`}
+                helperText="Para clientes frecuentes o promociones especiales"
               />
-              <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Para clientes frecuentes o promociones especiales
-              </p>
-            </div>
+            </Grid>
 
             {/* Seguro */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Costo del Seguro
-              </label>
-              <input
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size={isMobile ? "medium" : "small"}
+                label="Costo del Seguro"
                 type="number"
                 name="insurance_amount"
                 value={formData.insurance_amount}
                 onChange={handleChange}
-                min="0"
-                step="0.01"
+                inputProps={{ min: 0, step: 0.01 }}
+                InputProps={{ sx: inputProps.sx }}
                 placeholder="Ej: 150"
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border border-gray-300 text-gray-900'}`}
+                helperText="Seguro opcional (básico, premium, full coverage)"
               />
-              <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Seguro opcional (básico, premium, full coverage)
-              </p>
-            </div>
-
-            {/* Extras */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Extras (GPS, Silla, etc.)
-              </label>
-              <input
-                type="number"
-                name="extras_amount"
-                value={formData.extras_amount}
-                onChange={handleChange}
-                min="0"
-                step="0.01"
-                placeholder="Ej: 75"
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border border-gray-300 text-gray-900'}`}
-              />
-              <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                GPS, silla de bebé, portaequipajes, etc.
-              </p>
-            </div>
+            </Grid>
 
             {/* Depósito */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Depósito de Garantía
-              </label>
-              <input
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size={isMobile ? "medium" : "small"}
+                label="Depósito de Garantía"
                 type="number"
                 name="deposit_amount"
                 value={formData.deposit_amount}
                 onChange={handleChange}
-                min="0"
-                step="0.01"
+                inputProps={{ min: 0, step: 0.01 }}
+                InputProps={{ sx: inputProps.sx }}
                 placeholder="Ej: 500"
-                className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border border-gray-300 text-gray-900'}`}
+                helperText="Depósito reembolsable al devolver el vehículo"
               />
-              <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Depósito reembolsable al devolver el vehículo
-              </p>
-            </div>
+            </Grid>
 
             {/* Método de Pago */}
-            <div className="md:col-span-2">
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            <Grid item xs={12}>
+              <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
                 Método de Pago *
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <label className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer ${isDarkMode ? 'border-gray-600 hover:bg-gray-700 text-gray-200' : 'border-gray-300 hover:bg-gray-50 text-gray-900'}`}>
-                  <input
-                    type="radio"
-                    name="payment_method"
-                    value={PaymentMethod.CASH}
-                    checked={formData.payment_method === PaymentMethod.CASH}
-                    onChange={handleChange}
-                    required
-                    className="text-blue-600"
-                  />
-                  <span className="text-sm">Efectivo</span>
-                </label>
-                <label className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer ${isDarkMode ? 'border-gray-600 hover:bg-gray-700 text-gray-200' : 'border-gray-300 hover:bg-gray-50 text-gray-900'}`}>
-                  <input
-                    type="radio"
-                    name="payment_method"
-                    value={PaymentMethod.CREDIT_CARD}
-                    checked={formData.payment_method === PaymentMethod.CREDIT_CARD}
-                    onChange={handleChange}
-                    className="text-blue-600"
-                  />
-                  <span className="text-sm">Tarjeta Crédito</span>
-                </label>
-                <label className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer ${isDarkMode ? 'border-gray-600 hover:bg-gray-700 text-gray-200' : 'border-gray-300 hover:bg-gray-50 text-gray-900'}`}>
-                  <input
-                    type="radio"
-                    name="payment_method"
-                    value={PaymentMethod.DEBIT_CARD}
-                    checked={formData.payment_method === PaymentMethod.DEBIT_CARD}
-                    onChange={handleChange}
-                    className="text-blue-600"
-                  />
-                  <span className="text-sm">Tarjeta Débito</span>
-                </label>
-                <label className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer ${isDarkMode ? 'border-gray-600 hover:bg-gray-700 text-gray-200' : 'border-gray-300 hover:bg-gray-50 text-gray-900'}`}>
-                  <input
-                    type="radio"
-                    name="payment_method"
-                    value={PaymentMethod.TRANSFER}
-                    checked={formData.payment_method === PaymentMethod.TRANSFER}
-                    onChange={handleChange}
-                    className="text-blue-600"
-                  />
-                  <span className="text-sm">Transferencia</span>
-                </label>
-                <label className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer ${isDarkMode ? 'border-gray-600 hover:bg-gray-700 text-gray-200' : 'border-gray-300 hover:bg-gray-50 text-gray-900'}`}>
-                  <input
-                    type="radio"
-                    name="payment_method"
-                    value={PaymentMethod.CHECK}
-                    checked={formData.payment_method === PaymentMethod.CHECK}
-                    onChange={handleChange}
-                    className="text-blue-600"
-                  />
-                  <span className="text-sm">Cheque</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+              </Typography>
+              <FormControl component="fieldset" sx={{ width: '100%' }}>
+                <RadioGroup
+                  row={!isMobile}
+                  name="payment_method"
+                  value={formData.payment_method || ''}
+                  onChange={handleChange}
+                  sx={{
+                    gap: { xs: 1.5, sm: 2 },
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    flexWrap: 'wrap'
+                  }}
+                >
+                  {[
+                    { value: PaymentMethod.CASH, label: 'Efectivo' },
+                    { value: PaymentMethod.CREDIT_CARD, label: 'Tarjeta Crédito' },
+                    { value: PaymentMethod.DEBIT_CARD, label: 'Tarjeta Débito' },
+                    { value: PaymentMethod.TRANSFER, label: 'Transferencia' },
+                    { value: PaymentMethod.CHECK, label: 'Cheque' }
+                  ].map(option => (
+                    <Paper
+                      key={option.value}
+                      sx={{
+                        px: 2,
+                        py: { xs: 1.5, sm: 1 },
+                        border: `1px solid ${formData.payment_method === option.value ? '#8b5cf6' : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)')}`,
+                        borderRadius: 1,
+                        background: formData.payment_method === option.value
+                          ? (isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)')
+                          : 'transparent',
+                        transition: 'all 0.2s',
+                        width: { xs: '100%', sm: 'auto' }
+                      }}
+                    >
+                      <FormControlLabel
+                        value={option.value}
+                        control={<Radio size="small" sx={{ color: '#8b5cf6', '&.Mui-checked': { color: '#8b5cf6' } }} />}
+                        label={option.label}
+                        sx={{ m: 0, width: '100%' }}
+                      />
+                    </Paper>
+                  ))}
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </Paper>
 
-        {/* SECCIÓN 4: Notas Adicionales */}
-        <div className="mb-8">
-          <h2 className={`text-xl font-semibold mb-4 pb-2 border-b ${isDarkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-200'}`}>
-            4. Notas y Observaciones
-          </h2>
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Notas del Operador (opcional)
-            </label>
-            <textarea
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              rows={4}
-              placeholder="Ej: Cliente solicita GPS adicional. Vehículo con raspón pequeño en puerta trasera derecha (ya documentado)."
-              className={`w-full rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border border-gray-300 text-gray-900'}`}
-            />
-            <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              Cualquier observación importante sobre esta renta
-            </p>
-          </div>
-        </div>
+        {/* SECCIÓN 5: Ajustes de Precio */}
+        <Paper sx={{ ...paperStyles, mb: 3 }}>
+          <Typography sx={sectionTitleStyles}>
+            5. Ajustes de Precio
+          </Typography>
+
+          <Grid container spacing={{ xs: 2, sm: 3 }}>
+            {/* Costo de Envío */}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size={isMobile ? "medium" : "small"}
+                label="Costo de Envío/Transporte"
+                type="number"
+                name="shipping_cost"
+                value={formData.shipping_cost}
+                onChange={handleChange}
+                inputProps={{ min: 0, step: 0.01 }}
+                InputProps={{ sx: inputProps.sx }}
+                placeholder="Ej: 300"
+                helperText="Si el vehículo se entrega en domicilio del cliente"
+              />
+            </Grid>
+
+            {/* Ajuste de Precio */}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size={isMobile ? "medium" : "small"}
+                label="Ajuste de Precio (+/-)"
+                type="number"
+                name="price_adjustment"
+                value={formData.price_adjustment}
+                onChange={handleChange}
+                inputProps={{ step: 0.01 }}
+                InputProps={{ sx: inputProps.sx }}
+                placeholder="Ej: -100 o 50"
+                helperText="Positivo = cargo adicional, Negativo = descuento extra"
+              />
+            </Grid>
+
+            {/* Razón del Ajuste (solo si hay ajuste) */}
+            {Number(formData.price_adjustment) !== 0 && (
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  size={isMobile ? "medium" : "small"}
+                  label="Razón del Ajuste *"
+                  name="adjustment_reason"
+                  value={formData.adjustment_reason}
+                  onChange={handleChange}
+                  required={Number(formData.price_adjustment) !== 0}
+                  multiline
+                  rows={2}
+                  InputProps={{ sx: inputProps.sx }}
+                  placeholder="Ej: Descuento por cliente frecuente, Cargo por entrega nocturna, etc."
+                  helperText="Obligatorio cuando hay ajuste de precio"
+                  error={Number(formData.price_adjustment) !== 0 && !formData.adjustment_reason}
+                />
+              </Grid>
+            )}
+          </Grid>
+        </Paper>
+
+        <Paper sx={{ ...paperStyles, mb: 3 }}>
+          {/* SECCIÓN 6: Notas */}
+          <Typography sx={sectionTitleStyles}>
+            6. Notas y Observaciones
+          </Typography>
+
+          <TextField
+            fullWidth
+            multiline
+            rows={isMobile ? 3 : 4}
+            size={isMobile ? "medium" : "small"}
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            placeholder="Ej: Cliente solicita GPS adicional. Vehículo con raspón pequeño en puerta trasera derecha (ya documentado)."
+            helperText="Cualquier observación importante sobre esta renta"
+          />
+        </Paper>
 
         {/* Resumen de Cálculo */}
         {calculated.days > 0 && (
-          <div className={`mb-6 p-6 rounded-lg border ${isDarkMode ? 'bg-gradient-to-r from-blue-900/30 to-purple-900/30 border-blue-700' : 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200'}`}>
-            <h3 className={`text-lg font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>💰 Resumen de Cálculo</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div className="flex justify-between">
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Días de renta:</span>
-                <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{calculated.days}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Subtotal:</span>
-                <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${calculated.subtotal.toFixed(2)}</span>
-              </div>
+          <Paper
+            sx={{
+              ...paperStyles,
+              mb: 3,
+              background: isDarkMode
+                ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1))'
+                : 'linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(139, 92, 246, 0.05))',
+              border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'}`
+            }}
+          >
+            <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+              💰 Resumen de Cálculo
+            </Typography>
+
+            <Grid container spacing={2}>
+              <Grid item xs={6} md={4}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Días de renta:</Typography>
+                  <Typography variant="body2" fontWeight={600}>{calculated.days}</Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={6} md={4}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
+                  <Typography variant="body2" fontWeight={500}>${calculated.subtotal.toFixed(2)}</Typography>
+                </Box>
+              </Grid>
               {calculated.discount > 0 && (
-                <div className="flex justify-between text-green-500">
-                  <span>Descuento:</span>
-                  <span className="font-medium">-${calculated.discount.toFixed(2)}</span>
-                </div>
+                <Grid item xs={6} md={4}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', color: '#10b981' }}>
+                    <Typography variant="body2">Descuento:</Typography>
+                    <Typography variant="body2" fontWeight={500}>-${calculated.discount.toFixed(2)}</Typography>
+                  </Box>
+                </Grid>
               )}
               {calculated.insurance > 0 && (
-                <div className="flex justify-between">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Seguro:</span>
-                  <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${calculated.insurance.toFixed(2)}</span>
-                </div>
+                <Grid item xs={6} md={4}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2" color="text.secondary">Seguro:</Typography>
+                    <Typography variant="body2" fontWeight={500}>${calculated.insurance.toFixed(2)}</Typography>
+                  </Box>
+                </Grid>
               )}
               {calculated.extras > 0 && (
-                <div className="flex justify-between">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Extras:</span>
-                  <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${calculated.extras.toFixed(2)}</span>
-                </div>
+                <Grid item xs={6} md={4}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2" color="text.secondary">Servicios ({selectedServices.length}):</Typography>
+                    <Typography variant="body2" fontWeight={500}>${calculated.extras.toFixed(2)}</Typography>
+                  </Box>
+                </Grid>
               )}
-              <div className="flex justify-between">
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>IVA (16%):</span>
-                <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${calculated.tax.toFixed(2)}</span>
-              </div>
-              <div className={`md:col-span-3 pt-3 border-t-2 flex justify-between ${isDarkMode ? 'border-blue-600' : 'border-blue-300'}`}>
-                <span className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>TOTAL A PAGAR:</span>
-                <span className="text-2xl font-bold text-blue-500">
-                  ${calculated.total.toFixed(2)} MXN
-                </span>
-              </div>
-            </div>
-          </div>
+              {calculated.shipping > 0 && (
+                <Grid item xs={6} md={4}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2" color="text.secondary">Envío:</Typography>
+                    <Typography variant="body2" fontWeight={500}>${calculated.shipping.toFixed(2)}</Typography>
+                  </Box>
+                </Grid>
+              )}
+              {calculated.adjustment !== 0 && (
+                <Grid item xs={6} md={4}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', color: calculated.adjustment > 0 ? '#ef4444' : '#10b981' }}>
+                    <Typography variant="body2">Ajuste:</Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {calculated.adjustment > 0 ? '+' : ''}${calculated.adjustment.toFixed(2)}
+                    </Typography>
+                  </Box>
+                </Grid>
+              )}
+              <Grid item xs={6} md={4}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">IVA (16%):</Typography>
+                  <Typography variant="body2" fontWeight={500}>${calculated.tax.toFixed(2)}</Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Divider sx={{ my: 1, borderColor: isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)' }} />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h6" fontWeight="bold">TOTAL A PAGAR:</Typography>
+                  <Typography variant="h5" fontWeight="bold" sx={{ color: isDarkMode ? '#a78bfa' : '#8b5cf6' }}>
+                    ${calculated.total.toFixed(2)} MXN
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          </Paper>
         )}
 
         {/* Botones */}
-        <div className="flex justify-between items-center">
-          <button
-            type="button"
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          justifyContent: { xs: 'stretch', sm: 'space-between' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: { xs: 1.5, sm: 2 }
+        }}>
+          <Button
+            variant="outlined"
+            startIcon={<BackIcon />}
             onClick={() => navigate('/rentals')}
             data-testid="rental-cancel-button"
-            className={`px-6 py-3 border-2 rounded-lg font-medium transition ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+            sx={{
+              borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)',
+              color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
+              width: { xs: '100%', sm: 'auto' },
+              py: { xs: 1.5, sm: 1 }
+            }}
           >
-            ← Cancelar
-          </button>
-          <button
+            Cancelar
+          </Button>
+          <Button
             type="submit"
+            variant="contained"
             disabled={loading || calculated.days === 0}
+            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CheckIcon />}
             data-testid="rental-submit-button"
-            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg"
+            sx={{
+              px: { xs: 2, sm: 4 },
+              py: { xs: 1.5, sm: 1 },
+              width: { xs: '100%', sm: 'auto' },
+              background: isDarkMode
+                ? 'linear-gradient(135deg, #60a5fa, #a78bfa)'
+                : 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+              '&:hover': {
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)'
+                  : 'linear-gradient(135deg, #2563eb, #7c3aed)'
+              },
+              '&:disabled': {
+                background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+              }
+            }}
           >
-            {loading ? 'Creando Renta...' : '✓ Crear Renta'}
-          </button>
-        </div>
+            {loading ? 'Creando Renta...' : 'Crear Renta'}
+          </Button>
+        </Box>
       </form>
-    </div>
+    </Box>
   );
 };
 

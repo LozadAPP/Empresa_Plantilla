@@ -10,7 +10,10 @@ import {
   Divider,
   TextField,
   InputAdornment,
-  Switch
+  Switch,
+  SwipeableDrawer,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import FPSCounter from './FPSCounter';
 import {
@@ -37,7 +40,9 @@ import {
   Group as PeopleIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
-  SpaceDashboard as DashboardInventoryIcon
+  SpaceDashboard as DashboardInventoryIcon,
+  Menu as MenuIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme as useCustomTheme } from '../../contexts/ThemeContext';
@@ -106,9 +111,26 @@ const Layout: React.FC = () => {
   const location = useLocation();
   const { user, logout, hasAnyRole } = useAuth();
   const { isDarkMode, toggleTheme } = useCustomTheme();
+  const theme = useTheme();
+
+  // Media queries para responsive
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
+  const isTablet = useMediaQuery(theme.breakpoints.down('md')); // < 900px
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['Inventario']); // Inventario expandido por defecto
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  // Handler para toggle del drawer móvil
+  const handleDrawerToggle = () => {
+    setMobileDrawerOpen(!mobileDrawerOpen);
+  };
+
+  // Handler para navegación desde móvil (cierra drawer)
+  const handleMobileNavigation = (path: string) => {
+    navigate(path);
+    setMobileDrawerOpen(false);
+  };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -168,7 +190,7 @@ const Layout: React.FC = () => {
           // OPTIMIZADO AGRESIVO: Color sólido sin backdrop-filter para mejor FPS
           bgcolor: isDarkMode ? 'rgba(6, 11, 40, 0.98)' : '#ffffff',
           // REMOVIDO: backdrop-filter causa lag durante scroll
-          zIndex: 20,
+          zIndex: 5, // Menor que header (10) para evitar conflictos
           overflowY: 'auto',
           '&::-webkit-scrollbar': {
             width: '6px'
@@ -440,17 +462,271 @@ const Layout: React.FC = () => {
         </Box>
       </Box>
 
+      {/* Mobile Drawer - SwipeableDrawer para mejor UX táctil */}
+      <SwipeableDrawer
+        variant="temporary"
+        anchor="left"
+        open={mobileDrawerOpen}
+        onClose={handleDrawerToggle}
+        onOpen={handleDrawerToggle}
+        disableBackdropTransition={false}
+        disableDiscovery={false}
+        swipeAreaWidth={20}
+        ModalProps={{
+          keepMounted: true, // Mejor rendimiento en móvil
+        }}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: { xs: 'calc(100vw - 56px)', sm: 280 },
+            maxWidth: 320,
+            bgcolor: isDarkMode ? 'rgba(6, 11, 40, 0.98)' : '#ffffff',
+            borderRight: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
+            // Safe area insets para iPhone
+            paddingTop: 'env(safe-area-inset-top)',
+            paddingBottom: 'env(safe-area-inset-bottom)',
+          },
+        }}
+      >
+        {/* Header del Drawer con botón cerrar */}
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          p: 2,
+          borderBottom: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb'
+        }}>
+          {/* Logo en Drawer */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              cursor: 'pointer',
+            }}
+            onClick={() => handleMobileNavigation('/dashboard')}
+          >
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                background: 'linear-gradient(135deg, #0075ff 0%, #21d4fd 100%)',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Typography variant="body1" fontWeight="bold" sx={{ color: '#fff' }}>
+                M
+              </Typography>
+            </Box>
+            <Typography variant="h6" fontWeight="700" sx={{ color: isDarkMode ? '#fff' : '#111827', fontSize: '1.125rem' }}>
+              MOVICAR
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={handleDrawerToggle}
+            sx={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280' }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        {/* Contenido de navegación del Drawer */}
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: 'calc(100% - 72px)',
+          py: 2,
+          px: 1.5,
+          overflowY: 'auto',
+          '&::-webkit-scrollbar': { width: '4px' },
+          '&::-webkit-scrollbar-thumb': {
+            bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.3)' : '#d1d5db',
+            borderRadius: '2px',
+          }
+        }}>
+          {/* Navigation Sections - Móvil */}
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {navSections.map((section) => {
+              const visibleItems = section.items.filter((item) => {
+                if (!item.roles) return true;
+                return hasAnyRole(...item.roles);
+              });
+
+              if (visibleItems.length === 0) return null;
+
+              return (
+                <Box key={`mobile-${section.title}`}>
+                  <Typography
+                    variant="overline"
+                    sx={{
+                      px: 1.5,
+                      mb: 0.5,
+                      fontSize: '0.625rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      color: isDarkMode ? 'rgba(255, 255, 255, 0.5)' : '#9ca3af'
+                    }}
+                  >
+                    {section.title}
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                    {visibleItems.map((item) => (
+                      <Box key={`mobile-${item.label}`}>
+                        <Box
+                          onClick={() => {
+                            if (item.subItems) {
+                              toggleMenu(item.label);
+                            } else if (item.path) {
+                              handleMobileNavigation(item.path);
+                            }
+                          }}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1.5,
+                            px: 1.5,
+                            py: 1.25,
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.15s ease',
+                            color: isMenuActive(item) ? '#fff' : (isDarkMode ? 'rgba(255, 255, 255, 0.8)' : '#374151'),
+                            background: isMenuActive(item)
+                              ? 'linear-gradient(90deg, #0075ff 0%, #21d4fd 100%)'
+                              : 'transparent',
+                            '&:hover': {
+                              bgcolor: isMenuActive(item) ? '#0075ff' : (isDarkMode ? 'rgba(0, 117, 255, 0.1)' : '#f3f4f6'),
+                            },
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', fontSize: 20 }}>
+                            {item.icon}
+                          </Box>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              flex: 1,
+                              fontWeight: isMenuActive(item) ? 600 : 500,
+                              fontSize: '0.875rem'
+                            }}
+                          >
+                            {item.label}
+                          </Typography>
+                          {item.subItems && (
+                            expandedMenus.includes(item.label) ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />
+                          )}
+                        </Box>
+
+                        {/* SubItems móvil */}
+                        {item.subItems && expandedMenus.includes(item.label) && (
+                          <Box sx={{ pl: 1.5, mt: 0.25 }}>
+                            {item.subItems
+                              .filter(subItem => !subItem.roles || hasAnyRole(...subItem.roles))
+                              .map((subItem) => (
+                                <Box
+                                  key={`mobile-${subItem.path}`}
+                                  onClick={() => subItem.path && handleMobileNavigation(subItem.path)}
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1.5,
+                                    px: 1.5,
+                                    py: 1,
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.15s ease',
+                                    color: isActive(subItem.path) ? '#21d4fd' : (isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280'),
+                                    bgcolor: isActive(subItem.path) ? (isDarkMode ? 'rgba(0, 117, 255, 0.15)' : '#eff6ff') : 'transparent',
+                                    '&:hover': {
+                                      bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.08)' : '#f9fafb',
+                                    }
+                                  }}
+                                >
+                                  <Box sx={{ display: 'flex', alignItems: 'center', fontSize: 18 }}>
+                                    {subItem.icon}
+                                  </Box>
+                                  <Typography variant="body2" sx={{ fontWeight: isActive(subItem.path) ? 600 : 500, fontSize: '0.8125rem' }}>
+                                    {subItem.label}
+                                  </Typography>
+                                </Box>
+                              ))}
+                          </Box>
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+
+          {/* User Info en Drawer móvil */}
+          <Box sx={{ mt: 'auto', pt: 2, borderTop: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb' }}>
+            <Box
+              onClick={handleMenuOpen}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                px: 1.5,
+                py: 1.5,
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'background-color 0.15s ease',
+                '&:hover': { bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.1)' : '#f3f4f6' }
+              }}
+            >
+              <Avatar
+                sx={{
+                  width: 36,
+                  height: 36,
+                  background: 'linear-gradient(135deg, #0075ff 0%, #21d4fd 100%)',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                }}
+              >
+                {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
+              </Avatar>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    color: isDarkMode ? 'rgba(255, 255, 255, 0.95)' : '#111827',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {user?.first_name} {user?.last_name}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.75rem', color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                  {user?.roles?.[0] || 'Usuario'}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      </SwipeableDrawer>
+
       {/* Main Content Area */}
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
 
-        {/* Header - OPTIMIZADO */}
+        {/* Header - RESPONSIVE */}
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            px: 4,
-            py: 2,
+            px: { xs: 2, sm: 3, md: 4 },
+            py: { xs: 1.5, sm: 2 },
+            // Safe area inset para iPhone con notch
+            paddingTop: { xs: 'max(env(safe-area-inset-top), 12px)', sm: 'max(env(safe-area-inset-top), 16px)' },
             position: 'sticky',
             top: 0,
             // OPTIMIZADO AGRESIVO: color sólido sin backdrop-filter
@@ -458,65 +734,102 @@ const Layout: React.FC = () => {
             // REMOVIDO: backdrop-filter causa lag durante scroll
             borderBottom: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
             boxShadow: isDarkMode ? '0 4px 12px rgba(0, 0, 0, 0.2)' : 'none',
-            zIndex: 10
+            zIndex: 10,
+            gap: { xs: 1, sm: 2 }
           }}
         >
-          {/* Left: Search Bar */}
-          <TextField
-            placeholder="Buscar..."
-            size="small"
-            inputProps={{ 'aria-label': 'Buscar en el sistema' }}
-            sx={{
-              maxWidth: 280,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '12px',
-                bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f9fafb',
-                height: '40px',
-                fontSize: '0.875rem',
-                '& fieldset': {
-                  borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#e5e7eb'
-                },
-                '&:hover fieldset': {
-                  borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : '#d1d5db'
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#0075ff',
-                  borderWidth: '1px',
-                  // OPTIMIZADO: removido glow
+          {/* Left: Hamburger (mobile) + Search */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flex: 1 }}>
+            {/* Hamburger button - Solo visible en móvil/tablet */}
+            <IconButton
+              onClick={handleDrawerToggle}
+              aria-label="Abrir menú de navegación"
+              sx={{
+                display: { xs: 'flex', md: 'none' },
+                color: isDarkMode ? 'rgba(255, 255, 255, 0.8)' : '#374151',
+                p: 1,
+                '&:hover': {
+                  bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#f3f4f6',
                 }
-              },
-              '& .MuiInputBase-input': {
-                color: isDarkMode ? 'rgba(255, 255, 255, 0.9)' : '#111827',
-                '&::placeholder': {
-                  color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : '#9ca3af',
-                  opacity: 1
-                }
-              }
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : '#9ca3af', fontSize: 20 }} />
-                </InputAdornment>
-              )
-            }}
-          />
+              }}
+            >
+              <MenuIcon sx={{ fontSize: 24 }} />
+            </IconButton>
 
-          {/* Right: Controls */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* Dark/Light Mode Toggle */}
+            {/* Search Bar - Oculto en xs, visible desde sm */}
+            <TextField
+              placeholder="Buscar..."
+              size="small"
+              inputProps={{ 'aria-label': 'Buscar en el sistema' }}
+              sx={{
+                display: { xs: 'none', sm: 'block' },
+                maxWidth: { sm: 200, md: 280 },
+                flex: { sm: 1, md: 'none' },
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '12px',
+                  bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f9fafb',
+                  height: '40px',
+                  fontSize: '0.875rem',
+                  '& fieldset': {
+                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#e5e7eb'
+                  },
+                  '&:hover fieldset': {
+                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : '#d1d5db'
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#0075ff',
+                    borderWidth: '1px',
+                  }
+                },
+                '& .MuiInputBase-input': {
+                  color: isDarkMode ? 'rgba(255, 255, 255, 0.9)' : '#111827',
+                  '&::placeholder': {
+                    color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : '#9ca3af',
+                    opacity: 1
+                  }
+                }
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : '#9ca3af', fontSize: 20 }} />
+                  </InputAdornment>
+                )
+              }}
+            />
+
+            {/* Search Icon - Solo visible en móvil (xs) */}
+            <IconButton
+              aria-label="Buscar"
+              sx={{
+                display: { xs: 'flex', sm: 'none' },
+                color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
+                p: 1,
+                '&:hover': {
+                  bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#f3f4f6',
+                }
+              }}
+            >
+              <SearchIcon sx={{ fontSize: 22 }} />
+            </IconButton>
+          </Box>
+
+          {/* Right: Controls - RESPONSIVE */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1, md: 2 } }}>
+            {/* Dark/Light Mode Toggle - Compacto en móvil */}
             <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1,
-                px: 1.5,
+                gap: { xs: 0.5, sm: 1 },
+                px: { xs: 1, sm: 1.5 },
                 py: 0.5,
                 borderRadius: '10px',
                 bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f3f4f6'
               }}
             >
-              <LightModeIcon sx={{ fontSize: 16, color: isDarkMode ? '#6b7280' : '#f59e0b' }} aria-hidden="true" />
+              {/* Iconos solo visibles desde sm */}
+              <LightModeIcon sx={{ fontSize: 16, color: isDarkMode ? '#6b7280' : '#f59e0b', display: { xs: 'none', sm: 'block' } }} aria-hidden="true" />
               <Switch
                 checked={isDarkMode}
                 onChange={toggleTheme}
@@ -534,7 +847,6 @@ const Layout: React.FC = () => {
                       '& + .MuiSwitch-track': {
                         bgcolor: '#0075ff',
                         opacity: 1,
-                        // OPTIMIZADO: removido glow
                       }
                     }
                   },
@@ -549,21 +861,20 @@ const Layout: React.FC = () => {
                   }
                 }}
               />
-              <DarkModeIcon sx={{ fontSize: 16, color: isDarkMode ? '#21d4fd' : '#6b7280' }} aria-hidden="true" />
+              <DarkModeIcon sx={{ fontSize: 16, color: isDarkMode ? '#21d4fd' : '#6b7280', display: { xs: 'none', sm: 'block' } }} aria-hidden="true" />
             </Box>
 
-            {/* Divider */}
-            <Box sx={{ width: '1px', height: '24px', bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb' }} />
+            {/* Divider - Oculto en móvil */}
+            <Box sx={{ width: '1px', height: '24px', bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb', display: { xs: 'none', sm: 'block' } }} />
 
-            {/* Notifications */}
+            {/* Notifications - Siempre visible */}
             <IconButton
               onClick={() => navigate('/alerts')}
               aria-label="Alertas y notificaciones"
               title="Alertas"
               sx={{
                 color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
-                p: 1,
-                // OPTIMIZADO: transition específica
+                p: { xs: 0.75, sm: 1 },
                 transition: 'background-color 0.15s ease, color 0.15s ease',
                 '&:hover': {
                   bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#f3f4f6',
@@ -571,17 +882,17 @@ const Layout: React.FC = () => {
                 }
               }}
             >
-              <NotificationsIcon sx={{ fontSize: 22 }} />
+              <NotificationsIcon sx={{ fontSize: { xs: 20, sm: 22 } }} />
             </IconButton>
 
-            {/* Email */}
+            {/* Email - Oculto en móvil pequeño */}
             <IconButton
               aria-label="Mensajes"
               title="Mensajes"
               sx={{
+                display: { xs: 'none', sm: 'flex' },
                 color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
                 p: 1,
-                // OPTIMIZADO: transition específica
                 transition: 'background-color 0.15s ease, color 0.15s ease',
                 '&:hover': {
                   bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#f3f4f6',
@@ -592,18 +903,18 @@ const Layout: React.FC = () => {
               <EmailIcon sx={{ fontSize: 22 }} />
             </IconButton>
 
-            {/* Divider */}
-            <Box sx={{ width: '1px', height: '24px', bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb' }} aria-hidden="true" />
+            {/* Divider - Oculto en móvil */}
+            <Box sx={{ width: '1px', height: '24px', bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb', display: { xs: 'none', sm: 'block' } }} aria-hidden="true" />
 
-            {/* Settings */}
+            {/* Settings - Oculto en móvil (accesible desde drawer) */}
             <IconButton
               onClick={() => navigate('/settings')}
               aria-label="Configuración"
               title="Configuración"
               sx={{
+                display: { xs: 'none', sm: 'flex' },
                 color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
                 p: 1,
-                // OPTIMIZADO: transition específica
                 transition: 'background-color 0.15s ease, color 0.15s ease',
                 '&:hover': {
                   bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#f3f4f6',
@@ -616,11 +927,11 @@ const Layout: React.FC = () => {
           </Box>
         </Box>
 
-        {/* Page Content - VISION UI */}
+        {/* Page Content - VISION UI RESPONSIVE */}
         <Box
           sx={{
             flex: 1,
-            p: 4,
+            p: { xs: 2, sm: 3, md: 4 },
             overflow: 'auto',
             '&::-webkit-scrollbar': {
               width: '8px'

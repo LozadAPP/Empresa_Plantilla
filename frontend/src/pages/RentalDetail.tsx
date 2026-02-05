@@ -1,11 +1,41 @@
 /**
- * Detalle de Renta (CHAT 2) - VERSIÓN MEJORADA
- * Cambios: Condiciones iniciales, info de devolución, payment status, locations
+ * Detalle de Renta (CHAT 2)
+ * CONVERTIDO A MATERIAL UI - Soporte completo Dark/Light Mode
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useTheme as useMuiTheme } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Paper,
+  Button,
+  Grid,
+  Chip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Divider,
+  CircularProgress,
+  Alert,
+  AlertTitle
+} from '@mui/material';
+import {
+  ArrowBack as BackIcon,
+  Receipt as InvoiceIcon,
+  AssignmentReturn as ReturnIcon,
+  Payment as PaymentIcon,
+  CheckCircle as ApproveIcon,
+  Cancel as RejectIcon,
+  HourglassEmpty as PendingIcon
+} from '@mui/icons-material';
+import { useSnackbar } from 'notistack';
+import { rentalService } from '../services/rentalService';
+import RentalRejectDialog from '../components/rentals/RentalRejectDialog';
+import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { AppDispatch, RootState } from '../store';
 import { fetchRentalById } from '../store/slices/rentalSlice';
 import { formatDate, formatCurrency, safeNumber } from '../utils/formatters';
@@ -16,29 +46,77 @@ const RentalDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const muiTheme = useMuiTheme();
-  const isDarkMode = muiTheme.palette.mode === 'dark';
+  const { isDarkMode } = useCustomTheme();
 
   const { selectedRental: rental, loading } = useSelector((state: RootState) => state.rentals);
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { enqueueSnackbar } = useSnackbar();
+
+  // Estado para aprobación
+  const [approving, setApproving] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+
+  // Roles que pueden aprobar
+  const canApprove = user?.roles?.some(role =>
+    ['admin', 'director_general', 'jefe_ventas'].includes(role)
+  ) ?? false;
+
+  // Handler para aprobar renta
+  const handleApprove = async () => {
+    if (!rental) return;
+    setApproving(true);
+    try {
+      await rentalService.approveRental(rental.id);
+      enqueueSnackbar('Renta aprobada exitosamente', { variant: 'success' });
+      // Recargar la renta
+      dispatch(fetchRentalById(rental.id));
+    } catch (error: any) {
+      enqueueSnackbar(error.response?.data?.message || 'Error al aprobar la renta', { variant: 'error' });
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  // Handler para rechazar renta
+  const handleReject = async (reason: string) => {
+    if (!rental) return;
+    setApproving(true);
+    try {
+      await rentalService.rejectRental(rental.id, reason);
+      enqueueSnackbar('Renta rechazada', { variant: 'warning' });
+      setShowRejectDialog(false);
+      // Recargar la renta
+      dispatch(fetchRentalById(rental.id));
+    } catch (error: any) {
+      enqueueSnackbar(error.response?.data?.message || 'Error al rechazar la renta', { variant: 'error' });
+    } finally {
+      setApproving(false);
+    }
+  };
 
   useEffect(() => {
     const numericId = Number(id);
     if (id && !Number.isNaN(numericId) && numericId > 0) {
       dispatch(fetchRentalById(numericId));
     } else if (id) {
-      // ID inválido - redirigir a lista de rentas
       navigate('/rentals');
     }
   }, [dispatch, id, navigate]);
 
-  // Función helper para etiquetas de combustible
   const getFuelLevelLabel = (level: string) => FUEL_LEVEL_LABELS[level] || level;
+
+  const paperStyles = {
+    p: 3,
+    background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
+    borderRadius: 2,
+    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+  };
 
   if (loading || !rental) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh' }}>
+        <CircularProgress sx={{ color: isDarkMode ? '#a78bfa' : '#8b5cf6' }} />
+      </Box>
     );
   }
 
@@ -47,432 +125,542 @@ const RentalDetail: React.FC = () => {
   const returnLocation = getLocationById(rental.return_location_id || rental.location_id);
   const hasReturn = rental.status === 'completed' || rental.return !== undefined;
 
-  // Calcular balance desde los pagos relacionados (con validación segura)
   const paidAmount = (rental.payments || []).reduce((sum, payment) => sum + safeNumber(payment.amount), 0);
   const balance = safeNumber(rental.total_amount) - paidAmount;
 
+  const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+    pending_approval: { bg: isDarkMode ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7', color: isDarkMode ? '#fbbf24' : '#d97706' },
+    active: { bg: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : '#d1fae5', color: isDarkMode ? '#34d399' : '#059669' },
+    completed: { bg: isDarkMode ? 'rgba(107, 114, 128, 0.2)' : '#e5e7eb', color: isDarkMode ? '#9ca3af' : '#4b5563' },
+    cancelled: { bg: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2', color: isDarkMode ? '#f87171' : '#dc2626' },
+    overdue: { bg: isDarkMode ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7', color: isDarkMode ? '#fbbf24' : '#d97706' }
+  };
+
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{rental.rental_code}</h1>
-          <p className={`mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Detalle de la renta</p>
-        </div>
-        <div className="flex space-x-3">
-          <button
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+          <Typography variant="h4" fontWeight="700" sx={{ mb: 0.5 }}>
+            {rental.rental_code}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Detalle de la renta
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            startIcon={<BackIcon />}
             onClick={() => navigate('/rentals')}
-            className={`px-4 py-2 border rounded-lg ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+            sx={{
+              borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)',
+              color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
+            }}
           >
             Volver
-          </button>
+          </Button>
           {!rental.invoice && (
-            <button
+            <Button
+              variant="contained"
+              startIcon={<InvoiceIcon />}
               onClick={() => navigate(`/invoices/new?rental=${rental.id}`)}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium"
-              title="Generar factura para esta renta"
+              sx={{ bgcolor: isDarkMode ? '#a78bfa' : '#8b5cf6', '&:hover': { bgcolor: isDarkMode ? '#8b5cf6' : '#7c3aed' } }}
             >
-              📄 Generar Factura
-            </button>
+              Generar Factura
+            </Button>
           )}
           {canRegisterReturn && (
-            <button
+            <Button
+              variant="contained"
+              startIcon={<ReturnIcon />}
               onClick={() => navigate(`/returns/new?rental=${rental.id}`)}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium"
+              sx={{ bgcolor: isDarkMode ? '#34d399' : '#10b981', '&:hover': { bgcolor: isDarkMode ? '#10b981' : '#059669' } }}
             >
               Registrar Devolución
-            </button>
+            </Button>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Información del Cliente */}
-        <div className={`rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-          <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Cliente</h2>
-          {rental.customer && (
-            <div className="space-y-3">
-              <div>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nombre</p>
-                <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{rental.customer.first_name} {rental.customer.last_name}</p>
-              </div>
-              <div>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Email</p>
-                <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{rental.customer.email}</p>
-              </div>
-              <div>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Teléfono</p>
-                <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{rental.customer.phone}</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Información del Vehículo */}
-        <div className={`rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-          <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Vehículo</h2>
-          {rental.vehicle && (
-            <div className="space-y-3">
-              <div>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Vehículo</p>
-                <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{rental.vehicle.brand} {rental.vehicle.model}</p>
-              </div>
-              <div>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Placa</p>
-                <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{rental.vehicle.plate}</p>
-              </div>
-              <div>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Año</p>
-                <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{rental.vehicle.year}</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Estado */}
-        <div className={`rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-          <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Estado</h2>
-          <div className="space-y-3">
-            <div>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Estado actual</p>
-              <span className={`inline-block mt-1 px-3 py-1 rounded-full text-sm font-semibold ${isDarkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`}>
-                {rental.status}
-              </span>
-            </div>
-            <div>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Creado</p>
-              <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{rental.created_at && formatDate(rental.created_at)}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ✅ UBICACIONES */}
-      <div className={`mt-6 rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-        <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>📍 Ubicaciones</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <p className={`text-sm mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Recogida en:</p>
-            <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{pickupLocation?.name || 'N/A'}</p>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{pickupLocation?.address}</p>
-          </div>
-          <div>
-            <p className={`text-sm mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Devolución en:</p>
-            <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{returnLocation?.name || 'Misma sucursal'}</p>
-            {returnLocation && rental.return_location_id !== rental.location_id && (
-              <>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{returnLocation.address}</p>
-                <span className={`inline-block mt-1 px-2 py-1 text-xs rounded ${isDarkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>One-way rental</span>
-              </>
+      {/* Banner de Aprobación Pendiente */}
+      {rental.status === 'pending_approval' && (
+        <Paper
+          sx={{
+            mb: 3,
+            p: 2,
+            bgcolor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : '#fffbeb',
+            border: `1px solid ${isDarkMode ? 'rgba(245, 158, 11, 0.3)' : '#fbbf24'}`,
+            borderRadius: 2
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <PendingIcon sx={{ color: isDarkMode ? '#fbbf24' : '#d97706', fontSize: 28 }} />
+              <Box>
+                <Typography variant="h6" sx={{ color: isDarkMode ? '#fbbf24' : '#d97706', fontWeight: 600 }}>
+                  Pendiente de Aprobación
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Esta renta requiere aprobación de un supervisor antes de activarse.
+                </Typography>
+              </Box>
+            </Box>
+            {canApprove && (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={<ApproveIcon />}
+                  onClick={handleApprove}
+                  disabled={approving}
+                >
+                  {approving ? 'Procesando...' : 'Aprobar'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<RejectIcon />}
+                  onClick={() => setShowRejectDialog(true)}
+                  disabled={approving}
+                >
+                  Rechazar
+                </Button>
+              </Box>
             )}
-          </div>
-        </div>
-      </div>
-
-      {/* Detalles de la Renta */}
-      <div className={`mt-6 rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-        <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Detalles de la Renta</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Fecha de Inicio</p>
-            <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatDate(rental.start_date)}</p>
-          </div>
-          <div>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Fecha de Fin</p>
-            <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatDate(rental.end_date)}</p>
-          </div>
-          <div>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Días</p>
-            <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{rental.days} días</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ✅ CONDICIONES INICIALES */}
-      <div className={`mt-6 rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-        <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>🚗 Condiciones Iniciales</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kilometraje Inicial</p>
-            <p className={`font-bold text-2xl ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              {rental.start_mileage !== null && rental.start_mileage !== undefined ? `${rental.start_mileage} km` : 'N/A'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Combustible Inicial</p>
-            <p className={`font-bold text-2xl ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{getFuelLevelLabel(rental.fuel_level_start || 'full')}</p>
-          </div>
-          <div>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Depósito de Garantía</p>
-            <p className={`font-bold text-2xl ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{rental.deposit_amount ? formatCurrency(rental.deposit_amount) : 'N/A'}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Montos */}
-      <div className={`mt-6 rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-        <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Montos</h2>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Tarifa diaria</span>
-            <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(rental.daily_rate)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Subtotal ({rental.days} días)</span>
-            <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(rental.subtotal)}</span>
-          </div>
-          {rental.insurance_amount && rental.insurance_amount > 0 && (
-            <div className="flex justify-between">
-              <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Seguro</span>
-              <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(rental.insurance_amount)}</span>
-            </div>
-          )}
-          {rental.discount_amount && rental.discount_amount > 0 && (
-            <div className="flex justify-between text-green-600">
-              <span>Descuento ({rental.discount_percentage}%)</span>
-              <span>-{formatCurrency(rental.discount_amount)}</span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>IVA ({rental.tax_percentage}%)</span>
-            <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(rental.tax_amount)}</span>
-          </div>
-          <div className={`flex justify-between pt-3 border-t ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-            <span className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Total</span>
-            <span className="text-lg font-bold text-blue-600">{formatCurrency(rental.total_amount)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ✅ ESTADO DE PAGOS */}
-      <div className={`mt-6 rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-        <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>💳 Estado de Pagos</h2>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Total de renta:</span>
-            <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(rental.total_amount)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Pagado:</span>
-            <span className="text-green-600 font-medium">{formatCurrency(paidAmount)}</span>
-          </div>
-          <div className={`flex justify-between font-bold border-t pt-3 ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-            <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>Saldo Pendiente:</span>
-            <span className={balance > 0 ? 'text-red-600' : 'text-green-600'}>
-              {formatCurrency(balance)}
-            </span>
-          </div>
-          {rental.deposit_amount && rental.deposit_amount > 0 && (
-            <div className={`p-3 rounded mt-3 ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
-              <div className="flex justify-between">
-                <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Depósito:</span>
-                <span className={`text-sm font-semibold ${paidAmount >= rental.deposit_amount ? 'text-green-600' : 'text-orange-600'}`}>
-                  {paidAmount >= rental.deposit_amount ? '✅ Pagado' : '⚠️ Pendiente'} - {formatCurrency(rental.deposit_amount)}
-                </span>
-              </div>
-            </div>
-          )}
-          {balance > 0 && (
-            <button
-              onClick={() => navigate(`/payments/new?rental=${rental.id}`)}
-              className="w-full mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
-            >
-              💳 Registrar Pago
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ✅ HISTORIAL DE PAGOS */}
-      {rental.payments && rental.payments.length > 0 && (
-        <div className={`mt-6 rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-          <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>💳 Historial de Pagos</h2>
-
-          <div className="overflow-x-auto">
-            <table className={`min-w-full divide-y ${isDarkMode ? 'divide-gray-600' : 'divide-gray-200'}`}>
-              <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
-                <tr>
-                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Código
-                  </th>
-                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Fecha
-                  </th>
-                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Método
-                  </th>
-                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Tipo
-                  </th>
-                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Monto
-                  </th>
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${isDarkMode ? 'bg-gray-800 divide-gray-600' : 'bg-white divide-gray-200'}`}>
-                {rental.payments.map((payment: any) => (
-                  <tr key={payment.id} className={isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{payment.payment_code}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {payment.payment_date && formatDate(payment.payment_date)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm capitalize ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {payment.payment_method === 'cash' && '💵 Efectivo'}
-                        {payment.payment_method === 'card' && '💳 Tarjeta'}
-                        {payment.payment_method === 'bank_transfer' && '🏦 Transferencia'}
-                        {payment.payment_method === 'check' && '📝 Cheque'}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        payment.payment_type === 'full'
-                          ? (isDarkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800')
-                          : payment.payment_type === 'deposit'
-                            ? (isDarkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-800')
-                            : payment.payment_type === 'balance'
-                              ? (isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-800')
-                              : (isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800')
-                      }`}>
-                        {payment.payment_type === 'full' && 'Completo'}
-                        {payment.payment_type === 'partial' && 'Parcial'}
-                        {payment.payment_type === 'deposit' && 'Depósito'}
-                        {payment.payment_type === 'balance' && 'Saldo'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm font-bold text-green-600">
-                        {formatCurrency(payment.amount)}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
-                <tr>
-                  <td colSpan={4} className={`px-4 py-3 text-right text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    Total Pagado:
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm font-bold text-green-600">
-                      {formatCurrency(rental.payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0))}
-                    </div>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-          {rental.payments.length === 0 && (
-            <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              No hay pagos registrados para esta renta
-            </div>
-          )}
-        </div>
+            {!canApprove && (
+              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                Solo jefes de ventas, directores o administradores pueden aprobar.
+              </Typography>
+            )}
+          </Box>
+        </Paper>
       )}
 
-      {/* ✅ INFORMACIÓN DE DEVOLUCIÓN */}
+      {/* Alerta de Rechazo (si fue rechazada) */}
+      {rental.rejection_reason && rental.status === 'cancelled' && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          <AlertTitle>Renta Rechazada</AlertTitle>
+          <Typography variant="body2">
+            <strong>Razón:</strong> {rental.rejection_reason}
+          </Typography>
+          {rental.approved_at && (
+            <Typography variant="caption" color="text.secondary">
+              Rechazada el {formatDate(rental.approved_at)}
+            </Typography>
+          )}
+        </Alert>
+      )}
+
+      {/* Info Cards */}
+      <Grid container spacing={3}>
+        {/* Cliente */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={paperStyles}>
+            <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Cliente</Typography>
+            {rental.customer && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Nombre</Typography>
+                  <Typography variant="body1" fontWeight={500}>{rental.customer.first_name} {rental.customer.last_name}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Email</Typography>
+                  <Typography variant="body1" fontWeight={500}>{rental.customer.email}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Teléfono</Typography>
+                  <Typography variant="body1" fontWeight={500}>{rental.customer.phone}</Typography>
+                </Box>
+              </Box>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Vehículo */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={paperStyles}>
+            <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Vehículo</Typography>
+            {rental.vehicle && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Vehículo</Typography>
+                  <Typography variant="body1" fontWeight={500}>{rental.vehicle.brand} {rental.vehicle.model}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Placa</Typography>
+                  <Typography variant="body1" fontWeight={500}>{rental.vehicle.plate}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Año</Typography>
+                  <Typography variant="body1" fontWeight={500}>{rental.vehicle.year}</Typography>
+                </Box>
+              </Box>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Estado */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={paperStyles}>
+            <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Estado</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Estado actual</Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <Chip
+                    label={rental.status}
+                    size="small"
+                    sx={{
+                      bgcolor: STATUS_COLORS[rental.status]?.bg || STATUS_COLORS.active.bg,
+                      color: STATUS_COLORS[rental.status]?.color || STATUS_COLORS.active.color,
+                      fontWeight: 600,
+                      textTransform: 'capitalize'
+                    }}
+                  />
+                </Box>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Creado</Typography>
+                <Typography variant="body1" fontWeight={500}>{rental.created_at && formatDate(rental.created_at)}</Typography>
+              </Box>
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {/* Ubicaciones */}
+      <Paper sx={{ ...paperStyles, mt: 3 }}>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>📍 Ubicaciones</Typography>
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={6}>
+            <Typography variant="caption" color="text.secondary">Recogida en:</Typography>
+            <Typography variant="body1" fontWeight={600}>{pickupLocation?.name || 'N/A'}</Typography>
+            <Typography variant="body2" color="text.secondary">{pickupLocation?.address}</Typography>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Typography variant="caption" color="text.secondary">Devolución en:</Typography>
+            <Typography variant="body1" fontWeight={600}>{returnLocation?.name || 'Misma sucursal'}</Typography>
+            {returnLocation && rental.return_location_id !== rental.location_id && (
+              <>
+                <Typography variant="body2" color="text.secondary">{returnLocation.address}</Typography>
+                <Chip label="One-way rental" size="small" sx={{ mt: 1, bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe', color: '#3b82f6' }} />
+              </>
+            )}
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Detalles de la Renta */}
+      <Paper sx={{ ...paperStyles, mt: 3 }}>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Detalles de la Renta</Typography>
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={4}>
+            <Typography variant="caption" color="text.secondary">Fecha de Inicio</Typography>
+            <Typography variant="body1" fontWeight={500}>{formatDate(rental.start_date)}</Typography>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Typography variant="caption" color="text.secondary">Fecha de Fin</Typography>
+            <Typography variant="body1" fontWeight={500}>{formatDate(rental.end_date)}</Typography>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Typography variant="caption" color="text.secondary">Días</Typography>
+            <Typography variant="body1" fontWeight={500}>{rental.days} días</Typography>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Condiciones Iniciales */}
+      <Paper sx={{ ...paperStyles, mt: 3 }}>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>🚗 Condiciones Iniciales</Typography>
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={4}>
+            <Typography variant="caption" color="text.secondary">Kilometraje Inicial</Typography>
+            <Typography variant="h5" fontWeight={700}>
+              {rental.start_mileage !== null && rental.start_mileage !== undefined ? `${rental.start_mileage} km` : 'N/A'}
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Typography variant="caption" color="text.secondary">Combustible Inicial</Typography>
+            <Typography variant="h5" fontWeight={700}>{getFuelLevelLabel(rental.fuel_level_start || 'full')}</Typography>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Typography variant="caption" color="text.secondary">Depósito de Garantía</Typography>
+            <Typography variant="h5" fontWeight={700}>{rental.deposit_amount ? formatCurrency(rental.deposit_amount) : 'N/A'}</Typography>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Montos */}
+      <Paper sx={{ ...paperStyles, mt: 3 }}>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Montos</Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography color="text.secondary">Tarifa diaria</Typography>
+            <Typography fontWeight={500}>{formatCurrency(rental.daily_rate)}</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography color="text.secondary">Subtotal ({rental.days} días)</Typography>
+            <Typography fontWeight={500}>{formatCurrency(rental.subtotal)}</Typography>
+          </Box>
+          {rental.insurance_amount && rental.insurance_amount > 0 && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography color="text.secondary">Seguro</Typography>
+              <Typography fontWeight={500}>{formatCurrency(rental.insurance_amount)}</Typography>
+            </Box>
+          )}
+          {rental.discount_amount && rental.discount_amount > 0 && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', color: '#10b981' }}>
+              <Typography>Descuento ({rental.discount_percentage}%)</Typography>
+              <Typography fontWeight={500}>-{formatCurrency(rental.discount_amount)}</Typography>
+            </Box>
+          )}
+          {rental.extras_amount && rental.extras_amount > 0 && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography color="text.secondary">Servicios adicionales</Typography>
+              <Typography fontWeight={500}>{formatCurrency(rental.extras_amount)}</Typography>
+            </Box>
+          )}
+          {rental.shipping_cost && Number(rental.shipping_cost) > 0 && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography color="text.secondary">Costo de envío</Typography>
+              <Typography fontWeight={500}>{formatCurrency(rental.shipping_cost)}</Typography>
+            </Box>
+          )}
+          {rental.price_adjustment && Number(rental.price_adjustment) !== 0 && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', color: Number(rental.price_adjustment) > 0 ? '#ef4444' : '#10b981' }}>
+              <Typography>Ajuste de precio</Typography>
+              <Typography fontWeight={500}>
+                {Number(rental.price_adjustment) > 0 ? '+' : ''}{formatCurrency(rental.price_adjustment)}
+              </Typography>
+            </Box>
+          )}
+          {rental.adjustment_reason && (
+            <Box sx={{ mt: 1, p: 1.5, bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)', borderRadius: 1 }}>
+              <Typography variant="caption" color="text.secondary">Razón del ajuste:</Typography>
+              <Typography variant="body2">{rental.adjustment_reason}</Typography>
+            </Box>
+          )}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography color="text.secondary">IVA ({rental.tax_percentage}%)</Typography>
+            <Typography fontWeight={500}>{formatCurrency(rental.tax_amount)}</Typography>
+          </Box>
+          <Divider sx={{ my: 1 }} />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography variant="h6" fontWeight={600}>Total</Typography>
+            <Typography variant="h6" fontWeight={700} sx={{ color: isDarkMode ? '#60a5fa' : '#3b82f6' }}>{formatCurrency(rental.total_amount)}</Typography>
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* Estado de Pagos */}
+      <Paper sx={{ ...paperStyles, mt: 3 }}>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>💳 Estado de Pagos</Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography color="text.secondary">Total de renta:</Typography>
+            <Typography fontWeight={500}>{formatCurrency(rental.total_amount)}</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography color="text.secondary">Pagado:</Typography>
+            <Typography fontWeight={500} sx={{ color: '#10b981' }}>{formatCurrency(paidAmount)}</Typography>
+          </Box>
+          <Divider sx={{ my: 1 }} />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography fontWeight={600}>Saldo Pendiente:</Typography>
+            <Typography fontWeight={700} sx={{ color: balance > 0 ? '#ef4444' : '#10b981' }}>
+              {formatCurrency(balance)}
+            </Typography>
+          </Box>
+          {rental.deposit_amount && rental.deposit_amount > 0 && (
+            <Paper sx={{ p: 2, mt: 1, bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2">Depósito:</Typography>
+                <Typography variant="body2" fontWeight={600} sx={{ color: paidAmount >= rental.deposit_amount ? '#10b981' : '#f59e0b' }}>
+                  {paidAmount >= rental.deposit_amount ? '✅ Pagado' : '⚠️ Pendiente'} - {formatCurrency(rental.deposit_amount)}
+                </Typography>
+              </Box>
+            </Paper>
+          )}
+          {balance > 0 && (
+            <Button
+              fullWidth
+              variant="contained"
+              startIcon={<PaymentIcon />}
+              onClick={() => navigate(`/payments/new?rental=${rental.id}`)}
+              sx={{ mt: 2, bgcolor: isDarkMode ? '#60a5fa' : '#3b82f6', '&:hover': { bgcolor: isDarkMode ? '#3b82f6' : '#2563eb' } }}
+            >
+              Registrar Pago
+            </Button>
+          )}
+        </Box>
+      </Paper>
+
+      {/* Historial de Pagos */}
+      {rental.payments && rental.payments.length > 0 && (
+        <Paper sx={{ ...paperStyles, mt: 3 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>💳 Historial de Pagos</Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell><strong>Código</strong></TableCell>
+                  <TableCell><strong>Fecha</strong></TableCell>
+                  <TableCell><strong>Método</strong></TableCell>
+                  <TableCell><strong>Tipo</strong></TableCell>
+                  <TableCell align="right"><strong>Monto</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rental.payments.map((payment: any) => (
+                  <TableRow key={payment.id} hover>
+                    <TableCell>{payment.payment_code}</TableCell>
+                    <TableCell>{payment.payment_date && formatDate(payment.payment_date)}</TableCell>
+                    <TableCell sx={{ textTransform: 'capitalize' }}>
+                      {payment.payment_method === 'cash' && '💵 Efectivo'}
+                      {payment.payment_method === 'card' && '💳 Tarjeta'}
+                      {payment.payment_method === 'bank_transfer' && '🏦 Transferencia'}
+                      {payment.payment_method === 'check' && '📝 Cheque'}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={
+                          payment.payment_type === 'full' ? 'Completo' :
+                          payment.payment_type === 'partial' ? 'Parcial' :
+                          payment.payment_type === 'deposit' ? 'Depósito' :
+                          payment.payment_type === 'balance' ? 'Saldo' : payment.payment_type
+                        }
+                        size="small"
+                        sx={{
+                          bgcolor: payment.payment_type === 'full' ? (isDarkMode ? 'rgba(16, 185, 129, 0.2)' : '#d1fae5') :
+                                   payment.payment_type === 'deposit' ? (isDarkMode ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe') :
+                                   (isDarkMode ? 'rgba(107, 114, 128, 0.2)' : '#e5e7eb'),
+                          color: payment.payment_type === 'full' ? '#10b981' :
+                                 payment.payment_type === 'deposit' ? '#3b82f6' : '#6b7280'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography fontWeight={600} sx={{ color: '#10b981' }}>{formatCurrency(payment.amount)}</Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
+                  <TableCell colSpan={4} align="right"><strong>Total Pagado:</strong></TableCell>
+                  <TableCell align="right">
+                    <Typography fontWeight={700} sx={{ color: '#10b981' }}>
+                      {formatCurrency(rental.payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0))}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      )}
+
+      {/* Información de Devolución */}
       {hasReturn && rental.return && (
-        <div className={`mt-6 rounded-lg shadow-sm p-6 border ${isDarkMode ? 'bg-gray-800 border-green-800' : 'bg-gradient-to-br from-green-50 to-blue-50 border-green-200'}`}>
-          <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>✅ Información de Devolución</h2>
+        <Paper sx={{ ...paperStyles, mt: 3, border: `1px solid ${isDarkMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.3)'}` }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>✅ Información de Devolución</Typography>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Fecha de Devolución */}
-            <div>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Fecha de Devolución</p>
-              <p className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {rental.return.return_date && formatDate(rental.return.return_date)}
-              </p>
-              <p className={`text-sm mt-1 ${rental.return.is_on_time ? 'text-green-600' : 'text-red-600'}`}>
+          <Grid container spacing={4}>
+            <Grid item xs={12} md={4}>
+              <Typography variant="caption" color="text.secondary">Fecha de Devolución</Typography>
+              <Typography variant="h6" fontWeight={600}>{rental.return.return_date && formatDate(rental.return.return_date)}</Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, color: rental.return.is_on_time ? '#10b981' : '#ef4444' }}>
                 {rental.return.is_on_time ? '✅ A tiempo' : `⚠️ ${rental.return.days_late} día(s) tarde`}
-              </p>
-            </div>
-
-            {/* Kilometraje */}
-            <div>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kilometraje Final</p>
-              <p className="font-bold text-lg text-blue-600">
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Typography variant="caption" color="text.secondary">Kilometraje Final</Typography>
+              <Typography variant="h6" fontWeight={600} sx={{ color: '#3b82f6' }}>
                 {rental.return.end_mileage ? `${rental.return.end_mileage} km` : 'N/A'}
-              </p>
+              </Typography>
               {rental.start_mileage && rental.return.end_mileage && (
-                <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                   Recorridos: {rental.return.end_mileage - rental.start_mileage} km
-                </p>
+                </Typography>
               )}
-            </div>
-
-            {/* Condición */}
-            <div>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Condición del Vehículo</p>
-              <p className={`font-bold text-lg capitalize ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {rental.return.vehicle_condition || 'N/A'}
-              </p>
-              <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Typography variant="caption" color="text.secondary">Condición del Vehículo</Typography>
+              <Typography variant="h6" fontWeight={600} sx={{ textTransform: 'capitalize' }}>{rental.return.vehicle_condition || 'N/A'}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 Combustible: {getFuelLevelLabel(rental.return.fuel_level || 'full')}
-              </p>
-            </div>
-          </div>
+              </Typography>
+            </Grid>
+          </Grid>
 
           {/* Penalizaciones */}
           {(rental.return.total_penalty && rental.return.total_penalty > 0) && (
-            <div className={`mt-4 rounded-lg p-4 border ${isDarkMode ? 'bg-yellow-900/20 border-yellow-700' : 'bg-yellow-50 border-yellow-200'}`}>
-              <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-900'}`}>💰 Penalizaciones Aplicadas</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <Paper sx={{ mt: 3, p: 2, bgcolor: isDarkMode ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.05)', border: `1px solid ${isDarkMode ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.2)'}` }}>
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, color: isDarkMode ? '#fcd34d' : '#92400e' }}>
+                💰 Penalizaciones Aplicadas
+              </Typography>
+              <Grid container spacing={2}>
                 {rental.return.late_fee && rental.return.late_fee > 0 && (
-                  <div>
-                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Retraso:</span>
-                    <span className="ml-2 font-bold text-red-600">{formatCurrency(rental.return.late_fee)}</span>
-                  </div>
+                  <Grid item xs={12} md={4}>
+                    <Typography variant="body2" color="text.secondary">Retraso:</Typography>
+                    <Typography variant="body1" fontWeight={600} sx={{ color: '#ef4444' }}>{formatCurrency(rental.return.late_fee)}</Typography>
+                  </Grid>
                 )}
                 {rental.return.cleaning_cost && rental.return.cleaning_cost > 0 && (
-                  <div>
-                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Limpieza:</span>
-                    <span className="ml-2 font-bold text-orange-600">{formatCurrency(rental.return.cleaning_cost)}</span>
-                  </div>
+                  <Grid item xs={12} md={4}>
+                    <Typography variant="body2" color="text.secondary">Limpieza:</Typography>
+                    <Typography variant="body1" fontWeight={600} sx={{ color: '#f59e0b' }}>{formatCurrency(rental.return.cleaning_cost)}</Typography>
+                  </Grid>
                 )}
                 {rental.return.damage_cost && rental.return.damage_cost > 0 && (
-                  <div>
-                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Daños:</span>
-                    <span className="ml-2 font-bold text-red-600">{formatCurrency(rental.return.damage_cost)}</span>
-                  </div>
+                  <Grid item xs={12} md={4}>
+                    <Typography variant="body2" color="text.secondary">Daños:</Typography>
+                    <Typography variant="body1" fontWeight={600} sx={{ color: '#ef4444' }}>{formatCurrency(rental.return.damage_cost)}</Typography>
+                  </Grid>
                 )}
-              </div>
-              <div className={`mt-3 pt-3 border-t flex justify-between items-center ${isDarkMode ? 'border-yellow-700' : 'border-yellow-300'}`}>
-                <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Total Penalizaciones:</span>
-                <span className="text-xl font-bold text-red-600">{formatCurrency(rental.return.total_penalty)}</span>
-              </div>
-            </div>
+              </Grid>
+              <Divider sx={{ my: 2, borderColor: isDarkMode ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.2)' }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography fontWeight={600}>Total Penalizaciones:</Typography>
+                <Typography variant="h6" fontWeight={700} sx={{ color: '#ef4444' }}>{formatCurrency(rental.return.total_penalty)}</Typography>
+              </Box>
+            </Paper>
           )}
 
           {/* Daños */}
           {rental.return.damage_description && (
-            <div className={`mt-4 rounded-lg p-4 border ${isDarkMode ? 'bg-red-900/20 border-red-700' : 'bg-red-50 border-red-200'}`}>
-              <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-red-400' : 'text-red-900'}`}>🔧 Daños Reportados</h3>
-              <p className={`text-sm ${isDarkMode ? 'text-red-300' : 'text-red-800'}`}>{rental.return.damage_description}</p>
-            </div>
+            <Paper sx={{ mt: 2, p: 2, bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)', border: `1px solid ${isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)'}` }}>
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: isDarkMode ? '#f87171' : '#dc2626' }}>🔧 Daños Reportados</Typography>
+              <Typography variant="body2">{rental.return.damage_description}</Typography>
+            </Paper>
           )}
 
           {/* Notas de Inspección */}
           {rental.return.inspection_notes && (
-            <div className={`mt-4 rounded-lg p-4 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-              <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>📝 Notas de Inspección</h3>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{rental.return.inspection_notes}</p>
-            </div>
+            <Paper sx={{ mt: 2, p: 2, bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>📝 Notas de Inspección</Typography>
+              <Typography variant="body2">{rental.return.inspection_notes}</Typography>
+            </Paper>
           )}
-        </div>
+        </Paper>
       )}
 
+      {/* Notas de la Renta */}
       {rental.notes && (
-        <div className={`mt-6 rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-          <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>📝 Notas</h2>
-          <p className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>{rental.notes}</p>
-        </div>
+        <Paper sx={{ ...paperStyles, mt: 3 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Notas</Typography>
+          <Typography variant="body1">{rental.notes}</Typography>
+        </Paper>
       )}
-    </div>
+
+      {/* Diálogo de Rechazo */}
+      <RentalRejectDialog
+        open={showRejectDialog}
+        onClose={() => setShowRejectDialog(false)}
+        onConfirm={handleReject}
+        rentalCode={rental.rental_code}
+        loading={approving}
+      />
+    </Box>
   );
 };
 

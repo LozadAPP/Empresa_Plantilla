@@ -25,6 +25,9 @@ import InventoryItem from './InventoryItem';
 import InventoryMovement from './InventoryMovement';
 // Security Models
 import TokenBlacklist from './TokenBlacklist';
+// Extra Services Models
+import ExtraService from './ExtraService';
+import RentalService from './RentalService';
 
 // ============================================
 // ASSOCIATIONS / RELATIONSHIPS
@@ -219,6 +222,26 @@ InventoryMovement.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete:
 User.hasMany(InventoryMovement, { foreignKey: 'user_id', as: 'inventoryMovements' });
 
 // ============================================
+// EXTRA SERVICES ASSOCIATIONS
+// ============================================
+
+// ExtraService - VehicleType (Many-to-One) - optional
+ExtraService.belongsTo(VehicleType, { foreignKey: 'vehicle_type_id', as: 'vehicleType' });
+VehicleType.hasMany(ExtraService, { foreignKey: 'vehicle_type_id', as: 'extraServices' });
+
+// ExtraService - Location (Many-to-One) - optional
+ExtraService.belongsTo(Location, { foreignKey: 'location_id', as: 'location' });
+Location.hasMany(ExtraService, { foreignKey: 'location_id', as: 'extraServices' });
+
+// RentalService - Rental (Many-to-One)
+RentalService.belongsTo(Rental, { foreignKey: 'rental_id', as: 'rental', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Rental.hasMany(RentalService, { foreignKey: 'rental_id', as: 'services', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+
+// RentalService - ExtraService (Many-to-One)
+RentalService.belongsTo(ExtraService, { foreignKey: 'extra_service_id', as: 'extraService' });
+ExtraService.hasMany(RentalService, { foreignKey: 'extra_service_id', as: 'rentalServices' });
+
+// ============================================
 // SYNC DATABASE
 // ============================================
 
@@ -262,7 +285,9 @@ export {
   ItemCategory,
   InventoryItem,
   InventoryMovement,
-  TokenBlacklist
+  TokenBlacklist,
+  ExtraService,
+  RentalService
 };
 
 export default {
@@ -291,5 +316,7 @@ export default {
   ItemCategory,
   InventoryItem,
   InventoryMovement,
-  TokenBlacklist
+  TokenBlacklist,
+  ExtraService,
+  RentalService
 };

@@ -15,7 +15,10 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Select
+  Select,
+  useMediaQuery,
+  useTheme,
+  Alert
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -81,6 +84,8 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
 
 const Reports: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [incomeReport, setIncomeReport] = useState<IncomeReport | null>(null);
@@ -89,6 +94,7 @@ const Reports: React.FC = () => {
   const [locations, setLocations] = useState<any[]>([]);
   const [currentTab, setCurrentTab] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<ReportFilters>({
     startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
@@ -104,6 +110,7 @@ const Reports: React.FC = () => {
   const loadInitialData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const [summaryRes, locationsRes] = await Promise.all([
         reportService.getDashboardSummary(),
         locationService.getLocationsDropdown()
@@ -114,8 +121,9 @@ const Reports: React.FC = () => {
 
       // Load reports with initial filters
       await loadReports();
-    } catch (error) {
-      // Error loading initial data silently handled
+    } catch (err) {
+      console.error('Error loading reports:', err);
+      setError('Error al cargar los datos. Por favor intente nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -286,20 +294,35 @@ const Reports: React.FC = () => {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <Box sx={{
+        mb: { xs: 3, sm: 4 },
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'flex-start' },
+        gap: { xs: 2, sm: 0 }
+      }}>
         <Box>
-          <Typography variant="h3" fontWeight="700" sx={{ fontSize: '2rem', letterSpacing: '-0.02em', mb: 0.5 }}>
+          <Typography variant="h3" fontWeight="700" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' }, letterSpacing: '-0.02em', mb: 0.5 }}>
             Reportes
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', display: { xs: 'none', sm: 'block' } }}>
             Análisis y estadísticas del negocio
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 1.5, sm: 2 }
+        }}>
           <Button
             variant="outlined"
             startIcon={<FilterIcon />}
             onClick={() => setShowFilters(!showFilters)}
+            sx={{
+              width: { xs: '100%', sm: 'auto' },
+              py: { xs: 1.5, sm: 1 }
+            }}
           >
             Filtros
           </Button>
@@ -308,14 +331,16 @@ const Reports: React.FC = () => {
             startIcon={<DownloadIcon />}
             onClick={handleExport}
             sx={{
-              bgcolor: isDarkMode ? '#8b5cf6' : '#8b5cf6',
+              bgcolor: theme.palette.primary.main,
               color: '#fff',
+              width: { xs: '100%', sm: 'auto' },
+              py: { xs: 1.5, sm: 1 },
               '&:hover': {
-                bgcolor: isDarkMode ? '#7c3aed' : '#7c3aed'
+                bgcolor: theme.palette.primary.dark
               }
             }}
           >
-            Exportar Excel
+            {isMobile ? 'Exportar' : 'Exportar Excel'}
           </Button>
         </Box>
       </Box>
@@ -331,6 +356,77 @@ const Reports: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Filtros de Reportes
           </Typography>
+
+          {/* Quick Date Ranges */}
+          <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                const today = new Date();
+                const sevenDaysAgo = new Date(today);
+                sevenDaysAgo.setDate(today.getDate() - 7);
+                setFilters({
+                  ...filters,
+                  startDate: sevenDaysAgo.toISOString().split('T')[0],
+                  endDate: today.toISOString().split('T')[0],
+                });
+              }}
+              sx={{ borderColor: theme.palette.primary.main, color: theme.palette.primary.main, '&:hover': { borderColor: theme.palette.primary.dark, bgcolor: alpha(theme.palette.primary.main, 0.1) } }}
+            >
+              Últimos 7 días
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                const today = new Date();
+                const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                setFilters({
+                  ...filters,
+                  startDate: startOfMonth.toISOString().split('T')[0],
+                  endDate: today.toISOString().split('T')[0],
+                });
+              }}
+              sx={{ borderColor: theme.palette.primary.main, color: theme.palette.primary.main, '&:hover': { borderColor: theme.palette.primary.dark, bgcolor: alpha(theme.palette.primary.main, 0.1) } }}
+            >
+              Este mes
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                const today = new Date();
+                const startOfYear = new Date(today.getFullYear(), 0, 1);
+                setFilters({
+                  ...filters,
+                  startDate: startOfYear.toISOString().split('T')[0],
+                  endDate: today.toISOString().split('T')[0],
+                });
+              }}
+              sx={{ borderColor: theme.palette.primary.main, color: theme.palette.primary.main, '&:hover': { borderColor: theme.palette.primary.dark, bgcolor: alpha(theme.palette.primary.main, 0.1) } }}
+            >
+              Este año
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                const today = new Date();
+                const thirtyDaysAgo = new Date(today);
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+                setFilters({
+                  ...filters,
+                  startDate: thirtyDaysAgo.toISOString().split('T')[0],
+                  endDate: today.toISOString().split('T')[0],
+                });
+              }}
+              sx={{ borderColor: theme.palette.primary.main, color: theme.palette.primary.main, '&:hover': { borderColor: theme.palette.primary.dark, bgcolor: alpha(theme.palette.primary.main, 0.1) } }}
+            >
+              Últimos 30 días
+            </Button>
+          </Box>
+
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} md={3}>
               <TextField
@@ -393,8 +489,8 @@ const Reports: React.FC = () => {
                   variant="contained"
                   onClick={handleApplyFilters}
                   sx={{
-                    bgcolor: '#8b5cf6',
-                    '&:hover': { bgcolor: '#7c3aed' }
+                    bgcolor: theme.palette.primary.main,
+                    '&:hover': { bgcolor: theme.palette.primary.dark }
                   }}
                 >
                   Aplicar Filtros
@@ -405,8 +501,23 @@ const Reports: React.FC = () => {
         </Card>
       )}
 
+      {/* Error Alert with Retry */}
+      {error && (
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          action={
+            <Button color="inherit" size="small" onClick={loadInitialData}>
+              Reintentar
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      )}
+
       {/* KPI Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
         <Grid item xs={12} sm={6} md={3}>
           <Paper
             sx={{
@@ -422,15 +533,15 @@ const Reports: React.FC = () => {
               <MoneyIcon sx={{ fontSize: 80, color: '#10b981' }} />
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Ingresos Hoy
+              Ingresos del Período
             </Typography>
             <Typography variant="h4" fontWeight="bold" sx={{ color: '#10b981' }}>
-              ${summary?.today.income.toLocaleString() || 0}
+              ${incomeReport?.summary?.totalIncome?.toLocaleString() || summary?.today.income?.toLocaleString() || 0}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
               <TrendingUpIcon sx={{ fontSize: 16, color: '#10b981' }} />
               <Typography variant="caption" sx={{ color: '#10b981' }}>
-                {todayIncome > 0 ? `$${todayIncome.toLocaleString()}` : 'Sin datos previos'}
+                {incomeReport?.summary?.totalRentals || 0} rentas en el período
               </Typography>
             </Box>
           </Paper>
@@ -526,16 +637,27 @@ const Reports: React.FC = () => {
         <Tabs
           value={currentTab}
           onChange={(_, newValue) => setCurrentTab(newValue)}
-          sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
+          variant={isMobile ? "scrollable" : "standard"}
+          scrollButtons={isMobile ? "auto" : false}
+          allowScrollButtonsMobile
+          sx={{
+            borderBottom: 1,
+            borderColor: 'divider',
+            px: { xs: 1, sm: 2 },
+            '& .MuiTab-root': {
+              minWidth: { xs: 'auto', sm: 90 },
+              px: { xs: 2, sm: 3 }
+            }
+          }}
         >
           <Tab label="Ingresos" />
           <Tab label="Ocupación" />
-          <Tab label="Rentabilidad" />
-          <Tab label="Top Clientes" />
+          <Tab label={isMobile ? "Rentab." : "Rentabilidad"} />
+          <Tab label={isMobile ? "Clientes" : "Top Clientes"} />
         </Tabs>
 
         <TabPanel value={currentTab} index={0}>
-          <Box sx={{ p: 3, height: 400 }}>
+          <Box sx={{ p: { xs: 2, sm: 3 }, height: { xs: 300, sm: 350, md: 400 } }}>
             <Typography variant="h6" sx={{ mb: 3 }}>
               Ingresos - {filters.groupBy === 'day' ? 'Diarios' : filters.groupBy === 'week' ? 'Semanales' : filters.groupBy === 'month' ? 'Mensuales' : 'Anuales'}
             </Typography>
@@ -552,9 +674,9 @@ const Reports: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={currentTab} index={1}>
-          <Grid container spacing={3} sx={{ p: 3 }}>
+          <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ p: { xs: 2, sm: 3 } }}>
             <Grid item xs={12} md={6}>
-              <Box sx={{ height: 400 }}>
+              <Box sx={{ height: { xs: 280, sm: 350, md: 400 } }}>
                 <Typography variant="h6" sx={{ mb: 3 }}>
                   Distribución de Flota
                 </Typography>
@@ -595,12 +717,12 @@ const Reports: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={currentTab} index={2}>
-          <Box sx={{ p: 3 }}>
+          <Box sx={{ p: { xs: 2, sm: 3 } }}>
             <Typography variant="h6" sx={{ mb: 3 }}>
               Análisis de Rentabilidad
             </Typography>
             {profitabilityReport ? (
-              <Grid container spacing={3}>
+              <Grid container spacing={{ xs: 2, sm: 3 }}>
                 <Grid item xs={12} md={4}>
                   <Card sx={{ bgcolor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : alpha('#10b981', 0.1) }}>
                     <CardContent>
@@ -656,7 +778,7 @@ const Reports: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={currentTab} index={3}>
-          <Box sx={{ p: 3 }}>
+          <Box sx={{ p: { xs: 2, sm: 3 } }}>
             <Typography variant="h6" sx={{ mb: 3 }}>
               Top {filters.limit || 10} Clientes
             </Typography>
@@ -673,15 +795,15 @@ const Reports: React.FC = () => {
                       background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)'
                     }}
                   >
-                    <Box>
-                      <Typography fontWeight="600">
+                    <Box sx={{ flex: 1, minWidth: 0, mr: 2 }}>
+                      <Typography fontWeight="600" noWrap>
                         #{index + 1} - {customer.customer?.name || `Cliente ID: ${customer.customerId}`}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" noWrap>
                         {customer.rentalCount} rentas • {customer.customer?.email || ''}
                       </Typography>
                     </Box>
-                    <Typography variant="h6" fontWeight="bold" sx={{ color: '#10b981' }}>
+                    <Typography variant="h6" fontWeight="bold" sx={{ color: '#10b981', flexShrink: 0 }}>
                       ${customer.totalRevenue.toLocaleString()}
                     </Typography>
                   </Paper>

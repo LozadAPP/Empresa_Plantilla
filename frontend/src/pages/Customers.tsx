@@ -27,8 +27,15 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Grid
+  Grid,
+  useMediaQuery,
+  useTheme,
+  Card,
+  CardContent,
+  Stack,
+  Divider
 } from '@mui/material';
+import { Close as CloseIcon } from '@mui/icons-material';
 import {
   Search as SearchIcon,
   Add as AddIcon,
@@ -63,6 +70,11 @@ const typeLabels: Record<CustomerType, string> = {
 const Customers: React.FC = () => {
   const { hasAnyRole } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+
+  // RESPONSIVE: Media queries
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
+
   const canEdit = hasAnyRole('admin', 'director_general', 'jefe_ventas', 'vendedor');
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -234,8 +246,15 @@ const Customers: React.FC = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      {/* Header - RESPONSIVE */}
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'center' },
+        gap: { xs: 2, sm: 0 },
+        mb: 3
+      }}>
         <Typography variant="h5" fontWeight="bold">
           Gestión de Clientes
         </Typography>
@@ -244,10 +263,12 @@ const Customers: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleCreateClick}
+            fullWidth={isMobile}
             sx={{
               borderRadius: '12px',
               textTransform: 'none',
-              fontWeight: 600
+              fontWeight: 600,
+              minHeight: { xs: 48, sm: 40 }
             }}
           >
             Nuevo Cliente
@@ -261,15 +282,25 @@ const Customers: React.FC = () => {
         </Alert>
       )}
 
-      {/* Filters */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      {/* Filters - RESPONSIVE */}
+      <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: 2 }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 1.5, sm: 2 },
+          flexWrap: 'wrap'
+        }}>
           <TextField
-            placeholder="Buscar por nombre, email, teléfono..."
+            placeholder="Buscar..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             size="small"
-            sx={{ minWidth: 300 }}
+            fullWidth={isMobile}
+            sx={{
+              minWidth: { sm: 200 },
+              flex: { sm: 1 },
+              '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } }
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -278,7 +309,10 @@ const Customers: React.FC = () => {
               )
             }}
           />
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+          <FormControl size="small" sx={{
+            minWidth: { xs: '100%', sm: 150 },
+            '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } }
+          }}>
             <InputLabel>Tipo</InputLabel>
             <Select
               value={typeFilter}
@@ -291,7 +325,10 @@ const Customers: React.FC = () => {
               <MenuItem value="government">Gobierno</MenuItem>
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ minWidth: 120 }}>
+          <FormControl size="small" sx={{
+            minWidth: { xs: '100%', sm: 120 },
+            '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } }
+          }}>
             <InputLabel>Estado</InputLabel>
             <Select
               value={activeFilter}
@@ -306,73 +343,96 @@ const Customers: React.FC = () => {
         </Box>
       </Paper>
 
-      {/* Table */}
-      <TableContainer component={Paper}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Cliente</TableCell>
-                  <TableCell>Contacto</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Teléfono</TableCell>
-                  <TableCell>Tipo</TableCell>
-                  <TableCell align="right">Límite Crédito</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {customers.map((customer) => (
-                  <TableRow key={customer.id} hover>
-                    <TableCell>
-                      <Typography fontWeight="medium">{customer.name}</Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {customer.city}, {customer.country}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{customer.contact_person || '-'}</TableCell>
-                    <TableCell>{customer.email || '-'}</TableCell>
-                    <TableCell>{customer.phone || '-'}</TableCell>
-                    <TableCell>
-                      <Chip
-                        icon={typeIcons[customer.customer_type] as React.ReactElement}
-                        label={typeLabels[customer.customer_type]}
-                        size="small"
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      ${customer.credit_limit?.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={customer.is_active ? 'Activo' : 'Inactivo'}
-                        color={customer.is_active ? 'success' : 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton size="small" onClick={(e) => handleMenuOpen(e, customer)}>
-                        <MoreIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {customers.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                      <Typography color="textSecondary">No se encontraron clientes</Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+      {/* RESPONSIVE: Cards en móvil, Tabla en desktop */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : isMobile ? (
+        /* Vista de Cards para móvil */
+        <Box>
+          {customers.length === 0 ? (
+            <Paper sx={{ p: 4, textAlign: 'center' }}>
+              <PersonIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+              <Typography color="textSecondary">No se encontraron clientes</Typography>
+            </Paper>
+          ) : (
+            <Stack spacing={1.5}>
+              {customers.map((customer) => (
+                <Card key={customer.id}>
+                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                    {/* Header: Nombre + Estado + Menú */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5, gap: 1 }}>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="body2" fontWeight="700" noWrap>
+                          {customer.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" noWrap>
+                          {customer.city}, {customer.country}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Chip
+                          label={customer.is_active ? 'Activo' : 'Inactivo'}
+                          color={customer.is_active ? 'success' : 'default'}
+                          size="small"
+                          sx={{ height: 24, fontSize: '0.7rem' }}
+                        />
+                        <IconButton size="small" onClick={(e) => handleMenuOpen(e, customer)}>
+                          <MoreIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </Box>
+
+                    <Divider sx={{ my: 1.5 }} />
+
+                    {/* Info Grid */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                          Tipo
+                        </Typography>
+                        <Chip
+                          icon={typeIcons[customer.customer_type] as React.ReactElement}
+                          label={typeLabels[customer.customer_type]}
+                          size="small"
+                          variant="outlined"
+                          sx={{ height: 24, fontSize: '0.7rem', mt: 0.5 }}
+                        />
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                          Límite Crédito
+                        </Typography>
+                        <Typography variant="body2" fontWeight="600" sx={{ color: theme.palette.mode === 'dark' ? '#34d399' : '#10b981' }}>
+                          ${customer.credit_limit?.toLocaleString()}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                          Contacto
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                          {customer.contact_person || '-'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                          Teléfono
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                          {customer.phone || '-'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          )}
+
+          {/* Pagination móvil */}
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
             <TablePagination
               component="div"
               count={pagination.total}
@@ -380,13 +440,98 @@ const Customers: React.FC = () => {
               onPageChange={handleChangePage}
               rowsPerPage={pagination.limit}
               onRowsPerPageChange={handleChangeRowsPerPage}
-              rowsPerPageOptions={[10, 25, 50, 100]}
-              labelRowsPerPage="Filas por página:"
+              rowsPerPageOptions={[10, 25, 50]}
+              labelRowsPerPage=""
               labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+              sx={{
+                '& .MuiTablePagination-toolbar': { pl: 0, pr: 0 },
+                '& .MuiTablePagination-selectLabel': { display: 'none' },
+                '& .MuiTablePagination-select': { display: 'none' }
+              }}
             />
-          </>
-        )}
-      </TableContainer>
+          </Box>
+        </Box>
+      ) : (
+        /* Vista de Tabla para desktop */
+        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+          <Table sx={{ minWidth: 900 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Cliente</TableCell>
+                <TableCell>Contacto</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Teléfono</TableCell>
+                <TableCell>Tipo</TableCell>
+                <TableCell align="right">Límite Crédito</TableCell>
+                <TableCell>Estado</TableCell>
+                <TableCell align="center">Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {customers.map((customer) => (
+                <TableRow key={customer.id} hover>
+                  <TableCell sx={{ maxWidth: 200 }}>
+                    <Typography fontWeight="medium" noWrap>{customer.name}</Typography>
+                    <Typography variant="caption" color="textSecondary" noWrap>
+                      {customer.city}, {customer.country}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ maxWidth: 150 }}>
+                    <Typography variant="body2" noWrap>{customer.contact_person || '-'}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ maxWidth: 200 }}>
+                    <Typography variant="body2" noWrap>{customer.email || '-'}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ maxWidth: 130 }}>
+                    <Typography variant="body2" noWrap>{customer.phone || '-'}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      icon={typeIcons[customer.customer_type] as React.ReactElement}
+                      label={typeLabels[customer.customer_type]}
+                      size="small"
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    ${customer.credit_limit?.toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={customer.is_active ? 'Activo' : 'Inactivo'}
+                      color={customer.is_active ? 'success' : 'default'}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <IconButton size="small" onClick={(e) => handleMenuOpen(e, customer)}>
+                      <MoreIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {customers.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                    <Typography color="textSecondary">No se encontraron clientes</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+          <TablePagination
+            component="div"
+            count={pagination.total}
+            page={pagination.page - 1}
+            onPageChange={handleChangePage}
+            rowsPerPage={pagination.limit}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+          />
+        </TableContainer>
+      )}
 
       {/* Actions Menu */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>

@@ -16,6 +16,14 @@ export const getIncomeReport = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate, locationId, groupBy = 'day' } = req.query;
 
+    // Validate date range
+    if (startDate && endDate && new Date(startDate as string) > new Date(endDate as string)) {
+      return res.status(400).json({
+        success: false,
+        message: 'La fecha de inicio debe ser menor o igual a la fecha de fin',
+      });
+    }
+
     const where: any = {
       status: { [Op.in]: ['active', 'completed'] },
     };
@@ -116,6 +124,14 @@ export const getOccupancyReport = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate, locationId } = req.query;
 
+    // Validate date range
+    if (startDate && endDate && new Date(startDate as string) > new Date(endDate as string)) {
+      return res.status(400).json({
+        success: false,
+        message: 'La fecha de inicio debe ser menor o igual a la fecha de fin',
+      });
+    }
+
     // Get all vehicles
     const vehicleWhere: any = {};
     if (locationId) vehicleWhere.location_id = locationId;
@@ -206,6 +222,14 @@ export const getOccupancyReport = async (req: Request, res: Response) => {
 export const getProfitabilityReport = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate, vehicleId } = req.query;
+
+    // Validate date range
+    if (startDate && endDate && new Date(startDate as string) > new Date(endDate as string)) {
+      return res.status(400).json({
+        success: false,
+        message: 'La fecha de inicio debe ser menor o igual a la fecha de fin',
+      });
+    }
 
     const rentalWhere: any = {
       status: { [Op.in]: ['active', 'completed'] },

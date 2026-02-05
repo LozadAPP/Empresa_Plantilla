@@ -658,7 +658,7 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
                     sx={{
                       fontSize: '1rem',
                       fontWeight: 700,
-                      color: '#111827',
+                      color: theme.palette.mode === 'dark' ? '#f3f4f6' : '#111827',
                       letterSpacing: '-0.02em',
                       lineHeight: 1.3,
                       pr: '40px',
@@ -670,15 +670,15 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
 
                 {/* Metadata */}
                 <Stack direction="row" spacing={0.6} alignItems="center" flexWrap="wrap">
-                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 500, color: '#6b7280' }}>
+                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 500, color: theme.palette.mode === 'dark' ? '#9ca3af' : '#6b7280' }}>
                     {selectedItem.type}
                   </Typography>
-                  <Typography sx={{ fontSize: '0.7rem', color: '#d1d5db' }}>•</Typography>
+                  <Typography sx={{ fontSize: '0.7rem', color: theme.palette.mode === 'dark' ? '#4b5563' : '#d1d5db' }}>•</Typography>
                   <Typography
                     sx={{
                       fontSize: '0.7rem',
                       fontWeight: 600,
-                      color: '#8b5cf6',
+                      color: theme.palette.mode === 'dark' ? '#a78bfa' : '#8b5cf6',
                       fontFamily: 'monospace',
                     }}
                   >
@@ -701,8 +701,8 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
                     mb: 1.25,
                     p: 1,
                     borderRadius: '10px',
-                    bgcolor: '#f9fafb',
-                    border: '1px solid #f3f4f6',
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f9fafb',
+                    border: theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #f3f4f6',
                   }}
                 >
                   <Box
@@ -721,10 +721,10 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
                     <LocationIcon sx={{ fontSize: 17, color: 'white' }} />
                   </Box>
                   <Box>
-                    <Typography sx={{ fontSize: '0.65rem', color: '#9ca3af', mb: 0.2, fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: theme.palette.mode === 'dark' ? '#6b7280' : '#9ca3af', mb: 0.2, fontWeight: 500 }}>
                       Ubicación Actual
                     </Typography>
-                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#1f2937' }}>
+                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: theme.palette.mode === 'dark' ? '#f3f4f6' : '#1f2937' }}>
                       {selectedItem.currentLocationCity}, {selectedItem.currentLocationState}
                     </Typography>
                   </Box>
@@ -805,7 +805,9 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
                       py: 1.25,
                       px: 2,
                       borderRadius: '10px',
-                      background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
+                      background: theme.palette.mode === 'dark'
+                        ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)'
+                        : 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
                       color: 'white',
                       cursor: 'pointer',
                       fontSize: '0.8rem',
@@ -816,10 +818,14 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
                       justifyContent: 'center',
                       gap: 0.75,
                       transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                      boxShadow: '0 3px 10px rgba(0, 0, 0, 0.12)',
+                      boxShadow: theme.palette.mode === 'dark'
+                        ? '0 3px 10px rgba(139, 92, 246, 0.3)'
+                        : '0 3px 10px rgba(0, 0, 0, 0.12)',
                       '&:hover': {
                         transform: 'translateY(-1px)',
-                        boxShadow: '0 5px 15px rgba(0, 0, 0, 0.2)',
+                        boxShadow: theme.palette.mode === 'dark'
+                          ? '0 5px 15px rgba(139, 92, 246, 0.4)'
+                          : '0 5px 15px rgba(0, 0, 0, 0.2)',
                       },
                     }}
                   >

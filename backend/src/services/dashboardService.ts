@@ -409,7 +409,7 @@ class DashboardService {
     switch (period) {
       case 'day':
         interval = '1 hour';
-        groupFormat = 'YYYY-MM-DD HH24:00:00';
+        groupFormat = 'YYYY-MM-DD HH24';
         dateRange = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         break;
       case 'week':
@@ -418,8 +418,8 @@ class DashboardService {
         dateRange = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         break;
       case 'month':
-        interval = '1 week';
-        groupFormat = 'YYYY-"W"IW';
+        interval = '1 day';
+        groupFormat = 'YYYY-MM-DD';
         dateRange = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         break;
       case 'year':
@@ -428,10 +428,14 @@ class DashboardService {
         dateRange = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
         break;
       default:
-        interval = '1 week';
-        groupFormat = 'YYYY-"W"IW';
+        interval = '1 day';
+        groupFormat = 'YYYY-MM-DD';
         dateRange = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
+
+    // Create the time bucket expression for grouping
+    const timeBucketExpr = fn('TO_CHAR', col('transaction_date'), groupFormat);
+    const timeBucketExprRental = fn('TO_CHAR', col('start_date'), groupFormat);
 
     // Get revenue data
     const revenueData = await Payment.findAll({
@@ -440,11 +444,11 @@ class DashboardService {
         status: 'completed'
       },
       attributes: [
-        [fn('TO_CHAR', col('transaction_date'), groupFormat), 'timeBucket'],
+        [timeBucketExpr, 'timeBucket'],
         [fn('SUM', col('amount')), 'revenue']
       ],
-      group: [literal('1') as any],
-      order: [[literal('1') as any, 'ASC']],
+      group: [timeBucketExpr],
+      order: [[timeBucketExpr, 'ASC']],
       raw: true
     });
 
@@ -455,11 +459,11 @@ class DashboardService {
         start_date: { [Op.gte]: dateRange }
       },
       attributes: [
-        [fn('TO_CHAR', col('start_date'), groupFormat), 'timeBucket'],
+        [timeBucketExprRental, 'timeBucket'],
         [fn('COUNT', fn('DISTINCT', col('vehicle_id'))), 'rentedCount']
       ],
-      group: [literal('1') as any],
-      order: [[literal('1') as any, 'ASC']],
+      group: [timeBucketExprRental],
+      order: [[timeBucketExprRental, 'ASC']],
       raw: true
     });
 

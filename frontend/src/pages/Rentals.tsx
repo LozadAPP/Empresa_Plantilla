@@ -24,8 +24,16 @@ import {
   TablePagination,
   FormControl,
   InputLabel,
-  Select
+  Select,
+  useMediaQuery,
+  useTheme,
+  Card,
+  CardContent,
+  Stack,
+  Divider,
+  Collapse
 } from '@mui/material';
+import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
@@ -38,28 +46,51 @@ import {
   Warning as OverdueIcon,
   Assignment as RentalsIcon,
   FileDownload as ExportIcon,
-  Clear as ClearIcon
+  Clear as ClearIcon,
+  HourglassEmpty as PendingIcon
 } from '@mui/icons-material';
 import { AppDispatch, RootState } from '../store';
 import { fetchRentals } from '../store/slices/rentalSlice';
 import { RentalStatus } from '../types/rental';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
+import { useThemeStyles } from '../hooks/useThemeStyles';
 import TableSkeleton from '../components/common/TableSkeleton';
 import { exportToCSV, RENTALS_COLUMNS } from '../utils/exportCSV';
 import { formatDate, formatCurrency } from '../utils/formatters';
+
+// Función para calcular fechas por defecto (últimos 30 días)
+const getDefaultDates = () => {
+  const today = new Date();
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+  return {
+    startDate: thirtyDaysAgo.toISOString().split('T')[0],
+    endDate: today.toISOString().split('T')[0]
+  };
+};
 
 const Rentals: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { isDarkMode } = useCustomTheme();
+  const themeStyles = useThemeStyles();
+  const theme = useTheme();
+
+  // RESPONSIVE: Media queries
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
+  const isTablet = useMediaQuery(theme.breakpoints.down('md')); // < 900px
 
   const { rentals, loading, error, pagination } = useSelector((state: RootState) => state.rentals);
 
+  // Estado para expandir/colapsar filtros en móvil
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+
+  const defaultDates = getDefaultDates();
   const [filters, setFilters] = useState({
     status: '' as RentalStatus | '',
     search: '',
-    startDate: '',
-    endDate: '',
+    startDate: defaultDates.startDate,
+    endDate: defaultDates.endDate,
     page: 1,
     limit: 20
   });
@@ -89,9 +120,10 @@ const Rentals: React.FC = () => {
     dispatch(fetchRentals(apiFilters));
   }, [dispatch, filters.status, filters.startDate, filters.endDate, filters.page, filters.limit, debouncedSearch]);
 
-  // Handler para limpiar filtros de fecha
+  // Handler para restaurar filtros de fecha a valores por defecto
   const handleClearDateFilters = useCallback(() => {
-    setFilters(prev => ({ ...prev, startDate: '', endDate: '', page: 1 }));
+    const defaults = getDefaultDates();
+    setFilters(prev => ({ ...prev, startDate: defaults.startDate, endDate: defaults.endDate, page: 1 }));
   }, []);
 
   // Handler para exportar a CSV
@@ -123,6 +155,7 @@ const Rentals: React.FC = () => {
 
   // Configuración de chips de estado (definida fuera para evitar recreación)
   const STATUS_CONFIGS = useMemo(() => ({
+    pending_approval: { label: 'Pendiente', color: 'warning' as const, Icon: PendingIcon },
     active: { label: 'Activa', color: 'success' as const, Icon: ActiveIcon },
     reserved: { label: 'Reservada', color: 'info' as const, Icon: ReservedIcon },
     completed: { label: 'Completada', color: 'default' as const, Icon: CompletedIcon },
@@ -148,6 +181,7 @@ const Rentals: React.FC = () => {
   // Calculate stats (memoizado para evitar recálculos innecesarios)
   const stats = useMemo(() => ({
     total: rentals.length,
+    pending: rentals.filter(r => r.status === 'pending_approval').length,
     active: rentals.filter(r => r.status === 'active').length,
     completed: rentals.filter(r => r.status === 'completed').length,
     overdue: rentals.filter(r => r.status === 'overdue').length
@@ -213,8 +247,8 @@ const Rentals: React.FC = () => {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h3" fontWeight="700" sx={{ fontSize: '2rem', letterSpacing: '-0.02em', mb: 0.5 }}>
+      <Box sx={{ mb: { xs: 2, sm: 3, md: 4 } }}>
+        <Typography variant="h3" fontWeight="700" sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }, letterSpacing: '-0.02em', mb: 0.5 }}>
           Rentas
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
@@ -223,19 +257,19 @@ const Rentals: React.FC = () => {
       </Box>
 
       {/* Stats Cards */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' }, gap: 2, mb: 4 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: { xs: 1.5, sm: 2 }, mb: { xs: 2, sm: 3, md: 4 } }}>
         {[
-          { id: 'total', label: 'Total Rentas', value: stats.total, color: '#8b5cf6', icon: <RentalsIcon /> },
-          { id: 'active', label: 'Activas', value: stats.active, color: '#10b981', icon: <ActiveIcon /> },
-          { id: 'completed', label: 'Completadas', value: stats.completed, color: '#6b7280', icon: <CompletedIcon /> },
-          { id: 'overdue', label: 'Vencidas', value: stats.overdue, color: '#f59e0b', icon: <OverdueIcon /> }
+          { id: 'total', label: isMobile ? 'Total' : 'Total Rentas', value: stats.total, color: themeStyles.purple.main, icon: <RentalsIcon /> },
+          { id: 'active', label: 'Activas', value: stats.active, color: themeStyles.status.success.main, icon: <ActiveIcon /> },
+          { id: 'completed', label: isMobile ? 'Completadas' : 'Completadas', value: stats.completed, color: isDarkMode ? '#9ca3af' : '#6b7280', icon: <CompletedIcon /> },
+          { id: 'overdue', label: 'Vencidas', value: stats.overdue, color: themeStyles.status.warning.main, icon: <OverdueIcon /> }
         ].map((stat) => (
           <Paper
             key={stat.id}
             sx={{
-              p: 3,
+              p: { xs: 2, sm: 3 },
               background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
-              borderRadius: 2,
+              borderRadius: { xs: '12px', sm: 2 },
               border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
               position: 'relative',
               overflow: 'hidden'
@@ -269,15 +303,43 @@ const Rentals: React.FC = () => {
         </Paper>
       )}
 
-      {/* Actions Bar - Row 1: Search and Status */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+      {/* Actions Bar - RESPONSIVE */}
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 1.5, sm: 2 },
+        mb: 2
+      }}>
+        {/* Botón Nueva Renta - Primero en móvil */}
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => navigate('/rentals/new')}
+          fullWidth={isMobile}
+          sx={{
+            order: { xs: 0, sm: 3 },
+            bgcolor: isDarkMode ? '#a78bfa' : '#8b5cf6',
+            color: '#fff',
+            minHeight: { xs: 48, sm: 40 },
+            '&:hover': { bgcolor: isDarkMode ? '#8b5cf6' : '#7c3aed' }
+          }}
+        >
+          Nueva Renta
+        </Button>
+
+        {/* Search */}
         <TextField
           id="rentals-search"
-          placeholder="Buscar por código, cliente, vehículo..."
+          placeholder="Buscar..."
           size="small"
           value={filters.search}
           onChange={(e) => handleFilterChange('search', e.target.value)}
-          sx={{ flexGrow: 1, minWidth: 250 }}
+          sx={{
+            order: { xs: 1, sm: 0 },
+            flexGrow: 1,
+            minWidth: { xs: '100%', sm: 200 },
+            '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } }
+          }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -285,10 +347,15 @@ const Rentals: React.FC = () => {
               </InputAdornment>
             )
           }}
-          aria-label="Buscar rentas por código, cliente o vehículo"
+          aria-label="Buscar rentas"
         />
 
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        {/* Status Filter */}
+        <FormControl size="small" sx={{
+          order: { xs: 2, sm: 1 },
+          minWidth: { xs: '100%', sm: 150 },
+          '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } }
+        }}>
           <InputLabel>Estado</InputLabel>
           <Select
             value={filters.status}
@@ -296,6 +363,7 @@ const Rentals: React.FC = () => {
             onChange={(e) => handleFilterChange('status', e.target.value)}
           >
             <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="pending_approval">Pendientes de Aprobación</MenuItem>
             <MenuItem value="active">Activas</MenuItem>
             <MenuItem value="reserved">Reservadas</MenuItem>
             <MenuItem value="completed">Completadas</MenuItem>
@@ -304,191 +372,329 @@ const Rentals: React.FC = () => {
           </Select>
         </FormControl>
 
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/rentals/new')}
-          sx={{
-            bgcolor: '#8b5cf6',
-            color: '#fff',
-            '&:hover': {
-              bgcolor: '#7c3aed'
-            }
-          }}
-        >
-          Nueva Renta
-        </Button>
-      </Box>
-
-      {/* Actions Bar - Row 2: Date Filters and Export */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-        <TextField
-          id="rentals-start-date"
-          label="Fecha Inicio"
-          type="date"
-          size="small"
-          value={filters.startDate}
-          onChange={(e) => handleFilterChange('startDate', e.target.value)}
-          sx={{ minWidth: 160 }}
-          InputLabelProps={{ shrink: true }}
-          aria-label="Filtrar por fecha de inicio"
-        />
-
-        <TextField
-          id="rentals-end-date"
-          label="Fecha Fin"
-          type="date"
-          size="small"
-          value={filters.endDate}
-          onChange={(e) => handleFilterChange('endDate', e.target.value)}
-          sx={{ minWidth: 160 }}
-          InputLabelProps={{ shrink: true }}
-          aria-label="Filtrar por fecha de fin"
-        />
-
-        {(filters.startDate || filters.endDate) && (
-          <IconButton
-            size="small"
-            onClick={handleClearDateFilters}
-            sx={{ color: 'text.secondary' }}
-            aria-label="Limpiar filtros de fecha"
+        {/* Botón expandir filtros en móvil */}
+        {isMobile && (
+          <Button
+            variant="text"
+            onClick={() => setFiltersExpanded(!filtersExpanded)}
+            endIcon={<ExpandMoreIcon sx={{ transform: filtersExpanded ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />}
+            sx={{ order: 3, color: 'text.secondary' }}
           >
-            <ClearIcon />
-          </IconButton>
+            Más filtros
+          </Button>
         )}
-
-        <Box sx={{ flexGrow: 1 }} />
-
-        <Button
-          variant="outlined"
-          startIcon={<ExportIcon />}
-          onClick={handleExportCSV}
-          disabled={rentals.length === 0}
-          sx={{
-            borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)',
-            color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
-            '&:hover': {
-              borderColor: '#8b5cf6',
-              color: '#8b5cf6'
-            }
-          }}
-        >
-          Exportar CSV
-        </Button>
       </Box>
 
-      {/* Table */}
-      <TableContainer
-        component={Paper}
-        sx={{
-          background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
-          borderRadius: 2,
-          border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-        }}
-      >
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell><strong>Código</strong></TableCell>
-              <TableCell><strong>Cliente</strong></TableCell>
-              <TableCell><strong>Vehículo</strong></TableCell>
-              <TableCell><strong>Fechas</strong></TableCell>
-              <TableCell><strong>Total</strong></TableCell>
-              <TableCell><strong>Estado</strong></TableCell>
-              <TableCell align="right"><strong>Acciones</strong></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rentals.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
-                  <RentalsIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                  <Typography variant="h6" color="text.secondary">
-                    No hay rentas registradas
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Crea una nueva renta para empezar
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              rentals.map((rental) => (
-                <TableRow
+      {/* Date Filters - Colapsables en móvil */}
+      <Collapse in={!isMobile || filtersExpanded}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 1.5, sm: 2 },
+          mb: 3,
+          alignItems: { sm: 'center' }
+        }}>
+          <TextField
+            id="rentals-start-date"
+            label="Fecha Inicio"
+            type="date"
+            size="small"
+            value={filters.startDate}
+            onChange={(e) => handleFilterChange('startDate', e.target.value)}
+            sx={{
+              minWidth: { xs: '100%', sm: 160 },
+              '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } }
+            }}
+            InputLabelProps={{ shrink: true }}
+            aria-label="Filtrar por fecha de inicio"
+          />
+
+          <TextField
+            id="rentals-end-date"
+            label="Fecha Fin"
+            type="date"
+            size="small"
+            value={filters.endDate}
+            onChange={(e) => handleFilterChange('endDate', e.target.value)}
+            sx={{
+              minWidth: { xs: '100%', sm: 160 },
+              '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } }
+            }}
+            InputLabelProps={{ shrink: true }}
+            aria-label="Filtrar por fecha de fin"
+          />
+
+          {(filters.startDate || filters.endDate) && (
+            <IconButton
+              size="small"
+              onClick={handleClearDateFilters}
+              sx={{ color: 'text.secondary', alignSelf: { xs: 'flex-start', sm: 'center' } }}
+              aria-label="Limpiar filtros de fecha"
+            >
+              <ClearIcon />
+            </IconButton>
+          )}
+
+          <Box sx={{ flexGrow: 1, display: { xs: 'none', sm: 'block' } }} />
+
+          <Button
+            variant="outlined"
+            startIcon={<ExportIcon />}
+            onClick={handleExportCSV}
+            disabled={rentals.length === 0}
+            fullWidth={isMobile}
+            sx={{
+              minHeight: { xs: 48, sm: 40 },
+              borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)',
+              color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
+              '&:hover': { borderColor: '#8b5cf6', color: '#8b5cf6' }
+            }}
+          >
+            Exportar CSV
+          </Button>
+        </Box>
+      </Collapse>
+
+      {/* RESPONSIVE: Cards en móvil, Tabla en desktop */}
+      {isMobile ? (
+        /* Vista de Cards para móvil */
+        <Box>
+          {rentals.length === 0 ? (
+            <Paper sx={{
+              p: 4,
+              textAlign: 'center',
+              background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
+              borderRadius: 2,
+              border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+            }}>
+              <RentalsIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+              <Typography variant="body1" color="text.secondary">
+                No hay rentas registradas
+              </Typography>
+            </Paper>
+          ) : (
+            <Stack spacing={1.5}>
+              {rentals.map((rental) => (
+                <Card
                   key={rental.id}
-                  hover
-                  sx={{ cursor: 'pointer' }}
                   onClick={() => navigate(`/rentals/${rental.id}`)}
+                  sx={{
+                    cursor: 'pointer',
+                    background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
+                    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                    borderRadius: 2,
+                    transition: 'transform 0.15s, border-color 0.15s',
+                    '&:hover': {
+                      borderColor: isDarkMode ? 'rgba(139, 92, 246, 0.5)' : '#8b5cf6',
+                    },
+                    '&:active': { transform: 'scale(0.98)' }
+                  }}
                 >
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="600">
-                      {rental.rental_code}
+                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                    {/* Header: Código + Estado + Menú */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                      <Box>
+                        <Typography variant="body2" fontWeight="700" sx={{ color: isDarkMode ? '#a78bfa' : '#8b5cf6' }}>
+                          {rental.rental_code}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {rental.days} días
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {getStatusChip(rental.status)}
+                        <IconButton
+                          size="small"
+                          onClick={(e) => { e.stopPropagation(); handleMenuClick(e, rental); }}
+                        >
+                          <MoreIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </Box>
+
+                    <Divider sx={{ my: 1.5, borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }} />
+
+                    {/* Info Grid */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Cliente
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
+                          {rental.customer?.first_name} {rental.customer?.last_name}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Vehículo
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
+                          {rental.vehicle?.brand} {rental.vehicle?.model}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {rental.vehicle?.plate}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Fechas
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                          {formatDate(rental.start_date)} - {formatDate(rental.end_date)}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Total
+                        </Typography>
+                        <Typography variant="body2" fontWeight="700" sx={{ color: themeStyles.status.success.main }}>
+                          {formatCurrency(rental.total_amount)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          )}
+
+          {/* Pagination móvil simplificada */}
+          {pagination.pages > 1 && (
+            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+              <TablePagination
+                component="div"
+                count={pagination.total}
+                page={filters.page - 1}
+                onPageChange={handleChangePage}
+                rowsPerPage={filters.limit}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[10, 20, 50]}
+                labelRowsPerPage=""
+                labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+                sx={{
+                  '& .MuiTablePagination-toolbar': { pl: 0, pr: 0 },
+                  '& .MuiTablePagination-selectLabel': { display: 'none' },
+                  '& .MuiTablePagination-select': { display: 'none' }
+                }}
+              />
+            </Box>
+          )}
+        </Box>
+      ) : (
+        /* Vista de Tabla para desktop */
+        <TableContainer
+          component={Paper}
+          sx={{
+            background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
+            borderRadius: 2,
+            border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+            overflowX: 'auto'
+          }}
+        >
+          <Table sx={{ minWidth: 800 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell><strong>Código</strong></TableCell>
+                <TableCell><strong>Cliente</strong></TableCell>
+                <TableCell><strong>Vehículo</strong></TableCell>
+                <TableCell><strong>Fechas</strong></TableCell>
+                <TableCell><strong>Total</strong></TableCell>
+                <TableCell><strong>Estado</strong></TableCell>
+                <TableCell align="right"><strong>Acciones</strong></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rentals.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                    <RentalsIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                    <Typography variant="h6" color="text.secondary">
+                      No hay rentas registradas
                     </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {rental.customer?.first_name} {rental.customer?.last_name}
+                    <Typography variant="body2" color="text.secondary">
+                      Crea una nueva renta para empezar
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {rental.customer?.email}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {rental.vehicle?.brand} {rental.vehicle?.model}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {rental.vehicle?.plate}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {formatDate(rental.start_date)}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {formatDate(rental.end_date)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="600">
-                      {formatCurrency(rental.total_amount)}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {rental.days} días
-                    </Typography>
-                  </TableCell>
-                  <TableCell>{getStatusChip(rental.status)}</TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMenuClick(e, rental);
-                      }}
-                    >
-                      <MoreIcon />
-                    </IconButton>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                rentals.map((rental) => (
+                  <TableRow
+                    key={rental.id}
+                    hover
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/rentals/${rental.id}`)}
+                  >
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="600">
+                        {rental.rental_code}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {rental.customer?.first_name} {rental.customer?.last_name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {rental.customer?.email}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {rental.vehicle?.brand} {rental.vehicle?.model}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {rental.vehicle?.plate}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {formatDate(rental.start_date)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatDate(rental.end_date)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="600">
+                        {formatCurrency(rental.total_amount)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {rental.days} días
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{getStatusChip(rental.status)}</TableCell>
+                    <TableCell align="right">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMenuClick(e, rental);
+                        }}
+                      >
+                        <MoreIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
 
-        {/* Pagination */}
-        {pagination.pages > 1 && (
-          <TablePagination
-            component="div"
-            count={pagination.total}
-            page={filters.page - 1}
-            onPageChange={handleChangePage}
-            rowsPerPage={filters.limit}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[10, 20, 50, 100]}
-            labelRowsPerPage="Filas por página:"
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-          />
-        )}
-      </TableContainer>
+          {/* Pagination */}
+          {pagination.pages > 1 && (
+            <TablePagination
+              component="div"
+              count={pagination.total}
+              page={filters.page - 1}
+              onPageChange={handleChangePage}
+              rowsPerPage={filters.limit}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[10, 20, 50, 100]}
+              labelRowsPerPage="Filas por página:"
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+            />
+          )}
+        </TableContainer>
+      )}
 
       {/* Action Menu */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
@@ -499,7 +705,7 @@ const Rentals: React.FC = () => {
           Editar
         </MenuItem>
         {selectedRental?.status === 'active' && (
-          <MenuItem onClick={handleMenuClose}>
+          <MenuItem onClick={() => { navigate(`/returns/new?rental=${selectedRental?.id}`); handleMenuClose(); }}>
             Completar Renta
           </MenuItem>
         )}

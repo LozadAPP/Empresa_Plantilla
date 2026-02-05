@@ -135,12 +135,14 @@ export const RETURNS_COLUMNS: ExportColumn[] = [
   { key: 'rental.vehicle.model', label: 'Modelo Vehículo' },
   { key: 'rental.vehicle.plate', label: 'Placa' },
   { key: 'return_date', label: 'Fecha Devolución', formatter: formatDateForCSV },
-  { key: 'condition', label: 'Condición' },
+  { key: 'vehicle_condition', label: 'Condición' },
   { key: 'end_mileage', label: 'Kilometraje Final' },
   { key: 'fuel_level', label: 'Nivel Combustible' },
+  { key: 'is_on_time', label: 'A Tiempo' },
+  { key: 'days_late', label: 'Días Retraso' },
   { key: 'late_fee', label: 'Cargo por Retraso', formatter: formatCurrencyForCSV },
-  { key: 'damage_fee', label: 'Cargo por Daños', formatter: formatCurrencyForCSV },
-  { key: 'total_charges', label: 'Total Cargos', formatter: formatCurrencyForCSV }
+  { key: 'damage_cost', label: 'Cargo por Daños', formatter: formatCurrencyForCSV },
+  { key: 'total_penalty', label: 'Total Penalidades', formatter: formatCurrencyForCSV }
 ];
 
 export const PAYMENTS_COLUMNS: ExportColumn[] = [
@@ -151,7 +153,7 @@ export const PAYMENTS_COLUMNS: ExportColumn[] = [
   { key: 'amount', label: 'Monto', formatter: formatCurrencyForCSV },
   { key: 'payment_method', label: 'Método de Pago' },
   { key: 'payment_type', label: 'Tipo de Pago' },
-  { key: 'payment_date', label: 'Fecha de Pago', formatter: formatDateForCSV },
+  { key: 'transaction_date', label: 'Fecha de Pago', formatter: formatDateForCSV },
   { key: 'reference_number', label: 'Referencia' },
   { key: 'status', label: 'Estado' }
 ];

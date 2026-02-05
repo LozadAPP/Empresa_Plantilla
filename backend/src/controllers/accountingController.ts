@@ -324,13 +324,31 @@ export const approveTransaction = async (req: Request, res: Response) => {
       });
     }
 
-    // Get the associated account
-    const account = await Account.findByPk(transaction.accountId);
-    if (!account) {
+    // Get the associated account (source account)
+    const sourceAccount = await Account.findByPk(transaction.accountId);
+    if (!sourceAccount) {
       return res.status(404).json({
         success: false,
         message: 'Associated account not found',
       });
+    }
+
+    // For transfers, also get the destination account
+    let destinationAccount = null;
+    if (transaction.transactionType === 'transfer') {
+      if (!transaction.destinationAccountId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Transfer transactions require a destination account',
+        });
+      }
+      destinationAccount = await Account.findByPk(transaction.destinationAccountId);
+      if (!destinationAccount) {
+        return res.status(404).json({
+          success: false,
+          message: 'Destination account not found',
+        });
+      }
     }
 
     // Use database transaction to ensure atomicity
@@ -344,12 +362,22 @@ export const approveTransaction = async (req: Request, res: Response) => {
         approvedAt: new Date(),
       }, { transaction: t });
 
-      // Update account balance
-      const newBalance = transaction.transactionType === 'income'
-        ? Number(account.balance) + Number(transaction.amount)
-        : Number(account.balance) - Number(transaction.amount);
+      // Update account balance based on transaction type
+      if (transaction.transactionType === 'transfer' && destinationAccount) {
+        // For transfers: debit source, credit destination
+        const newSourceBalance = Number(sourceAccount.balance) - Number(transaction.amount);
+        const newDestBalance = Number(destinationAccount.balance) + Number(transaction.amount);
 
-      await account.update({ balance: newBalance }, { transaction: t });
+        await sourceAccount.update({ balance: newSourceBalance }, { transaction: t });
+        await destinationAccount.update({ balance: newDestBalance }, { transaction: t });
+      } else {
+        // For income/expense: single account update
+        const newBalance = transaction.transactionType === 'income'
+          ? Number(sourceAccount.balance) + Number(transaction.amount)
+          : Number(sourceAccount.balance) - Number(transaction.amount);
+
+        await sourceAccount.update({ balance: newBalance }, { transaction: t });
+      }
 
       // Commit the transaction
       await t.commit();

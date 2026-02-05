@@ -244,9 +244,9 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                 borderRadius: 2,
                 textTransform: 'none',
                 fontWeight: 600,
-                backgroundColor: '#8b5cf6',
+                backgroundColor: isDarkMode ? '#a78bfa' : '#8b5cf6',
                 '&:hover': {
-                  backgroundColor: '#7c3aed',
+                  backgroundColor: isDarkMode ? '#8b5cf6' : '#7c3aed',
                 },
               }}
             >
@@ -337,7 +337,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
             >
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <LocationIcon sx={{ color: '#8b5cf6' }} />
+                  <LocationIcon sx={{ color: isDarkMode ? '#a78bfa' : '#8b5cf6' }} />
                   <Typography variant="h6" fontWeight={700}>
                     Ubicación Actual
                   </Typography>
@@ -393,7 +393,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
             >
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <MoneyIcon sx={{ color: '#10b981' }} />
+                  <MoneyIcon sx={{ color: isDarkMode ? '#34d399' : '#10b981' }} />
                   <Typography variant="h6" fontWeight={700}>
                     Valores
                   </Typography>
@@ -446,7 +446,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
             >
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <CalendarIcon sx={{ color: '#3b82f6' }} />
+                  <CalendarIcon sx={{ color: isDarkMode ? '#60a5fa' : '#3b82f6' }} />
                   <Typography variant="h6" fontWeight={700}>
                     Fechas Importantes
                   </Typography>
@@ -527,7 +527,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
           <Grid item xs={12}>
             <Divider sx={{ my: 2 }} />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-              <HistoryIcon sx={{ color: '#8b5cf6' }} />
+              <HistoryIcon sx={{ color: isDarkMode ? '#a78bfa' : '#8b5cf6' }} />
               <Typography variant="h6" fontWeight={700}>
                 Historial de Movimientos
               </Typography>
@@ -667,7 +667,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                             sx={{
                               textTransform: 'none',
                               fontSize: '0.75rem',
-                              color: '#8b5cf6',
+                              color: isDarkMode ? '#a78bfa' : '#8b5cf6',
                               '&:hover': {
                                 backgroundColor: isDarkMode
                                   ? 'rgba(139, 92, 246, 0.1)'

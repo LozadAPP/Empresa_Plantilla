@@ -357,7 +357,7 @@ const MovementForm: React.FC<MovementFormProps> = ({
               required={!useCustomLocation}
               helperText={useCustomLocation ? 'Complete los campos de ubicación personalizada' : 'Seleccione una sucursal o elija "Personalizado"'}
             >
-              <MenuItem value="custom" sx={{ fontStyle: 'italic', color: '#8b5cf6' }}>
+              <MenuItem value="custom" sx={{ fontStyle: 'italic', color: isDarkMode ? '#a78bfa' : '#8b5cf6' }}>
                 ✏️ Personalizado (escribir ubicación)
               </MenuItem>
               <MenuItem disabled divider sx={{ my: 1 }}>
@@ -477,9 +477,9 @@ const MovementForm: React.FC<MovementFormProps> = ({
               px: 3,
               textTransform: 'none',
               fontWeight: 600,
-              backgroundColor: '#8b5cf6',
+              backgroundColor: isDarkMode ? '#a78bfa' : '#8b5cf6',
               '&:hover': {
-                backgroundColor: '#7c3aed',
+                backgroundColor: isDarkMode ? '#8b5cf6' : '#7c3aed',
               },
             }}
           >

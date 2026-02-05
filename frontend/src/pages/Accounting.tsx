@@ -31,7 +31,11 @@ import {
   InputLabel,
   Select,
   Alert,
-  Collapse
+  Collapse,
+  useMediaQuery,
+  useTheme,
+  Stack,
+  Divider
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import {
@@ -64,6 +68,8 @@ const Accounting: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -436,11 +442,11 @@ const Accounting: React.FC = () => {
             startIcon={<DownloadIcon />}
             onClick={handleExportToExcel}
             sx={{
-              borderColor: isDarkMode ? '#8b5cf6' : '#8b5cf6',
-              color: isDarkMode ? '#8b5cf6' : '#8b5cf6',
+              borderColor: theme.palette.primary.main,
+              color: theme.palette.primary.main,
               '&:hover': {
-                borderColor: isDarkMode ? '#7c3aed' : '#7c3aed',
-                bgcolor: alpha('#8b5cf6', 0.1)
+                borderColor: theme.palette.primary.dark,
+                bgcolor: alpha(theme.palette.primary.main, 0.1)
               }
             }}
           >
@@ -451,10 +457,10 @@ const Accounting: React.FC = () => {
             startIcon={<AddIcon />}
             onClick={() => navigate('/accounting/transaction/new')}
             sx={{
-              bgcolor: isDarkMode ? '#8b5cf6' : '#8b5cf6',
+              bgcolor: theme.palette.primary.main,
               color: '#fff',
               '&:hover': {
-                bgcolor: isDarkMode ? '#7c3aed' : '#7c3aed'
+                bgcolor: theme.palette.primary.dark
               }
             }}
           >
@@ -713,105 +719,216 @@ const Accounting: React.FC = () => {
 
       {/* Accounts Tab */}
       <TabPanel value={tabValue} index={0}>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : alpha('#8b5cf6', 0.1) }}>
-                <TableCell sx={{ fontWeight: 700 }}>Código</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Nombre de Cuenta</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Saldo</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {hierarchicalAccounts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No se encontraron cuentas
-                    </Typography>
-                  </TableCell>
+        {isMobile ? (
+          /* Vista de Cards para móvil - Cuentas */
+          <Box>
+            {hierarchicalAccounts.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center', bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff' }}>
+                <AccountBalanceIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                <Typography color="text.secondary">No se encontraron cuentas</Typography>
+              </Paper>
+            ) : (
+              <Stack spacing={1.5}>
+                {hierarchicalAccounts.map((account) => (
+                  <Card
+                    key={account.id}
+                    sx={{
+                      bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
+                      border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                    }}
+                  >
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                        <Box>
+                          <Typography variant="body2" fontWeight={700}>{account.accountName}</Typography>
+                          <Typography variant="caption" color="text.secondary">{account.accountCode}</Typography>
+                        </Box>
+                        <IconButton size="small" onClick={(e) => handleMenuOpen(e, account)}>
+                          <MoreVertIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                      <Divider sx={{ my: 1, borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Chip
+                          label={getAccountTypeConfig(account.accountType).label}
+                          size="small"
+                          sx={{
+                            bgcolor: alpha(getAccountTypeConfig(account.accountType).color, 0.1),
+                            color: getAccountTypeConfig(account.accountType).color,
+                            fontWeight: 600,
+                            height: 24,
+                            fontSize: '0.7rem'
+                          }}
+                        />
+                        <Typography variant="body2" fontWeight={600}>
+                          ${(account.balance || 0).toLocaleString()}
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            )}
+          </Box>
+        ) : (
+          /* Vista de Tabla para desktop - Cuentas */
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : alpha('#8b5cf6', 0.1) }}>
+                  <TableCell sx={{ fontWeight: 700 }}>Código</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Nombre de Cuenta</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Saldo</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }} align="right">Acciones</TableCell>
                 </TableRow>
-              ) : (
-                hierarchicalAccounts.map(account => renderAccountRow(account))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                {hierarchicalAccounts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        No se encontraron cuentas
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  hierarchicalAccounts.map(account => renderAccountRow(account))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </TabPanel>
 
       {/* Transactions Tab */}
       <TabPanel value={tabValue} index={1}>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : alpha('#8b5cf6', 0.1) }}>
-                <TableCell sx={{ fontWeight: 700 }}>Código</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Descripción</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Monto</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredTransactions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No se encontraron transacciones
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredTransactions.map((transaction) => (
-                  <TableRow key={transaction.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={600}>
-                        {transaction.transactionCode}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {format(new Date(transaction.transactionDate), "d MMM yyyy", { locale: es })}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {getTransactionTypeIcon(transaction.transactionType)}
-                        <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>
-                          {transaction.transactionType}
+        {isMobile ? (
+          /* Vista de Cards para móvil - Transacciones */
+          <Box>
+            {filteredTransactions.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center', bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff' }}>
+                <SwapHorizIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                <Typography color="text.secondary">No se encontraron transacciones</Typography>
+              </Paper>
+            ) : (
+              <Stack spacing={1.5}>
+                {filteredTransactions.map((transaction) => (
+                  <Card
+                    key={transaction.id}
+                    sx={{
+                      bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
+                      border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                    }}
+                  >
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {getTransactionTypeIcon(transaction.transactionType)}
+                          <Box>
+                            <Typography variant="body2" fontWeight={700}>{transaction.transactionCode}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {format(new Date(transaction.transactionDate), "d MMM yyyy", { locale: es })}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <IconButton size="small" onClick={(e) => handleMenuOpen(e, transaction)}>
+                          <MoreVertIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                      {transaction.description && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                          {transaction.description}
+                        </Typography>
+                      )}
+                      <Divider sx={{ my: 1, borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        {getTransactionStatusChip(transaction.status)}
+                        <Typography variant="body2" fontWeight={700} sx={{
+                          color: transaction.transactionType === 'income' ? '#10b981' :
+                                 transaction.transactionType === 'expense' ? '#ef4444' : 'text.primary'
+                        }}>
+                          {transaction.transactionType === 'expense' ? '-' : ''}${transaction.amount.toLocaleString()}
                         </Typography>
                       </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{transaction.description || '-'}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={600}>
-                        ${transaction.amount.toLocaleString()}
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            )}
+          </Box>
+        ) : (
+          /* Vista de Tabla para desktop - Transacciones */
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : alpha('#8b5cf6', 0.1) }}>
+                  <TableCell sx={{ fontWeight: 700 }}>Código</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Descripción</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Monto</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }} align="right">Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredTransactions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        No se encontraron transacciones
                       </Typography>
                     </TableCell>
-                    <TableCell>
-                      {getTransactionStatusChip(transaction.status)}
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => handleMenuOpen(e, transaction)}
-                      >
-                        <MoreVertIcon />
-                      </IconButton>
-                    </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                ) : (
+                  filteredTransactions.map((transaction) => (
+                    <TableRow key={transaction.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600}>
+                          {transaction.transactionCode}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {format(new Date(transaction.transactionDate), "d MMM yyyy", { locale: es })}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {getTransactionTypeIcon(transaction.transactionType)}
+                          <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>
+                            {transaction.transactionType}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{transaction.description || '-'}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600}>
+                          ${transaction.amount.toLocaleString()}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {getTransactionStatusChip(transaction.status)}
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleMenuOpen(e, transaction)}
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </TabPanel>
 
       {/* Context Menu */}
@@ -1005,8 +1122,8 @@ const Accounting: React.FC = () => {
             onClick={handleSaveAccount}
             disabled={!accountForm.accountCode || !accountForm.accountName}
             sx={{
-              bgcolor: '#8b5cf6',
-              '&:hover': { bgcolor: '#7c3aed' }
+              bgcolor: theme.palette.primary.main,
+              '&:hover': { bgcolor: theme.palette.primary.dark }
             }}
           >
             {editMode ? 'Actualizar' : 'Crear'} Cuenta

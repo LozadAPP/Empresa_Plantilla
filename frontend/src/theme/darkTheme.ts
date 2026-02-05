@@ -31,8 +31,8 @@ const colors = {
   successLight: '#c9fbd5',
   warning: '#ffb547',
   warningLight: '#fff5cc',
-  error: '#e31a1a',
-  errorLight: '#ffd6d6',
+  error: '#ff5252',
+  errorLight: '#ff8a80',
   info: '#0075ff',
   infoLight: '#21d4fd',
 
@@ -94,48 +94,63 @@ const darkTheme = createTheme({
   },
   typography: {
     fontFamily: '"Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif',
+    // RESPONSIVE: clamp(min, preferred, max) para escalado fluido
     h1: {
-      fontSize: '2.5rem',
+      fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', // 28px - 40px
       fontWeight: 700,
       letterSpacing: '-0.02em',
+      lineHeight: 1.2,
     },
     h2: {
-      fontSize: '2rem',
+      fontSize: 'clamp(1.5rem, 3.5vw, 2rem)', // 24px - 32px
       fontWeight: 700,
       letterSpacing: '-0.02em',
+      lineHeight: 1.25,
     },
     h3: {
-      fontSize: '1.75rem',
+      fontSize: 'clamp(1.25rem, 3vw, 1.75rem)', // 20px - 28px
       fontWeight: 700,
       letterSpacing: '-0.01em',
+      lineHeight: 1.3,
     },
     h4: {
-      fontSize: '1.5rem',
+      fontSize: 'clamp(1.125rem, 2.5vw, 1.5rem)', // 18px - 24px
       fontWeight: 700,
+      lineHeight: 1.35,
     },
     h5: {
-      fontSize: '1.25rem',
+      fontSize: 'clamp(1rem, 2vw, 1.25rem)', // 16px - 20px
       fontWeight: 600,
+      lineHeight: 1.4,
     },
     h6: {
-      fontSize: '1.125rem',
+      fontSize: 'clamp(0.9375rem, 1.5vw, 1.125rem)', // 15px - 18px
       fontWeight: 600,
+      lineHeight: 1.45,
     },
     body1: {
-      fontSize: '0.875rem',
+      fontSize: 'clamp(0.8125rem, 1.2vw, 0.875rem)', // 13px - 14px
       fontWeight: 400,
+      lineHeight: 1.6,
     },
     body2: {
-      fontSize: '0.8rem',
+      fontSize: 'clamp(0.75rem, 1vw, 0.8rem)', // 12px - 12.8px
       fontWeight: 400,
+      lineHeight: 1.5,
     },
     caption: {
-      fontSize: '0.75rem',
+      fontSize: 'clamp(0.6875rem, 0.9vw, 0.75rem)', // 11px - 12px
       fontWeight: 400,
+      lineHeight: 1.4,
+    },
+    button: {
+      fontSize: 'clamp(0.8125rem, 1.2vw, 0.875rem)', // 13px - 14px
+      fontWeight: 600,
+      textTransform: 'none' as const,
     },
   },
   shape: {
-    borderRadius: 20,
+    borderRadius: 16, // Estandarizado con lightTheme
   },
   components: {
     MuiCssBaseline: {

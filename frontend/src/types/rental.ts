@@ -3,6 +3,7 @@
  */
 
 export enum RentalStatus {
+  PENDING_APPROVAL = 'pending_approval',  // Requiere aprobación de supervisor
   RESERVED = 'reserved',
   ACTIVE = 'active',
   COMPLETED = 'completed',
@@ -39,6 +40,13 @@ export interface Rental {
   extras_amount?: number;
   total_amount: number;
   deposit_amount?: number;
+  shipping_cost?: number;
+  price_adjustment?: number;
+  adjustment_reason?: string;
+  // Campos de aprobación
+  approved_by?: number;
+  approved_at?: Date | string;
+  rejection_reason?: string;
   payment_method?: PaymentMethod;
   status: RentalStatus;
   created_by?: number;
@@ -112,6 +120,9 @@ export interface CreateRentalDTO {
   insurance_amount?: number;
   extras_amount?: number;
   deposit_amount?: number;
+  shipping_cost?: number;
+  price_adjustment?: number;
+  adjustment_reason?: string;
   payment_method?: PaymentMethod;
   start_mileage?: number;
   fuel_level_start?: string;
@@ -125,6 +136,9 @@ export interface UpdateRentalDTO {
   discount_percentage?: number;
   insurance_amount?: number;
   extras_amount?: number;
+  shipping_cost?: number;
+  price_adjustment?: number;
+  adjustment_reason?: string;
   notes?: string;
 }
 

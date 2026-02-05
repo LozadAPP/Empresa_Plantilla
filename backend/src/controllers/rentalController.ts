@@ -3,11 +3,15 @@ import { Op } from 'sequelize';
 import Rental from '../models/Rental';
 import Vehicle from '../models/Vehicle';
 import Customer from '../models/Customer';
+import Alert from '../models/Alert';
 import { RentalStatus, PaymentMethod } from '../models/Rental';
 import { VehicleStatus } from '../models/Vehicle';
 import { RentalCalculator } from '../services/rentalCalculator';
 import { CodeGenerator } from '../services/codeGenerator';
 import { RentalCascadeService } from '../services/rentalCascade';
+
+// Roles que pueden crear rentas sin necesidad de aprobación
+const ROLES_SIN_APROBACION = new Set(['admin', 'director_general', 'jefe_ventas']);
 
 /**
  * Controlador de Rentas
@@ -134,6 +138,9 @@ export class RentalController {
         discount_percentage,
         insurance_amount,
         extras_amount,
+        shipping_cost,
+        price_adjustment,
+        adjustment_reason,
         deposit_amount,
         payment_method,
         start_mileage,
@@ -242,11 +249,19 @@ export class RentalController {
         tax_percentage,
         discount_percentage,
         insurance_amount,
-        extras_amount
+        extras_amount,
+        shipping_cost,
+        price_adjustment
       });
 
       // Generar código único de renta
       const rentalCode = await CodeGenerator.generateRentalCode();
+
+      // Determinar si necesita aprobación basado en el rol del creador
+      const userRole = (req as any).user?.role;
+      const userId = (req as any).user?.id;
+      const userName = (req as any).user?.name || (req as any).user?.email || 'Usuario';
+      const necesitaAprobacion = !ROLES_SIN_APROBACION.has(userRole);
 
       // Crear la renta
       const rental = await Rental.create({
@@ -266,28 +281,62 @@ export class RentalController {
         discount_amount: calculation.discount_amount,
         insurance_amount: calculation.insurance_amount,
         extras_amount: calculation.extras_amount,
+        shipping_cost: calculation.shipping_cost,
+        price_adjustment: calculation.price_adjustment,
+        adjustment_reason: adjustment_reason || null,
         total_amount: calculation.total_amount,
         deposit_amount: deposit_amount || 0,
         payment_method: payment_method as PaymentMethod,
-        status: RentalStatus.ACTIVE,
-        created_by: (req as any).user?.id, // Asume middleware de autenticación
+        status: necesitaAprobacion ? RentalStatus.PENDING_APPROVAL : RentalStatus.ACTIVE,
+        created_by: userId,
         start_mileage: start_mileage || vehicle.mileage,
         fuel_level_start: fuel_level_start || 'full',
         notes
       });
 
-      // Ejecutar cascadas automáticas en segundo plano
-      // No esperamos a que terminen para responder al cliente
-      RentalCascadeService.onRentalCreated(rental, (req as any).user?.id)
-        .catch(error => {
-          console.error('[RENTAL] Error en cascadas:', error);
+      // Lógica según si necesita aprobación o no
+      if (necesitaAprobacion) {
+        // Crear alerta para aprobadores
+        await Alert.create({
+          alertType: 'rental_pending_approval',
+          severity: 'warning',
+          title: `Nueva renta pendiente: ${rental.rental_code}`,
+          message: `${userName} ha creado una renta que requiere aprobación. Cliente: ${customer.name || customer.contact_person}, Vehículo: ${vehicle.make} ${vehicle.model} (${vehicle.license_plate}), Total: $${calculation.total_amount.toFixed(2)}`,
+          entityType: 'rental',
+          entityId: rental.id.toString(),
+          metadata: JSON.stringify({
+            rentalCode: rental.rental_code,
+            customerId: rental.customer_id,
+            customerName: customer.name || customer.contact_person,
+            vehicleId: rental.vehicle_id,
+            vehiclePlate: vehicle.license_plate,
+            totalAmount: rental.total_amount,
+            createdBy: userId,
+            createdByName: userName
+          })
         });
+        console.log(`[RENTAL] Renta ${rental.rental_code} creada con estado PENDING_APPROVAL`);
 
-      res.status(201).json({
-        success: true,
-        message: 'Renta creada exitosamente. Se están procesando las notificaciones.',
-        data: rental
-      });
+        res.status(201).json({
+          success: true,
+          message: 'Renta creada exitosamente. Pendiente de aprobación por un supervisor.',
+          data: rental,
+          requiresApproval: true
+        });
+      } else {
+        // Ejecutar cascadas automáticas (marcar vehículo como rentado, etc.)
+        RentalCascadeService.onRentalCreated(rental, userId)
+          .catch(error => {
+            console.error('[RENTAL] Error en cascadas:', error);
+          });
+
+        res.status(201).json({
+          success: true,
+          message: 'Renta creada exitosamente. Se están procesando las notificaciones.',
+          data: rental,
+          requiresApproval: false
+        });
+      }
 
     } catch (error) {
       console.error('[RENTAL] Error creando renta:', error);
@@ -324,19 +373,26 @@ export class RentalController {
         });
       }
 
-      // Si se actualizan fechas, recalcular montos
-      if (updates.start_date || updates.end_date) {
+      // Si se actualizan fechas o montos, recalcular
+      const needsRecalculation = updates.start_date || updates.end_date ||
+        updates.daily_rate !== undefined || updates.discount_percentage !== undefined ||
+        updates.insurance_amount !== undefined || updates.extras_amount !== undefined ||
+        updates.shipping_cost !== undefined || updates.price_adjustment !== undefined;
+
+      if (needsRecalculation) {
         const startDate = new Date(updates.start_date || rental.start_date);
         const endDate = new Date(updates.end_date || rental.end_date);
 
         const calculation = RentalCalculator.calculate({
           start_date: startDate,
           end_date: endDate,
-          daily_rate: updates.daily_rate || rental.daily_rate,
-          tax_percentage: updates.tax_percentage || rental.tax_percentage,
-          discount_percentage: updates.discount_percentage || rental.discount_percentage,
-          insurance_amount: updates.insurance_amount || rental.insurance_amount,
-          extras_amount: updates.extras_amount || rental.extras_amount
+          daily_rate: updates.daily_rate ?? rental.daily_rate,
+          tax_percentage: updates.tax_percentage ?? rental.tax_percentage,
+          discount_percentage: updates.discount_percentage ?? rental.discount_percentage,
+          insurance_amount: updates.insurance_amount ?? rental.insurance_amount,
+          extras_amount: updates.extras_amount ?? rental.extras_amount,
+          shipping_cost: updates.shipping_cost ?? rental.shipping_cost,
+          price_adjustment: updates.price_adjustment ?? rental.price_adjustment
         });
 
         Object.assign(updates, {
@@ -344,6 +400,8 @@ export class RentalController {
           subtotal: calculation.subtotal,
           tax_amount: calculation.tax_amount,
           discount_amount: calculation.discount_amount,
+          shipping_cost: calculation.shipping_cost,
+          price_adjustment: calculation.price_adjustment,
           total_amount: calculation.total_amount,
           updated_at: new Date()
         });
@@ -415,6 +473,243 @@ export class RentalController {
       res.status(500).json({
         success: false,
         message: 'Error al cancelar renta',
+      });
+    }
+  }
+
+  // ============================================
+  // MÉTODOS DE APROBACIÓN DE RENTAS
+  // ============================================
+
+  /**
+   * GET /api/rentals/pending-approvals
+   * Obtener rentas pendientes de aprobación
+   */
+  static async getPendingApprovals(req: Request, res: Response) {
+    try {
+      const rentals = await Rental.findAll({
+        where: { status: RentalStatus.PENDING_APPROVAL },
+        include: [
+          { model: Customer, as: 'customer' },
+          { model: Vehicle, as: 'vehicle' }
+        ],
+        order: [['created_at', 'ASC']] // Más antiguas primero
+      });
+
+      res.json({
+        success: true,
+        data: rentals,
+        count: rentals.length
+      });
+    } catch (error) {
+      console.error('[RENTAL] Error obteniendo rentas pendientes:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener rentas pendientes de aprobación'
+      });
+    }
+  }
+
+  /**
+   * POST /api/rentals/:id/approve
+   * Aprobar una renta pendiente
+   */
+  static async approve(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const userId = (req as any).user?.id;
+      const userName = (req as any).user?.name || (req as any).user?.email || 'Supervisor';
+
+      const rental = await Rental.findByPk(id, {
+        include: [
+          { model: Customer, as: 'customer' },
+          { model: Vehicle, as: 'vehicle' }
+        ]
+      });
+
+      if (!rental) {
+        return res.status(404).json({
+          success: false,
+          message: 'Renta no encontrada'
+        });
+      }
+
+      if (rental.status !== RentalStatus.PENDING_APPROVAL) {
+        return res.status(400).json({
+          success: false,
+          message: `Solo se pueden aprobar rentas pendientes. Estado actual: ${rental.status}`
+        });
+      }
+
+      // Verificar que el vehículo sigue disponible
+      const vehicle = await Vehicle.findByPk(rental.vehicle_id);
+      if (vehicle?.status !== VehicleStatus.AVAILABLE) {
+        return res.status(400).json({
+          success: false,
+          message: 'El vehículo ya no está disponible. La renta no puede ser aprobada.'
+        });
+      }
+
+      // Actualizar renta a ACTIVE
+      await rental.update({
+        status: RentalStatus.ACTIVE,
+        approved_by: userId,
+        approved_at: new Date()
+      });
+
+      // Ejecutar cascadas (marcar vehículo como rentado, etc.)
+      await RentalCascadeService.onRentalCreated(rental, userId);
+
+      // Crear alerta de aprobación para el creador
+      await Alert.create({
+        alertType: 'rental_approved',
+        severity: 'info',
+        title: `Renta aprobada: ${rental.rental_code}`,
+        message: `Tu renta ${rental.rental_code} ha sido aprobada por ${userName} y está activa.`,
+        entityType: 'rental',
+        entityId: rental.id.toString(),
+        assignedTo: rental.created_by,
+        metadata: JSON.stringify({
+          rentalCode: rental.rental_code,
+          approvedBy: userId,
+          approvedByName: userName,
+          approvedAt: new Date()
+        })
+      });
+
+      // Resolver la alerta de pendiente
+      await Alert.update(
+        {
+          isResolved: true,
+          resolvedBy: userId,
+          resolvedAt: new Date()
+        },
+        {
+          where: {
+            entityType: 'rental',
+            entityId: rental.id.toString(),
+            alertType: 'rental_pending_approval',
+            isResolved: false
+          }
+        }
+      );
+
+      console.log(`[RENTAL] Renta ${rental.rental_code} APROBADA por usuario ${userId}`);
+
+      res.json({
+        success: true,
+        message: 'Renta aprobada exitosamente',
+        data: rental
+      });
+
+    } catch (error) {
+      console.error('[RENTAL] Error aprobando renta:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al aprobar renta'
+      });
+    }
+  }
+
+  /**
+   * POST /api/rentals/:id/reject
+   * Rechazar una renta pendiente
+   */
+  static async reject(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const userId = (req as any).user?.id;
+      const userName = (req as any).user?.name || (req as any).user?.email || 'Supervisor';
+
+      // Validar razón
+      if (!reason || reason.trim().length < 10) {
+        return res.status(400).json({
+          success: false,
+          message: 'Debe proporcionar una razón de al menos 10 caracteres'
+        });
+      }
+
+      const rental = await Rental.findByPk(id, {
+        include: [
+          { model: Customer, as: 'customer' },
+          { model: Vehicle, as: 'vehicle' }
+        ]
+      });
+
+      if (!rental) {
+        return res.status(404).json({
+          success: false,
+          message: 'Renta no encontrada'
+        });
+      }
+
+      if (rental.status !== RentalStatus.PENDING_APPROVAL) {
+        return res.status(400).json({
+          success: false,
+          message: `Solo se pueden rechazar rentas pendientes. Estado actual: ${rental.status}`
+        });
+      }
+
+      // Actualizar renta a CANCELLED con razón de rechazo
+      await rental.update({
+        status: RentalStatus.CANCELLED,
+        approved_by: userId,
+        approved_at: new Date(),
+        rejection_reason: reason.trim(),
+        notes: rental.notes
+          ? `${rental.notes}\n\nRechazada por ${userName}: ${reason}`
+          : `Rechazada por ${userName}: ${reason}`
+      });
+
+      // Crear alerta de rechazo para el creador
+      await Alert.create({
+        alertType: 'rental_rejected',
+        severity: 'critical',
+        title: `Renta rechazada: ${rental.rental_code}`,
+        message: `Tu renta ${rental.rental_code} ha sido rechazada por ${userName}. Razón: ${reason}`,
+        entityType: 'rental',
+        entityId: rental.id.toString(),
+        assignedTo: rental.created_by,
+        metadata: JSON.stringify({
+          rentalCode: rental.rental_code,
+          rejectedBy: userId,
+          rejectedByName: userName,
+          rejectionReason: reason,
+          rejectedAt: new Date()
+        })
+      });
+
+      // Resolver la alerta de pendiente
+      await Alert.update(
+        {
+          isResolved: true,
+          resolvedBy: userId,
+          resolvedAt: new Date()
+        },
+        {
+          where: {
+            entityType: 'rental',
+            entityId: rental.id.toString(),
+            alertType: 'rental_pending_approval',
+            isResolved: false
+          }
+        }
+      );
+
+      console.log(`[RENTAL] Renta ${rental.rental_code} RECHAZADA por usuario ${userId}. Razón: ${reason}`);
+
+      res.json({
+        success: true,
+        message: 'Renta rechazada',
+        data: rental
+      });
+
+    } catch (error) {
+      console.error('[RENTAL] Error rechazando renta:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al rechazar renta'
       });
     }
   }

@@ -125,9 +125,9 @@ const InventoryManagement: React.FC = () => {
             py: 1.5,
             textTransform: 'none',
             fontWeight: 600,
-            backgroundColor: '#8b5cf6',
+            backgroundColor: isDarkMode ? '#a78bfa' : '#8b5cf6',
             '&:hover': {
-              backgroundColor: '#7c3aed',
+              backgroundColor: isDarkMode ? '#8b5cf6' : '#7c3aed',
             },
           }}
         >
@@ -161,7 +161,7 @@ const InventoryManagement: React.FC = () => {
                   minHeight: 120,
                 }}
               >
-                <CircularProgress size={32} sx={{ color: '#8b5cf6' }} />
+                <CircularProgress size={32} sx={{ color: isDarkMode ? '#a78bfa' : '#8b5cf6' }} />
               </Paper>
             ))}
           </>

@@ -323,7 +323,7 @@ const MapView: React.FC<MapViewProps> = ({ onViewDetails }) => {
                   icon={{
                     path: window.google.maps.SymbolPath.CIRCLE,
                     scale: 8,
-                    fillColor: '#8b5cf6',
+                    fillColor: isDarkMode ? '#a78bfa' : '#8b5cf6',
                     fillOpacity: 0.6,
                     strokeColor: '#ffffff',
                     strokeWeight: 2,
@@ -418,7 +418,7 @@ const MapView: React.FC<MapViewProps> = ({ onViewDetails }) => {
                             <Typography
                               variant="caption"
                               sx={{
-                                color: '#8b5cf6',
+                                color: isDarkMode ? '#a78bfa' : '#8b5cf6',
                                 cursor: 'pointer',
                                 display: 'block',
                                 mt: 1,

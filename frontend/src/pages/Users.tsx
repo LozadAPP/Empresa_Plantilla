@@ -30,8 +30,13 @@ import {
   Alert,
   Avatar,
   alpha,
-  Snackbar
+  Snackbar,
+  useMediaQuery,
+  useTheme,
+  Stack,
+  Divider
 } from '@mui/material';
+import { Close as CloseIcon } from '@mui/icons-material';
 import {
   Add as AddIcon,
   MoreVert as MoreVertIcon,
@@ -51,6 +56,11 @@ import { userService, User, Role } from '../services/userService';
 
 const Users: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
+  const theme = useTheme();
+
+  // RESPONSIVE: Media queries
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
+
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +86,7 @@ const Users: React.FC = () => {
     last_name: '',
     email: '',
     phone: '',
-    roles: ['operator'] as string[],
+    roles: ['vendedor'] as string[],
     location_id: undefined as number | undefined,
     password: ''
   });
@@ -142,7 +152,7 @@ const Users: React.FC = () => {
         last_name: user.last_name,
         email: user.email,
         phone: user.phone || '',
-        roles: user.roles?.map(r => r.name) || ['operator'],
+        roles: user.roles?.map(r => r.name) || ['vendedor'],
         location_id: user.location_id,
         password: ''
       });
@@ -153,7 +163,7 @@ const Users: React.FC = () => {
         last_name: '',
         email: '',
         phone: '',
-        roles: ['operator'],
+        roles: ['vendedor'],
         location_id: undefined,
         password: ''
       });
@@ -262,13 +272,28 @@ const Users: React.FC = () => {
 
   const getRoleConfig = (roleName: string) => {
     const configs: Record<string, { label: string; color: string; icon: JSX.Element }> = {
-      admin: { label: 'Administrador', color: '#8b5cf6', icon: <AdminIcon fontSize="small" /> },
+      // Sistema de 12 roles (CLAUDE.md)
+      admin: { label: 'Administrador', color: theme.palette.primary.main, icon: <AdminIcon fontSize="small" /> },
+      director_general: { label: 'Director General', color: '#ef4444', icon: <AdminIcon fontSize="small" /> },
+      // Jefes de área
+      jefe_inventarios: { label: 'Jefe Inventarios', color: '#3b82f6', icon: <ManagerIcon fontSize="small" /> },
+      jefe_ventas: { label: 'Jefe Ventas', color: '#f59e0b', icon: <ManagerIcon fontSize="small" /> },
+      jefe_finanzas: { label: 'Jefe Finanzas', color: '#10b981', icon: <ManagerIcon fontSize="small" /> },
+      jefe_admin: { label: 'Jefe Admin', color: '#06b6d4', icon: <ManagerIcon fontSize="small" /> },
+      // Operativos
+      encargado_inventario: { label: 'Encargado Inventario', color: '#8b5cf6', icon: <OperatorIcon fontSize="small" /> },
+      tecnico: { label: 'Técnico', color: '#64748b', icon: <OperatorIcon fontSize="small" /> },
+      vendedor: { label: 'Vendedor', color: '#f59e0b', icon: <OperatorIcon fontSize="small" /> },
+      contador: { label: 'Contador', color: '#10b981', icon: <OperatorIcon fontSize="small" /> },
+      cajero: { label: 'Cajero', color: '#06b6d4', icon: <OperatorIcon fontSize="small" /> },
+      asistente_admin: { label: 'Asistente Admin', color: '#64748b', icon: <OperatorIcon fontSize="small" /> },
+      // Aliases para compatibilidad
       director: { label: 'Director', color: '#ef4444', icon: <AdminIcon fontSize="small" /> },
       manager: { label: 'Gerente', color: '#3b82f6', icon: <ManagerIcon fontSize="small" /> },
       seller: { label: 'Vendedor', color: '#f59e0b', icon: <OperatorIcon fontSize="small" /> },
       accountant: { label: 'Contador', color: '#10b981', icon: <OperatorIcon fontSize="small" /> },
       inventory: { label: 'Inventario', color: '#06b6d4', icon: <OperatorIcon fontSize="small" /> },
-      operator: { label: 'Operador', color: '#64748b', icon: <OperatorIcon fontSize="small" /> }
+      operator: { label: 'Operador', color: '#64748b', icon: <OperatorIcon fontSize="small" /> },
     };
     return configs[roleName] || { label: roleName, color: '#64748b', icon: <OperatorIcon fontSize="small" /> };
   };
@@ -293,15 +318,28 @@ const Users: React.FC = () => {
   // Calculate stats from users if API stats not loaded
   const activeUsers = stats.active || users.filter(u => u.is_active).length;
   const adminCount = stats.byRole.find(r => r.role === 'admin')?.count || users.filter(u => u.roles?.some(r => r.name === 'admin')).length;
-  const managerCount = stats.byRole.find(r => r.role === 'manager')?.count || users.filter(u => u.roles?.some(r => r.name === 'manager')).length;
-  const operatorCount = stats.byRole.find(r => r.role === 'operator')?.count || users.filter(u => u.roles?.some(r => r.name === 'operator')).length;
+  // Jefes: director_general + todos los jefe_*
+  const jefesRoles = ['director_general', 'jefe_inventarios', 'jefe_ventas', 'jefe_finanzas', 'jefe_admin'];
+  const jefesCount = stats.byRole.filter(r => jefesRoles.includes(r.role)).reduce((sum, r) => sum + r.count, 0)
+    || users.filter(u => u.roles?.some(r => jefesRoles.includes(r.name))).length;
+  // Operativos: encargado, tecnico, vendedor, contador, cajero, asistente
+  const operativosRoles = ['encargado_inventario', 'tecnico', 'vendedor', 'contador', 'cajero', 'asistente_admin'];
+  const operativosCount = stats.byRole.filter(r => operativosRoles.includes(r.role)).reduce((sum, r) => sum + r.count, 0)
+    || users.filter(u => u.roles?.some(r => operativosRoles.includes(r.name))).length;
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      {/* Header - RESPONSIVE */}
+      <Box sx={{
+        mb: { xs: 3, sm: 4 },
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'flex-start' },
+        gap: { xs: 2, sm: 0 }
+      }}>
         <Box>
-          <Typography variant="h3" fontWeight="700" sx={{ fontSize: '2rem', letterSpacing: '-0.02em', mb: 0.5 }}>
+          <Typography variant="h3" fontWeight="700" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' }, letterSpacing: '-0.02em', mb: 0.5 }}>
             Gestión de Usuarios
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
@@ -313,12 +351,12 @@ const Users: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
+          fullWidth={isMobile}
           sx={{
-            bgcolor: isDarkMode ? '#8b5cf6' : '#8b5cf6',
+            minHeight: { xs: 48, sm: 40 },
+            bgcolor: theme.palette.primary.main,
             color: '#fff',
-            '&:hover': {
-              bgcolor: isDarkMode ? '#7c3aed' : '#7c3aed'
-            }
+            '&:hover': { bgcolor: theme.palette.primary.dark }
           }}
         >
           Nuevo Usuario
@@ -326,108 +364,130 @@ const Users: React.FC = () => {
       </Box>
 
       {/* Stats Cards */}
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 2, sm: 3, md: 4 } }}>
+        <Grid item xs={6} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Total Usuarios
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                    {isMobile ? 'Total' : 'Total Usuarios'}
                   </Typography>
-                  <Typography variant="h4" fontWeight="bold">
+                  <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' } }}>
                     {stats.total || users.length}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
                     {activeUsers} activos
                   </Typography>
                 </Box>
-                <PersonIcon sx={{ fontSize: 40, color: '#8b5cf6', opacity: 0.5 }} />
+                <PersonIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: '#8b5cf6', opacity: 0.5 }} />
               </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+        <Grid item xs={6} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Administradores
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                    {isMobile ? 'Admins' : 'Administradores'}
                   </Typography>
-                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#8b5cf6' }}>
+                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#8b5cf6', fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' } }}>
                     {adminCount}
                   </Typography>
                 </Box>
-                <AdminIcon sx={{ fontSize: 40, color: '#8b5cf6', opacity: 0.5 }} />
+                <AdminIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: '#8b5cf6', opacity: 0.5 }} />
               </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+        <Grid item xs={6} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Gerentes
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                    Jefes
                   </Typography>
-                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#3b82f6' }}>
-                    {managerCount}
+                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#3b82f6', fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' } }}>
+                    {jefesCount}
                   </Typography>
                 </Box>
-                <ManagerIcon sx={{ fontSize: 40, color: '#3b82f6', opacity: 0.5 }} />
+                <ManagerIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: '#3b82f6', opacity: 0.5 }} />
               </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+        <Grid item xs={6} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Operadores
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                    Operativos
                   </Typography>
-                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#10b981' }}>
-                    {operatorCount}
+                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#10b981', fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' } }}>
+                    {operativosCount}
                   </Typography>
                 </Box>
-                <OperatorIcon sx={{ fontSize: 40, color: '#10b981', opacity: 0.5 }} />
+                <OperatorIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: '#10b981', opacity: 0.5 }} />
               </Box>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Filters */}
+      {/* Filters - RESPONSIVE */}
       <Card sx={{
         mb: 3,
-        p: 2,
+        p: { xs: 1.5, sm: 2 },
         bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
         border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
       }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Buscar por nombre o email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                )
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 } }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Buscar por nombre o email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } } }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              )
+            }}
+          />
+
+          {/* Role Filter - Select en móvil, botones en desktop */}
+          {isMobile ? (
+            <FormControl size="small" fullWidth sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
+              <InputLabel>Filtrar por rol</InputLabel>
+              <Select
+                value={roleFilter}
+                label="Filtrar por rol"
+                onChange={(e) => setRoleFilter(e.target.value)}
+              >
+                <MenuItem value="all">Todos</MenuItem>
+                <MenuItem value="admin">Administradores</MenuItem>
+                <MenuItem value="director_general">Director General</MenuItem>
+                <MenuItem value="jefe_inventarios">Jefe Inventarios</MenuItem>
+                <MenuItem value="jefe_ventas">Jefe Ventas</MenuItem>
+                <MenuItem value="jefe_finanzas">Jefe Finanzas</MenuItem>
+                <MenuItem value="jefe_admin">Jefe Admin</MenuItem>
+                <MenuItem value="vendedor">Vendedores</MenuItem>
+                <MenuItem value="tecnico">Técnicos</MenuItem>
+                <MenuItem value="contador">Contadores</MenuItem>
+                <MenuItem value="cajero">Cajeros</MenuItem>
+              </Select>
+            </FormControl>
+          ) : (
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Button
                 size="small"
@@ -441,118 +501,224 @@ const Users: React.FC = () => {
                 variant={roleFilter === 'admin' ? 'contained' : 'outlined'}
                 onClick={() => setRoleFilter('admin')}
               >
-                Administradores
+                Admins
               </Button>
               <Button
                 size="small"
-                variant={roleFilter === 'manager' ? 'contained' : 'outlined'}
-                onClick={() => setRoleFilter('manager')}
+                variant={roleFilter === 'director_general' ? 'contained' : 'outlined'}
+                onClick={() => setRoleFilter('director_general')}
               >
-                Gerentes
+                Director
               </Button>
               <Button
                 size="small"
-                variant={roleFilter === 'operator' ? 'contained' : 'outlined'}
-                onClick={() => setRoleFilter('operator')}
+                variant={roleFilter === 'jefe_ventas' ? 'contained' : 'outlined'}
+                onClick={() => setRoleFilter('jefe_ventas')}
               >
-                Operadores
+                Ventas
+              </Button>
+              <Button
+                size="small"
+                variant={roleFilter === 'vendedor' ? 'contained' : 'outlined'}
+                onClick={() => setRoleFilter('vendedor')}
+              >
+                Vendedores
+              </Button>
+              <Button
+                size="small"
+                variant={roleFilter === 'tecnico' ? 'contained' : 'outlined'}
+                onClick={() => setRoleFilter('tecnico')}
+              >
+                Técnicos
               </Button>
             </Box>
-          </Grid>
-        </Grid>
+          )}
+        </Box>
       </Card>
 
-      {/* Users Table */}
-      <TableContainer component={Paper} sx={{
-        bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
-        border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-      }}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : alpha('#8b5cf6', 0.1) }}>
-              <TableCell sx={{ fontWeight: 700 }}>Usuario</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Rol(es)</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Ubicación</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-              <TableCell sx={{ fontWeight: 700 }} align="right">Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    No se encontraron usuarios
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredUsers.map((user) => {
+      {/* RESPONSIVE: Cards en móvil, Tabla en desktop */}
+      {isMobile ? (
+        /* Vista de Cards para móvil */
+        <Box>
+          {filteredUsers.length === 0 ? (
+            <Paper sx={{
+              p: 4,
+              textAlign: 'center',
+              background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
+              borderRadius: 2,
+              border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+            }}>
+              <PersonIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+              <Typography variant="body1" color="text.secondary">
+                No se encontraron usuarios
+              </Typography>
+            </Paper>
+          ) : (
+            <Stack spacing={1.5}>
+              {filteredUsers.map((user) => {
                 const primaryRole = user.roles?.[0];
-                const roleConfig = getRoleConfig(primaryRole?.name || 'operator');
+                const roleConfig = getRoleConfig(primaryRole?.name || 'vendedor');
                 return (
-                  <TableRow key={user.id} hover>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Avatar sx={{ bgcolor: roleConfig.color }}>
-                          {user.first_name[0]}{user.last_name[0]}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" fontWeight={600}>
-                            {user.first_name} {user.last_name}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {user.phone || 'Sin teléfono'}
-                          </Typography>
+                  <Card
+                    key={user.id}
+                    sx={{
+                      background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
+                      border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                      borderRadius: 2,
+                    }}
+                  >
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      {/* Header: Avatar + Nombre + Menú */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Avatar sx={{ bgcolor: roleConfig.color, width: 40, height: 40 }}>
+                            {user.first_name[0]}{user.last_name[0]}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" fontWeight="700">
+                              {user.first_name} {user.last_name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                              {user.email}
+                            </Typography>
+                          </Box>
                         </Box>
+                        <IconButton size="small" onClick={(e) => handleMenuOpen(e, user)}>
+                          <MoreVertIcon fontSize="small" />
+                        </IconButton>
                       </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{user.email}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                        {user.roles?.map((role) => {
-                          const config = getRoleConfig(role.name);
-                          return (
-                            <Chip
-                              key={role.id}
-                              label={config.label}
-                              size="small"
-                              sx={{
-                                bgcolor: alpha(config.color, 0.1),
-                                color: config.color,
-                                border: 'none',
-                              }}
-                            />
-                          );
-                        })}
+
+                      <Divider sx={{ my: 1.5, borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }} />
+
+                      {/* Info */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          {user.roles?.map((role) => {
+                            const config = getRoleConfig(role.name);
+                            return (
+                              <Chip
+                                key={role.id}
+                                label={config.label}
+                                size="small"
+                                sx={{
+                                  bgcolor: alpha(config.color, 0.1),
+                                  color: config.color,
+                                  border: 'none',
+                                  height: 24,
+                                  fontSize: '0.7rem'
+                                }}
+                              />
+                            );
+                          })}
+                        </Box>
+                        <Chip
+                          label={user.is_active ? 'Activo' : 'Inactivo'}
+                          size="small"
+                          color={user.is_active ? 'success' : 'default'}
+                          sx={{ height: 24, fontSize: '0.7rem' }}
+                        />
                       </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{user.location?.name || '-'}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={user.is_active ? 'Activo' : 'Inactivo'}
-                        icon={user.is_active ? <CheckIcon fontSize="small" /> : <BlockIcon fontSize="small" />}
-                        size="small"
-                        color={user.is_active ? 'success' : 'default'}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={(e) => handleMenuOpen(e, user)}>
-                        <MoreVertIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
+                    </CardContent>
+                  </Card>
                 );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              })}
+            </Stack>
+          )}
+        </Box>
+      ) : (
+        /* Vista de Tabla para desktop */
+        <TableContainer component={Paper} sx={{
+          bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
+          border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+          overflowX: 'auto'
+        }}>
+          <Table sx={{ minWidth: 800 }}>
+            <TableHead>
+              <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : alpha('#8b5cf6', 0.1) }}>
+                <TableCell sx={{ fontWeight: 700 }}>Usuario</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Rol(es)</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Ubicación</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No se encontraron usuarios
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredUsers.map((user) => {
+                  const primaryRole = user.roles?.[0];
+                  const roleConfig = getRoleConfig(primaryRole?.name || 'vendedor');
+                  return (
+                    <TableRow key={user.id} hover>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Avatar sx={{ bgcolor: roleConfig.color }}>
+                            {user.first_name[0]}{user.last_name[0]}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>
+                              {user.first_name} {user.last_name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {user.phone || 'Sin teléfono'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{user.email}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          {user.roles?.map((role) => {
+                            const config = getRoleConfig(role.name);
+                            return (
+                              <Chip
+                                key={role.id}
+                                label={config.label}
+                                size="small"
+                                sx={{
+                                  bgcolor: alpha(config.color, 0.1),
+                                  color: config.color,
+                                  border: 'none',
+                                }}
+                              />
+                            );
+                          })}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{user.location?.name || '-'}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={user.is_active ? 'Activo' : 'Inactivo'}
+                          icon={user.is_active ? <CheckIcon fontSize="small" /> : <BlockIcon fontSize="small" />}
+                          size="small"
+                          color={user.is_active ? 'success' : 'default'}
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton size="small" onClick={(e) => handleMenuOpen(e, user)}>
+                          <MoreVertIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {/* Context Menu */}
       <Menu
@@ -583,12 +749,22 @@ const Users: React.FC = () => {
         </MenuItem>
       </Menu>
 
-      {/* User Dialog */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
+      {/* User Dialog - RESPONSIVE */}
+      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth fullScreen={isMobile}>
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: isMobile ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` : 'none'
+        }}>
           {selectedUser ? 'Editar Usuario' : 'Nuevo Usuario'}
+          {isMobile && (
+            <IconButton onClick={handleCloseDialog} sx={{ color: 'text.secondary' }}>
+              <CloseIcon />
+            </IconButton>
+          )}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ pt: isMobile ? 3 : 2 }}>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
@@ -642,7 +818,7 @@ const Users: React.FC = () => {
               <FormControl fullWidth>
                 <InputLabel>Rol</InputLabel>
                 <Select
-                  value={formData.roles[0] || 'operator'}
+                  value={formData.roles[0] || 'vendedor'}
                   onChange={(e) => setFormData({ ...formData, roles: [e.target.value] })}
                   label="Rol"
                 >
@@ -654,8 +830,17 @@ const Users: React.FC = () => {
                   {roles.length === 0 && (
                     <>
                       <MenuItem value="admin">Administrador</MenuItem>
-                      <MenuItem value="manager">Gerente</MenuItem>
-                      <MenuItem value="operator">Operador</MenuItem>
+                      <MenuItem value="director_general">Director General</MenuItem>
+                      <MenuItem value="jefe_inventarios">Jefe Inventarios</MenuItem>
+                      <MenuItem value="jefe_ventas">Jefe Ventas</MenuItem>
+                      <MenuItem value="jefe_finanzas">Jefe Finanzas</MenuItem>
+                      <MenuItem value="jefe_admin">Jefe Admin</MenuItem>
+                      <MenuItem value="vendedor">Vendedor</MenuItem>
+                      <MenuItem value="tecnico">Técnico</MenuItem>
+                      <MenuItem value="contador">Contador</MenuItem>
+                      <MenuItem value="cajero">Cajero</MenuItem>
+                      <MenuItem value="encargado_inventario">Encargado Inventario</MenuItem>
+                      <MenuItem value="asistente_admin">Asistente Admin</MenuItem>
                     </>
                   )}
                 </Select>
@@ -683,14 +868,23 @@ const Users: React.FC = () => {
             )}
           </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancelar</Button>
+        <DialogActions sx={{
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: { xs: 1, sm: 0 },
+          p: { xs: 2, sm: 2 },
+          borderTop: isMobile ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` : 'none'
+        }}>
+          <Button onClick={handleCloseDialog} fullWidth={isMobile} sx={{ minHeight: { xs: 48, sm: 36 } }}>
+            Cancelar
+          </Button>
           <Button
             onClick={handleSave}
             variant="contained"
+            fullWidth={isMobile}
             sx={{
-              bgcolor: '#8b5cf6',
-              '&:hover': { bgcolor: '#7c3aed' }
+              minHeight: { xs: 48, sm: 36 },
+              bgcolor: theme.palette.primary.main,
+              '&:hover': { bgcolor: theme.palette.primary.dark }
             }}
           >
             {selectedUser ? 'Actualizar' : 'Crear'}
@@ -698,10 +892,22 @@ const Users: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Password Reset Dialog */}
-      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Restablecer Contraseña</DialogTitle>
-        <DialogContent>
+      {/* Password Reset Dialog - RESPONSIVE */}
+      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: isMobile ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` : 'none'
+        }}>
+          Restablecer Contraseña
+          {isMobile && (
+            <IconButton onClick={() => setPasswordDialogOpen(false)} sx={{ color: 'text.secondary' }}>
+              <CloseIcon />
+            </IconButton>
+          )}
+        </DialogTitle>
+        <DialogContent sx={{ pt: isMobile ? 3 : 2 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Ingresa la nueva contraseña para {selectedUser?.first_name} {selectedUser?.last_name}
           </Typography>
@@ -721,15 +927,24 @@ const Users: React.FC = () => {
             helperText="Mínimo 6 caracteres"
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPasswordDialogOpen(false)}>Cancelar</Button>
+        <DialogActions sx={{
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: { xs: 1, sm: 0 },
+          p: { xs: 2, sm: 2 },
+          borderTop: isMobile ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` : 'none'
+        }}>
+          <Button onClick={() => setPasswordDialogOpen(false)} fullWidth={isMobile} sx={{ minHeight: { xs: 48, sm: 36 } }}>
+            Cancelar
+          </Button>
           <Button
             onClick={handleResetPassword}
             variant="contained"
             disabled={!newPassword || newPassword.length < 6}
+            fullWidth={isMobile}
             sx={{
-              bgcolor: '#8b5cf6',
-              '&:hover': { bgcolor: '#7c3aed' }
+              minHeight: { xs: 48, sm: 36 },
+              bgcolor: theme.palette.primary.main,
+              '&:hover': { bgcolor: theme.palette.primary.dark }
             }}
           >
             Restablecer

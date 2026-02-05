@@ -15,7 +15,9 @@ import {
   InputAdornment,
   Alert,
   Divider,
-  Autocomplete
+  Autocomplete,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -63,6 +65,8 @@ const MaintenanceForm: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const { id } = useParams();
   const isEdit = Boolean(id);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
@@ -244,7 +248,7 @@ const MaintenanceForm: React.FC = () => {
           bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
           border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
         }}>
-          <CardContent sx={{ p: 4 }}>
+          <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
               <CarIcon sx={{ color: '#8b5cf6' }} />
               <Typography variant="h6" fontWeight={600}>
@@ -253,7 +257,7 @@ const MaintenanceForm: React.FC = () => {
             </Box>
             <Divider sx={{ mb: 3 }} />
 
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
               {/* Vehicle Selection */}
               <Grid item xs={12} md={6}>
                 <Autocomplete
@@ -267,6 +271,11 @@ const MaintenanceForm: React.FC = () => {
                       label="Vehículo"
                       required
                       placeholder="Buscar por placa, marca o modelo..."
+                      size={isMobile ? "medium" : "small"}
+                      InputProps={{
+                        ...params.InputProps,
+                        sx: { minHeight: { xs: 48, sm: 40 } }
+                      }}
                     />
                   )}
                   isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -275,12 +284,13 @@ const MaintenanceForm: React.FC = () => {
 
               {/* Maintenance Type */}
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth required>
+                <FormControl fullWidth required size={isMobile ? "medium" : "small"}>
                   <InputLabel>Tipo de Mantenimiento</InputLabel>
                   <Select
                     value={formData.maintenanceTypeId}
                     onChange={(e) => handleTypeChange(e.target.value as number)}
                     label="Tipo de Mantenimiento"
+                    sx={{ minHeight: { xs: 48, sm: 40 } }}
                   >
                     <MenuItem value={0} disabled>
                       Seleccione un tipo
@@ -306,13 +316,14 @@ const MaintenanceForm: React.FC = () => {
               </Grid>
 
               {/* Priority */}
-              <Grid item xs={12} md={4}>
-                <FormControl fullWidth required>
+              <Grid item xs={12} sm={6} md={4}>
+                <FormControl fullWidth required size={isMobile ? "medium" : "small"}>
                   <InputLabel>Prioridad</InputLabel>
                   <Select
                     value={formData.priority}
                     onChange={(e) => handleChange('priority', e.target.value)}
                     label="Prioridad"
+                    sx={{ minHeight: { xs: 48, sm: 40 } }}
                   >
                     {priorities.map((priority) => (
                       <MenuItem key={priority.value} value={priority.value}>
@@ -334,7 +345,7 @@ const MaintenanceForm: React.FC = () => {
               </Grid>
 
               {/* Scheduled Date */}
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} sm={6} md={4}>
                 <TextField
                   fullWidth
                   required
@@ -342,6 +353,7 @@ const MaintenanceForm: React.FC = () => {
                   label="Fecha Programada"
                   value={formData.scheduledDate}
                   onChange={(e) => handleChange('scheduledDate', e.target.value)}
+                  size={isMobile ? "medium" : "small"}
                   InputLabelProps={{
                     shrink: true
                   }}
@@ -350,7 +362,8 @@ const MaintenanceForm: React.FC = () => {
                       <InputAdornment position="start">
                         <CalendarIcon />
                       </InputAdornment>
-                    )
+                    ),
+                    sx: { minHeight: { xs: 48, sm: 40 } }
                   }}
                   inputProps={{
                     min: new Date().toISOString().split('T')[0]
@@ -360,7 +373,7 @@ const MaintenanceForm: React.FC = () => {
               </Grid>
 
               {/* Estimated Cost */}
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} sm={6} md={4}>
                 <TextField
                   fullWidth
                   required
@@ -368,13 +381,15 @@ const MaintenanceForm: React.FC = () => {
                   label="Costo Estimado"
                   value={formData.estimatedCost}
                   onChange={(e) => handleChange('estimatedCost', parseFloat(e.target.value) || 0)}
+                  size={isMobile ? "medium" : "small"}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
                         <MoneyIcon />
                       </InputAdornment>
                     ),
-                    inputProps: { min: 0, step: 0.01 }
+                    inputProps: { min: 0, step: 0.01 },
+                    sx: { minHeight: { xs: 48, sm: 40 } }
                   }}
                 />
               </Grid>
@@ -384,7 +399,8 @@ const MaintenanceForm: React.FC = () => {
                 <TextField
                   fullWidth
                   multiline
-                  rows={3}
+                  rows={isMobile ? 2 : 3}
+                  size={isMobile ? "medium" : "small"}
                   label="Descripción del Trabajo"
                   value={formData.description}
                   onChange={(e) => handleChange('description', e.target.value)}
@@ -398,6 +414,7 @@ const MaintenanceForm: React.FC = () => {
                   fullWidth
                   multiline
                   rows={2}
+                  size={isMobile ? "medium" : "small"}
                   label="Notas Adicionales (Opcional)"
                   value={formData.notes}
                   onChange={(e) => handleChange('notes', e.target.value)}
@@ -407,12 +424,22 @@ const MaintenanceForm: React.FC = () => {
             </Grid>
 
             {/* Action Buttons */}
-            <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Box sx={{
+              mt: 4,
+              display: 'flex',
+              flexDirection: { xs: 'column-reverse', sm: 'row' },
+              gap: { xs: 1.5, sm: 2 },
+              justifyContent: { xs: 'stretch', sm: 'flex-end' }
+            }}>
               <Button
                 variant="outlined"
                 startIcon={<CancelIcon />}
                 onClick={() => navigate('/maintenance')}
                 disabled={loading}
+                sx={{
+                  width: { xs: '100%', sm: 'auto' },
+                  py: { xs: 1.5, sm: 1 }
+                }}
               >
                 Cancelar
               </Button>
@@ -422,10 +449,12 @@ const MaintenanceForm: React.FC = () => {
                 startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
                 disabled={loading}
                 sx={{
-                  bgcolor: '#8b5cf6',
+                  bgcolor: theme.palette.primary.main,
                   color: '#fff',
+                  width: { xs: '100%', sm: 'auto' },
+                  py: { xs: 1.5, sm: 1 },
                   '&:hover': {
-                    bgcolor: '#7c3aed'
+                    bgcolor: theme.palette.primary.dark
                   }
                 }}
               >

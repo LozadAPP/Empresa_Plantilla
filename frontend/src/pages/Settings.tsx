@@ -20,7 +20,9 @@ import {
   ListItemSecondaryAction,
   IconButton,
   Chip,
-  alpha
+  alpha,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -31,11 +33,17 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
-  People as PeopleIcon
+  People as PeopleIcon,
+  Extension as ExtensionIcon,
+  ToggleOn as ToggleOnIcon,
+  ToggleOff as ToggleOffIcon
 } from '@mui/icons-material';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import configService from '../services/configService';
+import { userService } from '../services/userService';
+import extraServiceService from '../services/extraServiceService';
 import { SystemConfig, PriceConfig } from '../types/config';
+import { ExtraService } from '../types/extraService';
 import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import TabPanel from '../components/common/TabPanel';
@@ -44,14 +52,20 @@ const Settings: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [configs, setConfigs] = useState<SystemConfig[]>([]);
   const [priceConfigs, setPriceConfigs] = useState<PriceConfig[]>([]);
   const [loadingPrices, setLoadingPrices] = useState(false);
+  const [loadingUserStats, setLoadingUserStats] = useState(false);
+  const [userStats, setUserStats] = useState<{ total: number; active: number; byRole: { role: string; count: number }[] } | null>(null);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
+  const [loadingExtraServices, setLoadingExtraServices] = useState(false);
 
   useEffect(() => {
     loadConfigs();
@@ -60,6 +74,12 @@ const Settings: React.FC = () => {
   useEffect(() => {
     if (tabValue === 3) {
       loadPriceConfigs();
+    }
+    if (tabValue === 4) {
+      loadUserStats();
+    }
+    if (tabValue === 5) {
+      loadExtraServices();
     }
   }, [tabValue]);
 
@@ -96,6 +116,74 @@ const Settings: React.FC = () => {
       enqueueSnackbar(message, { variant: 'error' });
     } finally {
       setLoadingPrices(false);
+    }
+  };
+
+  const loadUserStats = async () => {
+    if (userStats) return; // Ya cargado
+    setLoadingUserStats(true);
+    try {
+      const response = await userService.getUserStats();
+      if (response.success) {
+        setUserStats(response.data);
+      }
+    } catch (error: any) {
+      console.error('Error loading user stats:', error);
+    } finally {
+      setLoadingUserStats(false);
+    }
+  };
+
+  const loadExtraServices = async () => {
+    setLoadingExtraServices(true);
+    try {
+      const response = await extraServiceService.getAllServices();
+      setExtraServices(response.data || []);
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 'Error al cargar los servicios adicionales';
+      enqueueSnackbar(message, { variant: 'error' });
+    } finally {
+      setLoadingExtraServices(false);
+    }
+  };
+
+  const handleToggleExtraService = async (id: number) => {
+    try {
+      const response = await extraServiceService.toggleServiceStatus(id);
+      enqueueSnackbar(response.message, { variant: 'success' });
+      loadExtraServices();
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 'Error al cambiar el estado del servicio';
+      enqueueSnackbar(message, { variant: 'error' });
+    }
+  };
+
+  const handleDeleteExtraService = async (id: number) => {
+    try {
+      const response = await extraServiceService.deleteService(id);
+      enqueueSnackbar(response.message, { variant: 'success' });
+      loadExtraServices();
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 'Error al eliminar el servicio';
+      enqueueSnackbar(message, { variant: 'error' });
+    }
+  };
+
+  const getCategoryLabel = (category: string): string => {
+    switch (category) {
+      case 'accessory': return 'Accesorio';
+      case 'insurance': return 'Seguro';
+      case 'service': return 'Servicio';
+      default: return category;
+    }
+  };
+
+  const getCategoryColor = (category: string): 'primary' | 'success' | 'warning' | 'default' => {
+    switch (category) {
+      case 'accessory': return 'primary';
+      case 'insurance': return 'success';
+      case 'service': return 'warning';
+      default: return 'default';
     }
   };
 
@@ -210,12 +298,19 @@ const Settings: React.FC = () => {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <Box sx={{
+        mb: { xs: 3, sm: 4 },
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'flex-start' },
+        gap: { xs: 2, sm: 0 }
+      }}>
         <Box>
-          <Typography variant="h3" fontWeight="700" sx={{ fontSize: '2rem', letterSpacing: '-0.02em', mb: 0.5 }}>
+          <Typography variant="h3" fontWeight="700" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' }, letterSpacing: '-0.02em', mb: 0.5 }}>
             Configuración
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', display: { xs: 'none', sm: 'block' } }}>
             Administra la configuración del sistema y preferencias
           </Typography>
         </Box>
@@ -226,10 +321,12 @@ const Settings: React.FC = () => {
           onClick={handleSave}
           disabled={saving}
           sx={{
-            bgcolor: '#8b5cf6',
+            bgcolor: theme.palette.primary.main,
             color: '#fff',
+            width: { xs: '100%', sm: 'auto' },
+            py: { xs: 1.5, sm: 1 },
             '&:hover': {
-              bgcolor: '#7c3aed'
+              bgcolor: theme.palette.primary.dark
             }
           }}
         >
@@ -258,20 +355,26 @@ const Settings: React.FC = () => {
         <Tabs
           value={tabValue}
           onChange={(_e, newValue) => setTabValue(newValue)}
+          variant={isMobile ? "scrollable" : "standard"}
+          scrollButtons={isMobile ? "auto" : false}
+          allowScrollButtonsMobile
           sx={{
             borderBottom: 1,
             borderColor: 'divider',
             '& .MuiTab-root': {
               textTransform: 'none',
-              fontWeight: 600
+              fontWeight: 600,
+              minWidth: { xs: 'auto', sm: 90 },
+              px: { xs: 1.5, sm: 2 }
             }
           }}
         >
-          <Tab icon={<SettingsIcon />} iconPosition="start" label="General" />
-          <Tab icon={<NotificationsIcon />} iconPosition="start" label="Notificaciones" />
-          <Tab icon={<SecurityIcon />} iconPosition="start" label="Seguridad" />
-          <Tab icon={<MoneyIcon />} iconPosition="start" label="Precios" />
-          <Tab icon={<PeopleIcon />} iconPosition="start" label="Usuarios" />
+          <Tab icon={<SettingsIcon />} iconPosition="start" label={isMobile ? "" : "General"} />
+          <Tab icon={<NotificationsIcon />} iconPosition="start" label={isMobile ? "" : "Notificaciones"} />
+          <Tab icon={<SecurityIcon />} iconPosition="start" label={isMobile ? "" : "Seguridad"} />
+          <Tab icon={<MoneyIcon />} iconPosition="start" label={isMobile ? "" : "Precios"} />
+          <Tab icon={<PeopleIcon />} iconPosition="start" label={isMobile ? "" : "Usuarios"} />
+          <Tab icon={<ExtensionIcon />} iconPosition="start" label={isMobile ? "" : "Servicios"} />
         </Tabs>
       </Card>
 
@@ -526,10 +629,10 @@ const Settings: React.FC = () => {
                 startIcon={<AddIcon />}
                 onClick={() => navigate('/settings/pricing/new')}
                 sx={{
-                  bgcolor: '#8b5cf6',
+                  bgcolor: theme.palette.primary.main,
                   color: '#fff',
                   '&:hover': {
-                    bgcolor: '#7c3aed'
+                    bgcolor: theme.palette.primary.dark
                   }
                 }}
               >
@@ -572,6 +675,9 @@ const Settings: React.FC = () => {
                           {config.monthlyRate && ` | Mensual: $${config.monthlyRate}`}
                         </>
                       }
+                      primaryTypographyProps={{ noWrap: true }}
+                      secondaryTypographyProps={{ noWrap: true }}
+                      sx={{ mr: 8 }}
                     />
                     <ListItemSecondaryAction>
                       <Chip
@@ -625,10 +731,10 @@ const Settings: React.FC = () => {
                 startIcon={<AddIcon />}
                 onClick={() => navigate('/users')}
                 sx={{
-                  bgcolor: '#8b5cf6',
+                  bgcolor: theme.palette.primary.main,
                   color: '#fff',
                   '&:hover': {
-                    bgcolor: '#7c3aed'
+                    bgcolor: theme.palette.primary.dark
                   }
                 }}
               >
@@ -654,7 +760,7 @@ const Settings: React.FC = () => {
                   secondary="Acceso completo a todas las funciones"
                 />
                 <ListItemSecondaryAction>
-                  <Chip label="3 usuarios" color="primary" size="small" sx={{ mr: 1 }} />
+                  <Chip label={loadingUserStats ? '...' : `${userStats?.byRole?.find(r => r.role === 'admin')?.count || 0} usuarios`} color="primary" size="small" sx={{ mr: 1 }} />
                   <IconButton edge="end" size="small" onClick={() => navigate('/users')} title="Ver usuarios">
                     <EditIcon />
                   </IconButton>
@@ -673,7 +779,7 @@ const Settings: React.FC = () => {
                   secondary="Gestión de rentas, reportes y configuraciones"
                 />
                 <ListItemSecondaryAction>
-                  <Chip label="5 usuarios" color="primary" size="small" sx={{ mr: 1 }} />
+                  <Chip label={loadingUserStats ? '...' : `${userStats?.byRole?.filter(r => ['jefe_inventarios', 'jefe_ventas', 'jefe_finanzas', 'jefe_admin', 'manager'].includes(r.role)).reduce((sum, r) => sum + r.count, 0) || 0} usuarios`} color="primary" size="small" sx={{ mr: 1 }} />
                   <IconButton edge="end" size="small" onClick={() => navigate('/users')} title="Ver usuarios">
                     <EditIcon />
                   </IconButton>
@@ -692,13 +798,127 @@ const Settings: React.FC = () => {
                   secondary="Gestión de rentas y devoluciones"
                 />
                 <ListItemSecondaryAction>
-                  <Chip label="10 usuarios" color="primary" size="small" sx={{ mr: 1 }} />
+                  <Chip label={loadingUserStats ? '...' : `${userStats?.byRole?.filter(r => ['vendedor', 'contador', 'cajero', 'tecnico', 'encargado_inventario', 'asistente_admin', 'operator'].includes(r.role)).reduce((sum, r) => sum + r.count, 0) || 0} usuarios`} color="primary" size="small" sx={{ mr: 1 }} />
                   <IconButton edge="end" size="small" onClick={() => navigate('/users')} title="Ver usuarios">
                     <EditIcon />
                   </IconButton>
                 </ListItemSecondaryAction>
               </ListItem>
             </List>
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* Extra Services Settings */}
+      <TabPanel value={tabValue} index={5}>
+        <Card>
+          <CardContent sx={{ p: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Box>
+                <Typography variant="h6" fontWeight={600} gutterBottom>
+                  Servicios Adicionales
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Administra los servicios extras disponibles en las rentas (GPS, seguros, etc.)
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => navigate('/settings/extra-services/new')}
+                sx={{
+                  bgcolor: theme.palette.primary.main,
+                  color: '#fff',
+                  '&:hover': {
+                    bgcolor: theme.palette.primary.dark
+                  }
+                }}
+              >
+                Nuevo Servicio
+              </Button>
+            </Box>
+            <Divider sx={{ mb: 3 }} />
+
+            {loadingExtraServices ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : extraServices.length === 0 ? (
+              <Alert severity="info">
+                No hay servicios adicionales configurados. Haz clic en "Nuevo Servicio" para crear uno.
+              </Alert>
+            ) : (
+              <List>
+                {extraServices.map((service) => (
+                  <ListItem
+                    key={service.id}
+                    sx={{
+                      bgcolor: service.is_active
+                        ? alpha('#8b5cf6', 0.05)
+                        : (isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
+                      borderRadius: 1,
+                      mb: 1,
+                      opacity: service.is_active ? 1 : 0.6
+                    }}
+                  >
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography fontWeight={500}>{service.name}</Typography>
+                          <Chip
+                            label={getCategoryLabel(service.category)}
+                            color={getCategoryColor(service.category)}
+                            size="small"
+                          />
+                        </Box>
+                      }
+                      secondary={
+                        <>
+                          ${service.price.toFixed(2)} {service.price_type === 'per_day' ? '/ día' : '(único)'}
+                          {service.description && ` - ${service.description}`}
+                        </>
+                      }
+                      primaryTypographyProps={{ component: 'div' }}
+                      sx={{ mr: 8 }}
+                    />
+                    <ListItemSecondaryAction>
+                      <Chip
+                        label={service.is_active ? 'Activo' : 'Inactivo'}
+                        color={service.is_active ? 'success' : 'default'}
+                        size="small"
+                        sx={{ mr: 1 }}
+                      />
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        sx={{ mr: 1 }}
+                        onClick={() => handleToggleExtraService(service.id)}
+                        title={service.is_active ? 'Desactivar' : 'Activar'}
+                      >
+                        {service.is_active ? <ToggleOnIcon color="success" /> : <ToggleOffIcon />}
+                      </IconButton>
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        sx={{ mr: 1 }}
+                        onClick={() => navigate(`/settings/extra-services/${service.id}/edit`)}
+                        title="Editar servicio"
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        onClick={() => handleDeleteExtraService(service.id)}
+                        title="Eliminar servicio"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
+            )}
           </CardContent>
         </Card>
       </TabPanel>

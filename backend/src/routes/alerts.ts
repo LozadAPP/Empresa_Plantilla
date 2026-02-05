@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { body, param, query } from 'express-validator';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { requireRole } from '../middleware/roleMiddleware';
 import {
   getAlerts,
   getAlertById,
@@ -17,6 +18,11 @@ const router = Router();
 
 // Apply authentication to all alert routes
 router.use(authMiddleware);
+
+// RBAC: Define roles that can access alerts
+const alertReadRoles = ['admin', 'director_general', 'jefe_finanzas', 'jefe_admin', 'contador', 'jefe_ventas'] as const;
+const alertWriteRoles = ['admin', 'director_general', 'jefe_finanzas', 'jefe_admin'] as const;
+const alertResolveRoles = ['admin', 'director_general', 'jefe_finanzas'] as const;
 
 /**
  * @swagger
@@ -317,31 +323,31 @@ const getAllAlertsValidation = [
     .isInt({ min: 1, max: 100 }).withMessage('El límite debe ser un número entre 1 y 100')
 ];
 
-// GET /api/alerts - Get all alerts
-router.get('/', getAllAlertsValidation, getAlerts);
+// GET /api/alerts - Get all alerts (read access)
+router.get('/', requireRole(...alertReadRoles), getAllAlertsValidation, getAlerts);
 
-// GET /api/alerts/stats - Get alert statistics
-router.get('/stats', getAlertStats);
+// GET /api/alerts/stats - Get alert statistics (read access)
+router.get('/stats', requireRole(...alertReadRoles), getAlertStats);
 
-// GET /api/alerts/trends - Get alert trends for chart
-router.get('/trends', getAlertTrends);
+// GET /api/alerts/trends - Get alert trends for chart (read access)
+router.get('/trends', requireRole(...alertReadRoles), getAlertTrends);
 
-// GET /api/alerts/:id - Get alert by ID
-router.get('/:id', getAlertByIdValidation, getAlertById);
+// GET /api/alerts/:id - Get alert by ID (read access)
+router.get('/:id', requireRole(...alertReadRoles), getAlertByIdValidation, getAlertById);
 
-// POST /api/alerts - Create new alert
-router.post('/', createAlertValidation, createAlert);
+// POST /api/alerts - Create new alert (write access)
+router.post('/', requireRole(...alertWriteRoles), createAlertValidation, createAlert);
 
-// POST /api/alerts/:id/read - Mark alert as read
-router.post('/:id/read', markAsReadValidation, markAsRead);
+// POST /api/alerts/:id/read - Mark alert as read (read access - any user can mark as read)
+router.post('/:id/read', requireRole(...alertReadRoles), markAsReadValidation, markAsRead);
 
-// POST /api/alerts/:id/unread - Mark alert as unread
-router.post('/:id/unread', markAsUnreadValidation, markAsUnread);
+// POST /api/alerts/:id/unread - Mark alert as unread (read access)
+router.post('/:id/unread', requireRole(...alertReadRoles), markAsUnreadValidation, markAsUnread);
 
-// POST /api/alerts/:id/resolve - Resolve alert
-router.post('/:id/resolve', resolveAlertValidation, resolveAlert);
+// POST /api/alerts/:id/resolve - Resolve alert (resolve access - restricted)
+router.post('/:id/resolve', requireRole(...alertResolveRoles), resolveAlertValidation, resolveAlert);
 
-// DELETE /api/alerts/:id - Delete alert
-router.delete('/:id', deleteAlertValidation, deleteAlert);
+// DELETE /api/alerts/:id - Delete alert (write access)
+router.delete('/:id', requireRole(...alertWriteRoles), deleteAlertValidation, deleteAlert);
 
 export default router;

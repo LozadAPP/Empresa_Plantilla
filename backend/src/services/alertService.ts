@@ -19,14 +19,18 @@ import Customer from '../models/Customer';
  */
 class AlertService {
   /**
-   * Verifica si ya existe una alerta no resuelta para una entidad específica
+   * Verifica si ya existe una alerta para una entidad específica
+   * Evita duplicados en las últimas 24 horas (incluso si fue resuelta)
    */
   private async alertExists(
     alertType: string,
     entityType: string,
     entityId: string
   ): Promise<boolean> {
-    const count = await Alert.count({
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Check for unresolved alerts (any time)
+    const unresolvedCount = await Alert.count({
       where: {
         alertType,
         entityType,
@@ -34,7 +38,20 @@ class AlertService {
         isResolved: false,
       },
     });
-    return count > 0;
+
+    if (unresolvedCount > 0) return true;
+
+    // Also check for recently created alerts (last 24h) to avoid spam
+    const recentCount = await Alert.count({
+      where: {
+        alertType,
+        entityType,
+        entityId,
+        createdAt: { [Op.gte]: twentyFourHoursAgo },
+      },
+    });
+
+    return recentCount > 0;
   }
 
   /**
@@ -473,6 +490,56 @@ class AlertService {
       maintenanceDue,
       expiringInsurance,
       lowInventory,
+      total,
+    };
+  }
+
+  /**
+   * Limpia alertas expiradas y resueltas antiguas
+   * - Elimina alertas con expiresAt pasada
+   * - Elimina alertas resueltas con más de 30 días
+   */
+  async cleanupOldAlerts(): Promise<{
+    expiredDeleted: number;
+    oldResolvedDeleted: number;
+    total: number;
+  }> {
+    console.log('[AlertService] Iniciando limpieza de alertas antiguas...');
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Delete expired alerts
+    const expiredDeleted = await Alert.destroy({
+      where: {
+        expiresAt: {
+          [Op.lt]: now,
+          [Op.not]: null,
+        },
+      },
+    });
+
+    // Delete old resolved alerts (older than 30 days)
+    const oldResolvedDeleted = await Alert.destroy({
+      where: {
+        isResolved: true,
+        resolvedAt: {
+          [Op.lt]: thirtyDaysAgo,
+        },
+      },
+    });
+
+    const total = expiredDeleted + oldResolvedDeleted;
+
+    console.log('[AlertService] Limpieza completada:', {
+      expiredDeleted,
+      oldResolvedDeleted,
+      total,
+    });
+
+    return {
+      expiredDeleted,
+      oldResolvedDeleted,
       total,
     };
   }

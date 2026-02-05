@@ -5,6 +5,7 @@ import Customer from './Customer';
 import Vehicle from './Vehicle';
 
 export enum RentalStatus {
+  PENDING_APPROVAL = 'pending_approval',  // Requiere aprobación de supervisor
   RESERVED = 'reserved',
   ACTIVE = 'active',
   COMPLETED = 'completed',
@@ -41,6 +42,13 @@ interface RentalAttributes {
   extras_amount?: number;
   total_amount: number;
   deposit_amount?: number;
+  shipping_cost?: number;
+  price_adjustment?: number;
+  adjustment_reason?: string;
+  // Campos de aprobación
+  approved_by?: number;
+  approved_at?: Date;
+  rejection_reason?: string;
   payment_method?: PaymentMethod;
   status: RentalStatus;
   created_by?: number;
@@ -77,6 +85,13 @@ class Rental extends Model<RentalAttributes, RentalCreationAttributes> implement
   public extras_amount?: number;
   public total_amount!: number;
   public deposit_amount?: number;
+  public shipping_cost?: number;
+  public price_adjustment?: number;
+  public adjustment_reason?: string;
+  // Campos de aprobación
+  public approved_by?: number;
+  public approved_at?: Date;
+  public rejection_reason?: string;
   public payment_method?: PaymentMethod;
   public status!: RentalStatus;
   public created_by?: number;
@@ -195,6 +210,40 @@ Rental.init(
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       defaultValue: 0
+    },
+    shipping_cost: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      defaultValue: 0,
+      comment: 'Costo de envío/transporte del vehículo'
+    },
+    price_adjustment: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      defaultValue: 0,
+      comment: 'Ajuste manual de precio (+/-)'
+    },
+    adjustment_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Razón del ajuste de precio'
+    },
+    // Campos de aprobación
+    approved_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: { model: 'users', key: 'id' },
+      comment: 'Usuario que aprobó/rechazó la renta'
+    },
+    approved_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'Fecha de aprobación/rechazo'
+    },
+    rejection_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Razón del rechazo (si aplica)'
     },
     payment_method: {
       type: DataTypes.ENUM(...Object.values(PaymentMethod)),

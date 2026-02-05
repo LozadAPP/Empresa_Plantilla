@@ -1,30 +1,25 @@
 # Sistema de Roles - MOVICAR
 
-> Documentación completa del sistema de roles y permisos.
+> Documentación del sistema de 12 roles y permisos.
 
 ---
 
-## Resumen de Roles (17 en total)
+## Resumen de Roles (12 en total)
 
-| ID | Rol | Descripción |
-|----|-----|-------------|
-| 1 | `admin` | Administrador del Sistema - Acceso total |
-| 2 | `director` | Director con acceso a todas las ubicaciones |
-| 3 | `manager` | Gerente con acceso por ubicación |
-| 4 | `seller` | Vendedor (alias inglés) |
-| 5 | `accountant` | Contador (alias inglés) |
-| 6 | `inventory` | Encargado de inventario (alias inglés) |
-| 121 | `director_general` | Director General - Gestión completa |
-| 122 | `jefe_inventarios` | Jefe de Inventarios - CRUD vehículos |
-| 123 | `jefe_ventas` | Jefe de Ventas - Rentas y clientes |
-| 124 | `jefe_finanzas` | Jefe de Finanzas - Contabilidad y pagos |
-| 125 | `jefe_admin` | Jefe Administrativo - Usuarios y config |
-| 126 | `encargado_inventario` | Encargado de Inventario básico |
-| 127 | `tecnico` | Técnico de Mantenimiento |
-| 128 | `contador` | Contador - Ver finanzas |
-| 129 | `cajero` | Cajero - Procesar pagos |
-| 130 | `asistente_admin` | Asistente Administrativo |
-| 131 | `vendedor` | Vendedor - Crear rentas y clientes |
+| ID | Rol | Descripción | Área |
+|----|-----|-------------|------|
+| 1 | `admin` | Administrador del Sistema - Acceso total | Alta Dirección |
+| 121 | `director_general` | Director General - Gestión completa multi-sede | Alta Dirección |
+| 122 | `jefe_inventarios` | Jefe de Inventarios - CRUD vehículos | Inventario |
+| 123 | `jefe_ventas` | Jefe de Ventas - Rentas y clientes | Ventas |
+| 124 | `jefe_finanzas` | Jefe de Finanzas - Contabilidad y pagos | Finanzas |
+| 125 | `jefe_admin` | Jefe Administrativo - Usuarios y config | Administración |
+| 126 | `encargado_inventario` | Encargado de Inventario básico | Inventario |
+| 127 | `tecnico` | Técnico de Mantenimiento | Inventario |
+| 128 | `contador` | Contador - Ver finanzas | Finanzas |
+| 129 | `cajero` | Cajero - Procesar pagos | Finanzas |
+| 130 | `asistente_admin` | Asistente Administrativo | Administración |
+| 131 | `vendedor` | Vendedor - Crear rentas y clientes | Ventas |
 
 ---
 
@@ -73,17 +68,16 @@
 | **Pagos** | `/api/payments/*` | CRUD completo | Todos (autenticados) |
 | **Facturas** | `/api/invoices/*` | CRUD completo | Todos (autenticados) |
 
-> **Nota:** Las operaciones tienen validación a nivel de autenticación. Se recomienda agregar roles específicos en producción.
-
 ---
 
 ### FINANZAS
 
 | Módulo | Endpoint | Roles Permitidos |
 |--------|----------|------------------|
-| **Reportes** | `/api/reports/*` | `admin`, `director`, `accountant` |
-| **Contabilidad** | `/api/accounting/*` | `admin`, `director`, `accountant` |
-| **Alertas** | `/api/alerts/*` | Todos (autenticados) |
+| **Reportes** | `/api/reports/*` | `admin`, `director_general`, `jefe_finanzas`, `jefe_ventas`, `contador` |
+| **Contabilidad** | `/api/accounting/*` | `admin`, `director_general`, `jefe_finanzas`, `contador` |
+| **Alertas (lectura)** | `GET /api/alerts/*` | `admin`, `director_general`, `jefe_finanzas`, `jefe_admin`, `contador`, `jefe_ventas` |
+| **Alertas (escritura)** | `POST /api/alerts/*` | `admin`, `director_general`, `jefe_finanzas`, `jefe_admin` |
 
 ---
 
@@ -101,8 +95,8 @@
 
 | Operación | Endpoint | Roles Permitidos |
 |-----------|----------|------------------|
-| **Lectura** | `GET /api/users/*` | `admin`, `director`, `manager` |
-| **Escritura** | `POST/PUT /api/users/*` | `admin`, `director` |
+| **Lectura** | `GET /api/users/*` | `admin`, `director_general`, `jefe_admin` |
+| **Escritura** | `POST/PUT /api/users/*` | `admin`, `director_general` |
 
 #### Configuración
 
@@ -114,11 +108,15 @@
 
 | Operación | Endpoint | Roles Permitidos |
 |-----------|----------|------------------|
-| **Lectura** | `GET /api/audit/*` | `admin`, `director` |
+| **Lectura** | `GET /api/audit/*` | `admin`, `director_general`, `jefe_admin` |
 
 ---
 
 ## Roles por Área Funcional
+
+### Alta Dirección
+- `admin` - Acceso total al sistema
+- `director_general` - Gestión completa multi-sede
 
 ### Área de Inventario
 - `jefe_inventarios` - Gestión completa de vehículos
@@ -131,18 +129,12 @@
 
 ### Área de Finanzas
 - `jefe_finanzas` - Gestión financiera completa
-- `contador` - Contabilidad y reportes
+- `contador` - Contabilidad y reportes (solo lectura)
 - `cajero` - Procesamiento de pagos
 
 ### Área Administrativa
 - `jefe_admin` - Configuración y usuarios
 - `asistente_admin` - Soporte administrativo (solo lectura)
-
-### Alta Dirección
-- `admin` - Acceso total al sistema
-- `director_general` - Gestión completa multi-sede
-- `director` - Acceso a todas las ubicaciones (alias)
-- `manager` - Gerente por ubicación
 
 ---
 
@@ -158,76 +150,52 @@
 ```json
 ["read:*", "write:*", "delete:*"]
 ```
-- Ver todo
-- Escribir en todo
-- Eliminar registros
+- Ver todo, escribir en todo, eliminar registros
 
 ### `jefe_inventarios`
 ```json
 ["read:*", "write:vehicles", "write:maintenance", "read:reports"]
 ```
-- Ver todo
-- Gestionar vehículos
-- Gestionar mantenimiento
-- Ver reportes
 
 ### `jefe_ventas`
 ```json
 ["read:*", "write:rentals", "write:customers", "read:reports"]
 ```
-- Ver todo
-- Gestionar rentas
-- Gestionar clientes
-- Ver reportes
 
 ### `jefe_finanzas`
 ```json
 ["read:*", "write:payments", "write:accounting", "read:reports"]
 ```
-- Ver todo
-- Gestionar pagos
-- Gestionar contabilidad
-- Ver reportes
 
 ### `jefe_admin`
 ```json
 ["read:*", "write:users", "write:config", "read:audit"]
 ```
-- Ver todo
-- Gestionar usuarios
-- Gestionar configuración
-- Ver auditoría
 
-### `vendedor`
+### `encargado_inventario`
 ```json
-["read:*", "write:rentals", "write:customers"]
+["read:vehicles", "write:vehicles", "read:maintenance"]
 ```
-- Ver todo
-- Crear/editar rentas
-- Crear/editar clientes
 
 ### `tecnico`
 ```json
 ["read:vehicles", "read:maintenance", "write:maintenance"]
 ```
-- Ver vehículos
-- Ver y gestionar mantenimiento
+
+### `vendedor`
+```json
+["read:*", "write:rentals", "write:customers"]
+```
 
 ### `contador`
 ```json
 ["read:*", "read:reports", "read:accounting"]
 ```
-- Ver todo (solo lectura)
-- Ver reportes
-- Ver contabilidad
 
 ### `cajero`
 ```json
 ["read:rentals", "read:customers", "write:payments"]
 ```
-- Ver rentas
-- Ver clientes
-- Procesar pagos
 
 ### `asistente_admin`
 ```json
@@ -237,17 +205,34 @@
 
 ---
 
+## Usuarios de Prueba
+
+| Email | Password | Rol |
+|-------|----------|-----|
+| `admin@movicar.com` | `Admin123!` | admin |
+| `director@movicar.com` | `Test123!` | director_general |
+| `jefe.inventarios@movicar.com` | `Test123!` | jefe_inventarios |
+| `jefe.ventas@movicar.com` | `Test123!` | jefe_ventas |
+| `jefe.finanzas@movicar.com` | `Test123!` | jefe_finanzas |
+| `jefe.admin@movicar.com` | `Test123!` | jefe_admin |
+| `encargado@movicar.com` | `Test123!` | encargado_inventario |
+| `tecnico@movicar.com` | `Test123!` | tecnico |
+| `contador@movicar.com` | `Test123!` | contador |
+| `cajero@movicar.com` | `Test123!` | cajero |
+| `asistente@movicar.com` | `Test123!` | asistente_admin |
+| `vendedor@movicar.com` | `Test123!` | vendedor |
+
+---
+
 ## Notas Importantes
 
 1. **Todos los endpoints requieren autenticación** - El usuario debe estar logueado.
 
-2. **Roles sin restricción específica** - Dashboard, Rentas, Devoluciones, Pagos e Inventario Genérico permiten acceso a cualquier usuario autenticado.
+2. **Auditoría** - Todas las acciones se registran en `audit_log` para trazabilidad.
 
-3. **Duplicados de nombres** - Existen versiones en inglés (`seller`, `accountant`, `inventory`) y español (`vendedor`, `contador`, `encargado_inventario`) para compatibilidad.
-
-4. **Auditoría** - Todas las acciones se registran en `audit_log` para trazabilidad.
+3. **Admin siempre pasa** - El middleware de roles permite a `admin` acceder a cualquier ruta.
 
 ---
 
-**Última actualización:** Enero 2026
-**Total de roles:** 17
+**Última actualización:** Febrero 2026
+**Total de roles:** 12

@@ -9,7 +9,8 @@ import {
   CircularProgress,
   Box,
   Typography,
-  useTheme
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Warning as WarningIcon,
@@ -65,6 +66,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onCancel
 }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const config = severityConfig[severity];
   const Icon = config.icon;
 
@@ -74,29 +76,42 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       onClose={loading ? undefined : onCancel}
       maxWidth="sm"
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
-          borderRadius: '16px',
-          bgcolor: theme.palette.mode === 'dark' ? '#1c1c2e' : '#ffffff'
+          borderRadius: isMobile ? 0 : '16px',
+          bgcolor: theme.palette.mode === 'dark' ? '#1c1c2e' : '#ffffff',
+          m: isMobile ? 0 : 2,
         }
       }}
     >
-      <DialogTitle component="div">
+      <DialogTitle
+        component="div"
+        sx={{
+          pt: { xs: 3, sm: 2 },
+          px: { xs: 2.5, sm: 3 }
+        }}
+      >
         <Box display="flex" alignItems="center" gap={1.5}>
-          <Icon sx={{ color: config.color, fontSize: 28 }} />
-          <Typography variant="h6" component="span" fontWeight={600}>
+          <Icon sx={{ color: config.color, fontSize: { xs: 24, sm: 28 } }} />
+          <Typography
+            variant="h6"
+            component="span"
+            fontWeight={600}
+            sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
+          >
             {title}
           </Typography>
         </Box>
       </DialogTitle>
 
-      <DialogContent>
+      <DialogContent sx={{ px: { xs: 2.5, sm: 3 } }}>
         <DialogContentText
           sx={{
             color: theme.palette.mode === 'dark'
               ? 'rgba(255, 255, 255, 0.7)'
               : 'rgba(0, 0, 0, 0.7)',
-            fontSize: '0.95rem',
+            fontSize: { xs: '0.875rem', sm: '0.95rem' },
             lineHeight: 1.6
           }}
         >
@@ -104,16 +119,25 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </DialogContentText>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+      <DialogActions
+        sx={{
+          px: { xs: 2.5, sm: 3 },
+          pb: { xs: 3, sm: 2.5 },
+          gap: 1,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+        }}
+      >
         <Button
           onClick={onCancel}
           disabled={loading}
           variant="outlined"
+          fullWidth={isMobile}
           sx={{
             borderRadius: '12px',
             textTransform: 'none',
             fontWeight: 500,
-            minWidth: 100
+            minWidth: { xs: 'auto', sm: 100 },
+            py: { xs: 1.25, sm: 1 },
           }}
         >
           {cancelText}
@@ -123,11 +147,13 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           disabled={loading}
           variant="contained"
           color={confirmColor}
+          fullWidth={isMobile}
           sx={{
             borderRadius: '12px',
             textTransform: 'none',
             fontWeight: 600,
-            minWidth: 100,
+            minWidth: { xs: 'auto', sm: 100 },
+            py: { xs: 1.25, sm: 1 },
             position: 'relative'
           }}
         >

@@ -13,7 +13,9 @@ import {
   Badge,
   Pagination,
   FormControlLabel,
-  Switch
+  Switch,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import {
@@ -70,6 +72,8 @@ interface TrendData {
 const Alerts: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
   const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [stats, setStats] = useState<AlertStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -249,24 +253,36 @@ const Alerts: React.FC = () => {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <Box sx={{
+        mb: { xs: 3, sm: 4 },
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'flex-start' },
+        gap: { xs: 2, sm: 0 }
+      }}>
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 0.5 }}>
-            <Typography variant="h3" fontWeight="700" sx={{ fontSize: '2rem', letterSpacing: '-0.02em' }}>
+            <Typography variant="h3" fontWeight="700" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' }, letterSpacing: '-0.02em' }}>
               Alertas
             </Typography>
             {stats && stats.unread > 0 && (
               <Badge badgeContent={stats.unread} color="error" max={99}>
-                <NotificationsIcon sx={{ fontSize: 32 }} />
+                <NotificationsIcon sx={{ fontSize: { xs: 28, sm: 32 } }} />
               </Badge>
             )}
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', display: { xs: 'none', sm: 'block' } }}>
             Centro de notificaciones y alertas del sistema
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: { xs: 1.5, sm: 2 }
+        }}>
           <FormControlLabel
             control={
               <Switch
@@ -296,15 +312,19 @@ const Alerts: React.FC = () => {
               onClick={handleMarkAllAsRead}
               disabled={markingAll}
               size="small"
+              sx={{
+                width: { xs: '100%', sm: 'auto' },
+                py: { xs: 1, sm: 0.5 }
+              }}
             >
-              {markingAll ? 'Procesando...' : 'Marcar todas como leídas'}
+              {markingAll ? 'Procesando...' : isMobile ? 'Marcar leídas' : 'Marcar todas como leídas'}
             </Button>
           )}
         </Box>
       </Box>
 
       {/* Stats Cards */}
-      <Grid container spacing={2} sx={{ mb: 4 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 3, sm: 4 } }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card
             sx={{
@@ -420,7 +440,7 @@ const Alerts: React.FC = () => {
                 Tendencia de Alertas (Últimos 7 días)
               </Typography>
             </Box>
-            <Box sx={{ height: 250 }}>
+            <Box sx={{ height: { xs: 200, sm: 250 } }}>
               <Line
                 data={{
                   labels: trendData.labels.map(date => {
@@ -431,32 +451,38 @@ const Alerts: React.FC = () => {
                     {
                       label: 'Críticas',
                       data: trendData.datasets.critical,
-                      borderColor: '#ef4444',
-                      backgroundColor: alpha('#ef4444', 0.1),
+                      borderColor: filter === 'all' || filter === 'critical' ? '#ef4444' : alpha('#ef4444', 0.3),
+                      backgroundColor: filter === 'all' || filter === 'critical' ? alpha('#ef4444', 0.1) : alpha('#ef4444', 0.02),
                       fill: true,
                       tension: 0.4,
-                      pointRadius: 4,
-                      pointHoverRadius: 6
+                      pointRadius: filter === 'critical' ? 6 : 4,
+                      pointHoverRadius: 6,
+                      borderWidth: filter === 'critical' ? 3 : 2,
+                      hidden: filter !== 'all' && filter !== 'critical'
                     },
                     {
                       label: 'Advertencias',
                       data: trendData.datasets.warning,
-                      borderColor: '#f59e0b',
-                      backgroundColor: alpha('#f59e0b', 0.1),
+                      borderColor: filter === 'all' || filter === 'warning' ? '#f59e0b' : alpha('#f59e0b', 0.3),
+                      backgroundColor: filter === 'all' || filter === 'warning' ? alpha('#f59e0b', 0.1) : alpha('#f59e0b', 0.02),
                       fill: true,
                       tension: 0.4,
-                      pointRadius: 4,
-                      pointHoverRadius: 6
+                      pointRadius: filter === 'warning' ? 6 : 4,
+                      pointHoverRadius: 6,
+                      borderWidth: filter === 'warning' ? 3 : 2,
+                      hidden: filter !== 'all' && filter !== 'warning'
                     },
                     {
                       label: 'Información',
                       data: trendData.datasets.info,
-                      borderColor: '#3b82f6',
-                      backgroundColor: alpha('#3b82f6', 0.1),
+                      borderColor: filter === 'all' || filter === 'info' ? '#3b82f6' : alpha('#3b82f6', 0.3),
+                      backgroundColor: filter === 'all' || filter === 'info' ? alpha('#3b82f6', 0.1) : alpha('#3b82f6', 0.02),
                       fill: true,
                       tension: 0.4,
-                      pointRadius: 4,
-                      pointHoverRadius: 6
+                      pointRadius: filter === 'info' ? 6 : 4,
+                      pointHoverRadius: 6,
+                      borderWidth: filter === 'info' ? 3 : 2,
+                      hidden: filter !== 'all' && filter !== 'info'
                     }
                   ]
                 }}
@@ -556,7 +582,7 @@ const Alerts: React.FC = () => {
                                 width: 8,
                                 height: 8,
                                 borderRadius: '50%',
-                                bgcolor: '#3b82f6'
+                                bgcolor: theme.palette.info.main
                               }}
                             />
                           )}
@@ -645,10 +671,6 @@ const Alerts: React.FC = () => {
             sx={{
               '& .MuiPaginationItem-root': {
                 color: isDarkMode ? '#fff' : 'inherit'
-              },
-              '& .Mui-selected': {
-                bgcolor: '#8b5cf6 !important',
-                color: '#fff'
               }
             }}
           />

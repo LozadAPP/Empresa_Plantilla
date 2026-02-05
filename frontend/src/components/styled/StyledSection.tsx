@@ -44,22 +44,46 @@ export const StyledSection: React.FC<StyledSectionProps> = ({
         <Box
           sx={{
             display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
             justifyContent: 'space-between',
-            alignItems: action ? 'center' : 'flex-start',
-            mb: 2,
-            flexWrap: 'wrap',
-            gap: 2,
+            alignItems: { xs: 'flex-start', sm: action ? 'center' : 'flex-start' },
+            mb: { xs: 1.5, sm: 2 },
+            gap: { xs: 1, sm: 2 },
           }}
         >
-          <Box>
-            <Typography variant="h5">{title}</Typography>
+          <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <Typography
+              variant="h5"
+              sx={{
+                fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' },
+                fontWeight: 600,
+              }}
+            >
+              {title}
+            </Typography>
             {subtitle && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  display: { xs: 'none', sm: 'block' },
+                  fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                }}
+              >
                 {subtitle}
               </Typography>
             )}
           </Box>
-          {action && <Box>{action}</Box>}
+          {action && (
+            <Box sx={{
+              width: { xs: '100%', sm: 'auto' },
+              '& > *': {
+                width: { xs: '100%', sm: 'auto' },
+              }
+            }}>
+              {action}
+            </Box>
+          )}
         </Box>
       )}
       {children}

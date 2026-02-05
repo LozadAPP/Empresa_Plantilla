@@ -27,7 +27,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Grid
+  Grid,
+  Card,
+  CardContent,
+  Divider,
+  Stack,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -76,6 +82,9 @@ const Inventory: React.FC = () => {
   const { hasAnyRole } = useAuth();
   const { isDarkMode } = useCustomTheme();
   const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const canEdit = hasAnyRole('admin', 'director_general', 'jefe_inventarios', 'encargado_inventario');
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -376,13 +385,26 @@ const Inventory: React.FC = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
+      {/* Header - Responsive */}
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'flex-start' },
+        gap: { xs: 2, sm: 0 },
+        mb: { xs: 3, sm: 4 }
+      }}>
         <Box>
-          <Typography variant="h2" sx={{ mb: 0.5 }}>
+          <Typography
+            variant="h2"
+            sx={{
+              mb: 0.5,
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
+            }}
+          >
             Inventario de Vehículos
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
             Gestión completa de la flota vehicular
           </Typography>
         </Box>
@@ -391,14 +413,15 @@ const Inventory: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleCreateClick}
+            fullWidth={isMobile}
             sx={{
               borderRadius: '12px',
               textTransform: 'none',
               fontWeight: 600,
-              mt: 0.5
+              py: { xs: 1.25, sm: 1 }
             }}
           >
-            Agregar Vehículo
+            {isMobile ? 'Agregar' : 'Agregar Vehículo'}
           </Button>
         )}
       </Box>
@@ -445,10 +468,10 @@ const Inventory: React.FC = () => {
               variant="contained"
               startIcon={<AddIcon />}
               sx={{
-                bgcolor: '#8b5cf6',
+                bgcolor: isDarkMode ? '#a78bfa' : '#8b5cf6',
                 color: '#fff',
                 '&:hover': {
-                  bgcolor: '#7c3aed'
+                  bgcolor: isDarkMode ? '#8b5cf6' : '#7c3aed'
                 }
               }}
             >
@@ -463,16 +486,25 @@ const Inventory: React.FC = () => {
           </Alert>
         )}
 
-        {/* Filters Bar */}
+        {/* Filters Bar - Responsive */}
         <Box sx={{ mb: 3 }}>
           {/* Basic Filters Row */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 1.5, md: 2 },
+            mb: 2,
+            alignItems: { xs: 'stretch', md: 'center' }
+          }}>
             <TextField
-              placeholder="Buscar por modelo, placa, color, VIN..."
+              placeholder={isMobile ? "Buscar..." : "Buscar por modelo, placa, color, VIN..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               size="small"
-              sx={{ flexGrow: 1, minWidth: 300 }}
+              sx={{
+                flexGrow: 1,
+                minWidth: { xs: 'auto', md: 300 }
+              }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -481,48 +513,74 @@ const Inventory: React.FC = () => {
                 )
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 150 }}>
-              <InputLabel>Estado</InputLabel>
-              <Select
-                value={statusFilter}
-                label="Estado"
-                onChange={(e) => setStatusFilter(e.target.value as VehicleStatus | '')}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="available">Disponible</MenuItem>
-                <MenuItem value="rented">Rentado</MenuItem>
-                <MenuItem value="maintenance">Mantenimiento</MenuItem>
-              </Select>
-            </FormControl>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'row', md: 'row' },
+              gap: 1,
+              flexWrap: 'wrap'
+            }}>
+              <FormControl size="small" sx={{ minWidth: { xs: 'calc(50% - 4px)', sm: 150 }, flex: { xs: 1, sm: 'none' } }}>
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Estado"
+                  onChange={(e) => setStatusFilter(e.target.value as VehicleStatus | '')}
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  <MenuItem value="available">Disponible</MenuItem>
+                  <MenuItem value="rented">Rentado</MenuItem>
+                  <MenuItem value="maintenance">Mantenimiento</MenuItem>
+                </Select>
+              </FormControl>
 
-            <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
               <Button
                 variant={showAdvancedFilters ? "contained" : "outlined"}
-                startIcon={<TuneIcon />}
+                startIcon={!isMobile && <TuneIcon />}
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 size="small"
-                sx={{ borderRadius: '8px', textTransform: 'none' }}
+                sx={{
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  minWidth: { xs: 'auto', sm: 'auto' },
+                  flex: { xs: 1, sm: 'none' }
+                }}
               >
-                Filtros Avanzados
+                {isMobile ? <TuneIcon /> : 'Filtros'}
               </Button>
+            </Box>
+
+            <Box sx={{
+              display: 'flex',
+              gap: 1,
+              ml: { xs: 0, md: 'auto' },
+              justifyContent: { xs: 'space-between', md: 'flex-end' }
+            }}>
               <Button
                 variant="outlined"
-                startIcon={<ClearIcon />}
+                startIcon={!isMobile && <ClearIcon />}
                 onClick={handleClearFilters}
                 size="small"
-                sx={{ borderRadius: '8px', textTransform: 'none' }}
+                sx={{
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  flex: { xs: 1, md: 'none' }
+                }}
               >
-                Limpiar
+                {isMobile ? <ClearIcon /> : 'Limpiar'}
               </Button>
               <Button
                 variant="outlined"
-                startIcon={<ExportIcon />}
+                startIcon={!isMobile && <ExportIcon />}
                 onClick={handleExportToExcel}
                 size="small"
-                sx={{ borderRadius: '8px', textTransform: 'none' }}
+                sx={{
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  flex: { xs: 1, md: 'none' }
+                }}
                 disabled={vehicles.length === 0}
               >
-                Exportar
+                {isMobile ? <ExportIcon /> : 'Exportar'}
               </Button>
             </Box>
           </Box>
@@ -634,149 +692,262 @@ const Inventory: React.FC = () => {
           )}
         </Box>
 
-        {/* Table */}
-        <TableContainer sx={{ border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`, borderRadius: 2 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell
-                  sx={{ cursor: 'pointer', userSelect: 'none' }}
-                  onClick={() => handleSort('make')}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography variant="body2" fontWeight="600">Modelo</Typography>
-                    {sortBy === 'make' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
-                  </Box>
-                </TableCell>
-                <TableCell
-                  sx={{ cursor: 'pointer', userSelect: 'none' }}
-                  onClick={() => handleSort('license_plate')}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography variant="body2" fontWeight="600">Placa</Typography>
-                    {sortBy === 'license_plate' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
-                  </Box>
-                </TableCell>
-                <TableCell
-                  sx={{ cursor: 'pointer', userSelect: 'none' }}
-                  onClick={() => handleSort('year')}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography variant="body2" fontWeight="600">Año</Typography>
-                    {sortBy === 'year' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
-                  </Box>
-                </TableCell>
-                <TableCell><Typography variant="body2" fontWeight="600">Color</Typography></TableCell>
-                <TableCell
-                  sx={{ cursor: 'pointer', userSelect: 'none' }}
-                  onClick={() => handleSort('status')}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography variant="body2" fontWeight="600">Estado</Typography>
-                    {sortBy === 'status' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
-                  </Box>
-                </TableCell>
-                <TableCell><Typography variant="body2" fontWeight="600">Ubicación</Typography></TableCell>
-                <TableCell
-                  align="right"
-                  sx={{ cursor: 'pointer', userSelect: 'none' }}
-                  onClick={() => handleSort('current_value')}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'flex-end' }}>
-                    <Typography variant="body2" fontWeight="600">Valor</Typography>
-                    {sortBy === 'current_value' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
-                  </Box>
-                </TableCell>
-                <TableCell
-                  sx={{ cursor: 'pointer', userSelect: 'none' }}
-                  onClick={() => handleSort('condition')}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography variant="body2" fontWeight="600">Condición</Typography>
-                    {sortBy === 'condition' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
-                  </Box>
-                </TableCell>
-                <TableCell align="center"><Typography variant="body2" fontWeight="600">Acciones</Typography></TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {vehicles.length === 0 ? (
+        {/* Mobile Cards View */}
+        {isMobile ? (
+          <Box>
+            {vehicles.length === 0 ? (
+              <Box sx={{ py: 8, textAlign: 'center' }}>
+                <CarIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">
+                  No se encontraron vehículos
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Agrega un nuevo vehículo para empezar
+                </Typography>
+              </Box>
+            ) : (
+              <Stack spacing={1.5}>
+                {vehicles.map((vehicle) => (
+                  <Card
+                    key={vehicle.id}
+                    sx={{
+                      bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#fff',
+                      border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'}`,
+                      borderRadius: '12px',
+                    }}
+                  >
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      {/* Header: Modelo + Acciones */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="body1" fontWeight={600} noWrap>
+                            {vehicle.make} {vehicle.model}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {vehicle.license_plate} • {vehicle.year}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Chip
+                            label={statusLabels[vehicle.status]}
+                            color={statusColors[vehicle.status]}
+                            size="small"
+                          />
+                          <IconButton size="small" onClick={(e) => handleMenuOpen(e, vehicle)}>
+                            <MoreIcon />
+                          </IconButton>
+                        </Box>
+                      </Box>
+
+                      <Divider sx={{ my: 1.5, borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)' }} />
+
+                      {/* Detalles en grid */}
+                      <Grid container spacing={1.5}>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Valor
+                          </Typography>
+                          <Typography variant="body2" fontWeight={600}>
+                            ${vehicle.current_value?.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Condición
+                          </Typography>
+                          <Chip
+                            label={vehicle.condition}
+                            size="small"
+                            variant="outlined"
+                            color={getConditionColor(vehicle.condition)}
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Ubicación
+                          </Typography>
+                          <Typography variant="body2">
+                            {vehicle.location?.name || '-'}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Tipo
+                          </Typography>
+                          <Typography variant="body2">
+                            {vehicle.vehicleType?.name || '-'}
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            )}
+
+            {/* Pagination for Mobile */}
+            <TablePagination
+              component="div"
+              count={pagination.total}
+              page={pagination.page - 1}
+              onPageChange={handleChangePage}
+              rowsPerPage={pagination.limit}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[10, 25, 50]}
+              labelRowsPerPage=""
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+              sx={{
+                '.MuiTablePagination-selectLabel': { display: 'none' },
+                '.MuiTablePagination-select': { display: 'none' },
+                '.MuiTablePagination-selectIcon': { display: 'none' },
+              }}
+            />
+          </Box>
+        ) : (
+          /* Desktop Table View */
+          <TableContainer sx={{ border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`, borderRadius: 2 }}>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
-                    <CarIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary">
-                      No se encontraron vehículos
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Agrega un nuevo vehículo para empezar
-                    </Typography>
+                  <TableCell
+                    sx={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('make')}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="body2" fontWeight="600">Modelo</Typography>
+                      {sortBy === 'make' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
+                    </Box>
                   </TableCell>
+                  <TableCell
+                    sx={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('license_plate')}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="body2" fontWeight="600">Placa</Typography>
+                      {sortBy === 'license_plate' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
+                    </Box>
+                  </TableCell>
+                  <TableCell
+                    sx={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('year')}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="body2" fontWeight="600">Año</Typography>
+                      {sortBy === 'year' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
+                    </Box>
+                  </TableCell>
+                  <TableCell><Typography variant="body2" fontWeight="600">Color</Typography></TableCell>
+                  <TableCell
+                    sx={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('status')}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="body2" fontWeight="600">Estado</Typography>
+                      {sortBy === 'status' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
+                    </Box>
+                  </TableCell>
+                  <TableCell><Typography variant="body2" fontWeight="600">Ubicación</Typography></TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('current_value')}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'flex-end' }}>
+                      <Typography variant="body2" fontWeight="600">Valor</Typography>
+                      {sortBy === 'current_value' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
+                    </Box>
+                  </TableCell>
+                  <TableCell
+                    sx={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('condition')}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="body2" fontWeight="600">Condición</Typography>
+                      {sortBy === 'condition' && (sortOrder === 'ASC' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />)}
+                    </Box>
+                  </TableCell>
+                  <TableCell align="center"><Typography variant="body2" fontWeight="600">Acciones</Typography></TableCell>
                 </TableRow>
-              ) : (
-                vehicles.map((vehicle) => (
-                  <TableRow key={vehicle.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="600">
-                        {vehicle.make} {vehicle.model}
+              </TableHead>
+              <TableBody>
+                {vehicles.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
+                      <CarIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                      <Typography variant="h6" color="text.secondary">
+                        No se encontraron vehículos
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {vehicle.vehicleType?.name}
+                      <Typography variant="body2" color="text.secondary">
+                        Agrega un nuevo vehículo para empezar
                       </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{vehicle.license_plate}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{vehicle.year}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{vehicle.color || '-'}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={statusLabels[vehicle.status]}
-                        color={statusColors[vehicle.status]}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{vehicle.location?.name || '-'}</Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body2" fontWeight="600">
-                        ${vehicle.current_value?.toLocaleString()}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={vehicle.condition}
-                        size="small"
-                        variant="outlined"
-                        color={getConditionColor(vehicle.condition)}
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton size="small" onClick={(e) => handleMenuOpen(e, vehicle)}>
-                        <MoreIcon />
-                      </IconButton>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-          <TablePagination
-            component="div"
-            count={pagination.total}
-            page={pagination.page - 1}
-            onPageChange={handleChangePage}
-            rowsPerPage={pagination.limit}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[10, 25, 50, 100]}
-            labelRowsPerPage="Filas por página:"
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-          />
-        </TableContainer>
+                ) : (
+                  vehicles.map((vehicle) => (
+                    <TableRow key={vehicle.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="600">
+                          {vehicle.make} {vehicle.model}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {vehicle.vehicleType?.name}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{vehicle.license_plate}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{vehicle.year}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{vehicle.color || '-'}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={statusLabels[vehicle.status]}
+                          color={statusColors[vehicle.status]}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{vehicle.location?.name || '-'}</Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight="600">
+                          ${vehicle.current_value?.toLocaleString()}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={vehicle.condition}
+                          size="small"
+                          variant="outlined"
+                          color={getConditionColor(vehicle.condition)}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton size="small" onClick={(e) => handleMenuOpen(e, vehicle)}>
+                          <MoreIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <TablePagination
+              component="div"
+              count={pagination.total}
+              page={pagination.page - 1}
+              onPageChange={handleChangePage}
+              rowsPerPage={pagination.limit}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+              labelRowsPerPage="Filas por página:"
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+            />
+          </TableContainer>
+        )}
       </StyledSection>
 
       {/* Actions Menu */}
@@ -971,7 +1142,7 @@ const Inventory: React.FC = () => {
             onClick={handleEditSave}
             variant="contained"
             disabled={editLoading}
-            sx={{ bgcolor: '#8b5cf6', '&:hover': { bgcolor: '#7c3aed' } }}
+            sx={{ bgcolor: isDarkMode ? '#a78bfa' : '#8b5cf6', '&:hover': { bgcolor: isDarkMode ? '#8b5cf6' : '#7c3aed' } }}
           >
             {editLoading ? <CircularProgress size={20} /> : 'Guardar Cambios'}
           </Button>

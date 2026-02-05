@@ -20,7 +20,11 @@ import {
   Stack,
   Button,
   IconButton,
-  Alert
+  Alert,
+  useMediaQuery,
+  useTheme,
+  Card,
+  CardContent
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -75,6 +79,9 @@ ChartJS.register(
 const Dashboard: React.FC = () => {
   const { isDarkMode, text, chart, tooltip, background, border, purple, status } = useThemeStyles();
   const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -138,8 +145,8 @@ const Dashboard: React.FC = () => {
           {
             label: 'Ingresos',
             data: performanceData.map((d: any) => d.revenue),
-            borderColor: '#8b5cf6',
-            backgroundColor: alpha('#8b5cf6', 0.1),
+            borderColor: isDarkMode ? '#a78bfa' : '#7c3aed',
+            backgroundColor: isDarkMode ? alpha('#a78bfa', 0.15) : alpha('#7c3aed', 0.08),
             fill: true,
             tension: 0.4,
             yAxisID: 'y'
@@ -147,7 +154,7 @@ const Dashboard: React.FC = () => {
           {
             label: 'Ocupación %',
             data: performanceData.map((d: any) => d.occupancy),
-            borderColor: '#10b981',
+            borderColor: isDarkMode ? '#34d399' : '#059669',
             backgroundColor: 'transparent',
             fill: false,
             tension: 0.4,
@@ -183,8 +190,8 @@ const Dashboard: React.FC = () => {
         {
           label: 'Ingresos',
           data: revenueData[periodTab as keyof typeof revenueData],
-          borderColor: '#8b5cf6',
-          backgroundColor: alpha('#8b5cf6', 0.1),
+          borderColor: isDarkMode ? '#a78bfa' : '#7c3aed',
+          backgroundColor: isDarkMode ? alpha('#a78bfa', 0.15) : alpha('#7c3aed', 0.08),
           fill: true,
           tension: 0.4,
           yAxisID: 'y'
@@ -192,7 +199,7 @@ const Dashboard: React.FC = () => {
         {
           label: 'Ocupación %',
           data: occupancyData[periodTab as keyof typeof occupancyData],
-          borderColor: '#10b981',
+          borderColor: isDarkMode ? '#34d399' : '#059669',
           backgroundColor: 'transparent',
           fill: false,
           tension: 0.4,
@@ -200,7 +207,7 @@ const Dashboard: React.FC = () => {
         }
       ]
     };
-  }, [performanceData, periodTab]);
+  }, [performanceData, periodTab, isDarkMode]);
 
   // OPTIMIZADO: chartOptions memoizado (movido antes de returns)
   const chartOptions = useMemo(() => ({
@@ -208,12 +215,12 @@ const Dashboard: React.FC = () => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: true,
+        display: !isMobile,
         position: 'top' as const,
         labels: {
           color: text.primary,
           usePointStyle: true,
-          padding: 15
+          padding: isMobile ? 8 : 15
         }
       }
     },
@@ -225,28 +232,34 @@ const Dashboard: React.FC = () => {
         beginAtZero: true,
         ticks: {
           color: chart.tickColor,
-          callback: (value: number | string) => '$' + (Number(value) / 1000) + 'k'
+          callback: (value: number | string) => '$' + (Number(value) / 1000) + 'k',
+          font: { size: isMobile ? 10 : 12 }
         },
         grid: { color: chart.gridColor }
       },
       y1: {
         type: 'linear' as const,
-        display: true,
+        display: !isMobile,
         position: 'right' as const,
         beginAtZero: true,
         max: 100,
         ticks: {
           color: chart.tickColor,
-          callback: (value: number | string) => Number(value) + '%'
+          callback: (value: number | string) => Number(value) + '%',
+          font: { size: isMobile ? 10 : 12 }
         },
         grid: { drawOnChartArea: false }
       },
       x: {
-        ticks: { color: chart.tickColor },
+        ticks: {
+          color: chart.tickColor,
+          font: { size: isMobile ? 10 : 12 },
+          maxRotation: isMobile ? 45 : 0
+        },
         grid: { color: chart.gridColor }
       }
     }
-  }), [text.primary, chart.tickColor, chart.gridColor]);
+  }), [text.primary, chart.tickColor, chart.gridColor, isMobile]);
 
   // OPTIMIZADO: doughnutOptions memoizado (movido antes de returns)
   const doughnutOptions = useMemo(() => ({
@@ -554,17 +567,17 @@ const Dashboard: React.FC = () => {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h2" sx={{ mb: 0.5 }}>
+      <Box sx={{ mb: { xs: 2, sm: 4 } }}>
+        <Typography variant="h2" sx={{ mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem' } }}>
           Dashboard Ejecutivo
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
           Resumen del negocio en tiempo real
         </Typography>
       </Box>
 
       {/* KPI Row - 6 Cards */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(6, 1fr)' }, gap: 2, mb: 4 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', lg: 'repeat(6, 1fr)' }, gap: { xs: 1.5, sm: 2 }, mb: { xs: 3, sm: 4 } }}>
         {/* KPI 1: Ocupación de Flota */}
         <StyledKPI
           icon={<TrendingUpIcon />}
@@ -635,24 +648,31 @@ const Dashboard: React.FC = () => {
         {/* Gráfica Izquierda: Desempeño del Negocio - 75% */}
         <StyledSection
           title="Desempeño del Negocio"
-          subtitle="Ingresos y ocupación en el tiempo"
+          subtitle={isMobile ? undefined : "Ingresos y ocupación en el tiempo"}
           action={
-            <Tabs value={periodTab} onChange={(_e, v: number) => setPeriodTab(v)} sx={{ minHeight: 36 }}>
-              <Tab label="Hoy" sx={{ minHeight: 36, py: 0.5, px: 2, fontSize: '0.75rem', minWidth: 'auto' }} />
-              <Tab label="Semana" sx={{ minHeight: 36, py: 0.5, px: 2, fontSize: '0.75rem', minWidth: 'auto' }} />
-              <Tab label="Mes" sx={{ minHeight: 36, py: 0.5, px: 2, fontSize: '0.75rem', minWidth: 'auto' }} />
-              <Tab label="Año" sx={{ minHeight: 36, py: 0.5, px: 2, fontSize: '0.75rem', minWidth: 'auto' }} />
+            <Tabs
+              value={periodTab}
+              onChange={(_e, v: number) => setPeriodTab(v)}
+              variant={isMobile ? "scrollable" : "standard"}
+              scrollButtons={isMobile ? "auto" : false}
+              allowScrollButtonsMobile
+              sx={{ minHeight: 36 }}
+            >
+              <Tab label="Hoy" sx={{ minHeight: 36, py: 0.5, px: { xs: 1, sm: 2 }, fontSize: '0.75rem', minWidth: 'auto' }} />
+              <Tab label="Semana" sx={{ minHeight: 36, py: 0.5, px: { xs: 1, sm: 2 }, fontSize: '0.75rem', minWidth: 'auto' }} />
+              <Tab label="Mes" sx={{ minHeight: 36, py: 0.5, px: { xs: 1, sm: 2 }, fontSize: '0.75rem', minWidth: 'auto' }} />
+              <Tab label="Año" sx={{ minHeight: 36, py: 0.5, px: { xs: 1, sm: 2 }, fontSize: '0.75rem', minWidth: 'auto' }} />
             </Tabs>
           }
         >
-          <Box sx={{ height: 400 }}>
+          <Box sx={{ height: { xs: 250, sm: 300, md: 400 } }}>
             <Line data={performanceChartData} options={chartOptions} />
           </Box>
         </StyledSection>
 
         {/* Gráfica Derecha: Distribución de Flota Compacta - 25% */}
-        <StyledSection title="Distribución de Flota" subtitle={`${totalVehicles} vehículos totales`}>
-          <Box sx={{ height: 400, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <StyledSection title="Distribución de Flota" subtitle={isMobile ? undefined : `${totalVehicles} vehículos totales`}>
+          <Box sx={{ height: { xs: 280, sm: 350, md: 400 }, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Doughnut
               data={fleetDistributionData}
               options={{
@@ -713,7 +733,7 @@ const Dashboard: React.FC = () => {
 
                     // Label text
                     ctx.font = `500 0.75rem Poppins`;
-                    ctx.fillStyle = isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)';
+                    ctx.fillStyle = isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.65)';
                     ctx.fillText('Vehículos', centerX, centerY + 18);
 
                     ctx.restore();
@@ -730,14 +750,70 @@ const Dashboard: React.FC = () => {
         {/* Mapa de Inventario - 75% ancho */}
         <StyledSection
           title="Mapa de Inventario"
-          subtitle={`${inventoryItems.length} artículos en tiempo real`}
+          subtitle={isMobile ? undefined : `${inventoryItems.length} artículos en tiempo real`}
         >
-          <Box sx={{ height: 500, display: 'flex', gap: 2 }}>
-            {/* Sidebar List */}
+          {/* Mobile: Filtro y selector de item antes del mapa */}
+          {isMobile && (
+            <Box sx={{ mb: 2 }}>
+              <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
+                <Select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  sx={{
+                    bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.04)',
+                    borderRadius: '12px',
+                    minHeight: 48,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)',
+                    },
+                  }}
+                >
+                  <MenuItem value="all">
+                    <Typography variant="body2" fontWeight={600}>Todas las categorías</Typography>
+                  </MenuItem>
+                  {categories.map((category) => (
+                    <MenuItem key={category.id} value={category.name}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: category.color }} />
+                        <Typography variant="body2">{category.name}</Typography>
+                      </Stack>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <Select
+                  value={selectedInventoryItem?.id || ''}
+                  onChange={(e) => {
+                    const item = filteredInventoryItems.find(i => i.id === e.target.value);
+                    if (item) setSelectedInventoryItem(item);
+                  }}
+                  displayEmpty
+                  sx={{
+                    bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.04)',
+                    borderRadius: '12px',
+                    minHeight: 48,
+                  }}
+                >
+                  <MenuItem value="" disabled>
+                    <Typography variant="body2" color="text.secondary">Seleccionar vehículo...</Typography>
+                  </MenuItem>
+                  {filteredInventoryItems.map((item) => (
+                    <MenuItem key={item.id} value={item.id}>
+                      <Typography variant="body2">{item.name} - {item.currentLocationCity}</Typography>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
+
+          <Box sx={{ height: { xs: 300, sm: 400, md: 500 }, display: 'flex', gap: 2 }}>
+            {/* Sidebar List - Hidden on mobile */}
             <Box
               sx={{
                 width: 280,
-                display: 'flex',
+                display: { xs: 'none', md: 'flex' },
                 flexDirection: 'column',
               }}
             >
@@ -1062,57 +1138,93 @@ const Dashboard: React.FC = () => {
       </Box>
 
       {/* Fila 3: Cards de Resumen - 3 Columnas */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, 1fr)' }, gap: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: { xs: 2, sm: 3 } }}>
 
         {/* Recent Rentals - ACTUALIZADO con datos reales (Fase 2.3) */}
         <StyledSection title="Últimas Rentas">
-          <TableContainer sx={{ maxHeight: 280 }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell><strong>Código</strong></TableCell>
-                  <TableCell><strong>Cliente</strong></TableCell>
-                  <TableCell><strong>Estado</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {recentRentals.length > 0 ? (
-                  recentRentals.map((rental) => (
-                    <TableRow key={rental.id} hover>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="600">
-                          RNT-{rental.id}
+          {isMobile ? (
+            // Mobile Cards View
+            <Stack spacing={1.5} sx={{ maxHeight: 280, overflowY: 'auto' }}>
+              {recentRentals.length > 0 ? (
+                recentRentals.map((rental) => (
+                  <Box
+                    key={rental.id}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 1,
+                      bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.05)' : alpha('#8b5cf6', 0.03),
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="body2" fontWeight="600">RNT-{rental.id}</Typography>
+                      <Typography variant="caption" color="text.secondary">{rental.customerName}</Typography>
+                    </Box>
+                    <Chip
+                      label={rental.status === 'active' ? 'Activa' : 'Completada'}
+                      size="small"
+                      color={rental.status === 'active' ? 'success' : 'default'}
+                    />
+                  </Box>
+                ))
+              ) : (
+                <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+                  No hay rentas recientes
+                </Typography>
+              )}
+            </Stack>
+          ) : (
+            // Desktop Table View
+            <TableContainer sx={{ maxHeight: 280 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell><strong>Código</strong></TableCell>
+                    <TableCell><strong>Cliente</strong></TableCell>
+                    <TableCell><strong>Estado</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recentRentals.length > 0 ? (
+                    recentRentals.map((rental) => (
+                      <TableRow key={rental.id} hover>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="600">
+                            RNT-{rental.id}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
+                            {rental.customerName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {rental.vehicleName}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={rental.status === 'active' ? 'Activa' : 'Completada'}
+                            size="small"
+                            color={rental.status === 'active' ? 'success' : 'default'}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center">
+                        <Typography variant="body2" color="text.secondary">
+                          No hay rentas recientes
                         </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
-                          {rental.customerName}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {rental.vehicleName}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={rental.status === 'active' ? 'Activa' : 'Completada'}
-                          size="small"
-                          color={rental.status === 'active' ? 'success' : 'default'}
-                        />
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={3} align="center">
-                      <Typography variant="body2" color="text.secondary">
-                        No hay rentas recientes
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </StyledSection>
 
         {/* Top Customers - ACTUALIZADO con datos reales (Fase 2.3) */}
@@ -1204,35 +1316,35 @@ const Dashboard: React.FC = () => {
       </Box>
 
       {/* Fila 4: Autos Ociosos - Movido al final */}
-      <Box sx={{ mt: 3 }}>
+      <Box sx={{ mt: { xs: 2, sm: 3 } }}>
         <Paper sx={{
-          p: 3,
+          p: { xs: 2, sm: 3 },
           background: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : alpha('#ef4444', 0.05),
           borderRadius: 2,
           border: `1px solid ${isDarkMode ? 'rgba(239, 68, 68, 0.3)' : '#fecaca'}`
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
             <Box sx={{
-              width: 40,
-              height: 40,
+              width: { xs: 36, sm: 40 },
+              height: { xs: 36, sm: 40 },
               borderRadius: '12px',
               bgcolor: alpha('#f59e0b', 0.2),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <WarningIcon sx={{ color: '#f59e0b' }} />
+              <WarningIcon sx={{ color: '#f59e0b', fontSize: { xs: 20, sm: 24 } }} />
             </Box>
             <Box>
-              <Typography variant="h3" sx={{ color: '#f59e0b', mb: 0.5 }}>
+              <Typography variant="h3" sx={{ color: '#f59e0b', mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem' } }}>
                 8
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 Autos Ociosos
               </Typography>
             </Box>
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.78rem', fontWeight: 400, lineHeight: 1.5 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.78rem' }, fontWeight: 400, lineHeight: 1.5 }}>
             Vehículos disponibles sin rentar por más de 15 días
           </Typography>
         </Paper>

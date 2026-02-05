@@ -23,7 +23,7 @@ export const useThemeStyles = () => {
     text: {
       primary: isDarkMode ? '#ffffff' : '#1f2937',
       secondary: isDarkMode ? '#a0aec0' : '#6b7280',
-      muted: isDarkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
+      muted: isDarkMode ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.6)',
       body: isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)',
       heading: isDarkMode ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.87)',
       headingStrong: isDarkMode ? '#ffffff' : '#111827',
@@ -151,8 +151,8 @@ export const useThemeStyles = () => {
 
       // Status gradients
       success: 'linear-gradient(90deg, #01b574 0%, #c9fbd5 100%)',
-      warning: 'linear-gradient(90deg, #ffb547 0%, #fff5cc 100%)',
-      error: 'linear-gradient(90deg, #e31a1a 0%, #ffd6d6 100%)',
+      warning: isDarkMode ? 'linear-gradient(90deg, #ffb547 0%, #fff5cc 100%)' : 'linear-gradient(90deg, #b45309 0%, #d97706 100%)',
+      error: isDarkMode ? 'linear-gradient(90deg, #ff5252 0%, #ff8a80 100%)' : 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)',
 
       // Border gradients for neon effect
       borderPrimary: 'linear-gradient(90deg, rgba(0, 117, 255, 0.6), rgba(33, 212, 253, 0.6))',
@@ -227,20 +227,20 @@ export const useThemeStyles = () => {
         gradient: 'linear-gradient(90deg, #01b574 0%, #c9fbd5 100%)',
       },
       error: {
-        main: '#e31a1a',
-        light: '#ffd6d6',
-        background: isDarkMode ? 'rgba(227, 26, 26, 0.15)' : alpha('#e31a1a', 0.08),
-        backgroundLight: isDarkMode ? 'rgba(227, 26, 26, 0.08)' : alpha('#e31a1a', 0.04),
-        border: isDarkMode ? 'rgba(227, 26, 26, 0.4)' : 'rgba(227, 26, 26, 0.3)',
-        gradient: 'linear-gradient(90deg, #e31a1a 0%, #ffd6d6 100%)',
+        main: isDarkMode ? '#ff5252' : '#dc2626',
+        light: isDarkMode ? '#ff8a80' : '#ef4444',
+        background: isDarkMode ? 'rgba(255, 82, 82, 0.15)' : alpha('#dc2626', 0.08),
+        backgroundLight: isDarkMode ? 'rgba(255, 82, 82, 0.08)' : alpha('#dc2626', 0.04),
+        border: isDarkMode ? 'rgba(255, 82, 82, 0.4)' : 'rgba(220, 38, 38, 0.3)',
+        gradient: isDarkMode ? 'linear-gradient(90deg, #ff5252 0%, #ff8a80 100%)' : 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)',
       },
       warning: {
-        main: '#ffb547',
-        light: '#fff5cc',
-        background: isDarkMode ? 'rgba(255, 181, 71, 0.15)' : alpha('#ffb547', 0.08),
-        backgroundLight: isDarkMode ? 'rgba(255, 181, 71, 0.08)' : alpha('#ffb547', 0.04),
-        border: isDarkMode ? 'rgba(255, 181, 71, 0.4)' : 'rgba(255, 181, 71, 0.3)',
-        gradient: 'linear-gradient(90deg, #ffb547 0%, #fff5cc 100%)',
+        main: isDarkMode ? '#ffb547' : '#b45309',
+        light: isDarkMode ? '#fff5cc' : '#d97706',
+        background: isDarkMode ? 'rgba(255, 181, 71, 0.15)' : alpha('#b45309', 0.08),
+        backgroundLight: isDarkMode ? 'rgba(255, 181, 71, 0.08)' : alpha('#b45309', 0.04),
+        border: isDarkMode ? 'rgba(255, 181, 71, 0.4)' : 'rgba(180, 83, 9, 0.3)',
+        gradient: isDarkMode ? 'linear-gradient(90deg, #ffb547 0%, #fff5cc 100%)' : 'linear-gradient(90deg, #b45309 0%, #d97706 100%)',
       },
       info: {
         main: '#0075ff',
@@ -288,6 +288,62 @@ export const useThemeStyles = () => {
       normal: 'background-color 0.2s ease, color 0.2s ease, transform 0.2s ease',
       smooth: 'transform 0.25s ease, opacity 0.25s ease',
       spring: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    },
+
+    // ==========================================
+    // RESPONSIVE UTILITIES
+    // ==========================================
+    // Utilidades para usar con sx prop de Material-UI
+    responsive: {
+      // Display utilities
+      hideOnMobile: { display: { xs: 'none', sm: 'block' } },
+      showOnMobile: { display: { xs: 'block', sm: 'none' } },
+      hideOnTablet: { display: { xs: 'block', md: 'none' } },
+      showOnTablet: { display: { xs: 'none', md: 'block' } },
+
+      // Flex direction utilities
+      stackOnMobile: { flexDirection: { xs: 'column', sm: 'row' } },
+      stackOnTablet: { flexDirection: { xs: 'column', md: 'row' } },
+
+      // Width utilities
+      fullWidthOnMobile: { width: { xs: '100%', sm: 'auto' } },
+      fullWidthOnTablet: { width: { xs: '100%', md: 'auto' } },
+
+      // Touch-friendly targets (mínimo 44px para accesibilidad)
+      touchTarget: { minHeight: { xs: 48, sm: 40 }, minWidth: { xs: 48, sm: 'auto' } },
+
+      // Padding responsive
+      pagePadding: { p: { xs: 2, sm: 3, md: 4 } },
+      cardPadding: { p: { xs: 2, sm: 2.5, md: 3 } },
+      sectionPadding: { px: { xs: 2, sm: 3 }, py: { xs: 1.5, sm: 2 } },
+
+      // Gap responsive
+      gapSm: { gap: { xs: 1, sm: 1.5, md: 2 } },
+      gapMd: { gap: { xs: 1.5, sm: 2, md: 3 } },
+      gapLg: { gap: { xs: 2, sm: 3, md: 4 } },
+
+      // Grid templates comunes
+      gridKpi: {
+        gridTemplateColumns: {
+          xs: '1fr',
+          sm: 'repeat(2, 1fr)',
+          md: 'repeat(3, 1fr)',
+          lg: 'repeat(4, 1fr)'
+        }
+      },
+      gridCards: {
+        gridTemplateColumns: {
+          xs: '1fr',
+          sm: 'repeat(2, 1fr)',
+          lg: 'repeat(3, 1fr)'
+        }
+      },
+
+      // Typography responsive
+      textHeading: { fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' } },
+      textSubheading: { fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } },
+      textBody: { fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' } },
+      textSmall: { fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' } },
     },
 
   }), [isDarkMode]);

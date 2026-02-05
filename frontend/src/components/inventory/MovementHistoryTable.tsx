@@ -467,7 +467,7 @@ const MovementHistoryTable: React.FC<MovementHistoryTableProps> = ({ refreshKey,
                       sx={{
                         textTransform: 'none',
                         fontWeight: 500,
-                        color: '#8b5cf6'
+                        color: isDarkMode ? '#a78bfa' : '#8b5cf6'
                       }}
                     >
                       {movement.itemName}
@@ -492,7 +492,7 @@ const MovementHistoryTable: React.FC<MovementHistoryTableProps> = ({ refreshKey,
                         size="small"
                         onClick={() => handleDownloadDocument(movement)}
                         title="Descargar PDF"
-                        sx={{ color: '#8b5cf6' }}
+                        sx={{ color: isDarkMode ? '#a78bfa' : '#8b5cf6' }}
                       >
                         <DownloadIcon />
                       </IconButton>

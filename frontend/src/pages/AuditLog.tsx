@@ -24,7 +24,12 @@ import {
   alpha,
   Pagination,
   Snackbar,
-  Alert
+  Alert,
+  useMediaQuery,
+  useTheme,
+  Stack,
+  Divider,
+  Collapse
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -43,10 +48,27 @@ import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { auditService, AuditLogEntry, AuditStats } from '../services/auditService';
+import { exportToCSV, formatDateForCSV } from '../utils/exportCSV';
+
+// Columnas para exportación CSV
+const AUDIT_LOG_COLUMNS = [
+  { key: 'createdAt', label: 'Fecha y Hora', formatter: formatDateForCSV },
+  { key: 'userName', label: 'Usuario' },
+  { key: 'action', label: 'Accion' },
+  { key: 'entityType', label: 'Entidad' },
+  { key: 'entityId', label: 'ID Entidad' },
+  { key: 'ipAddress', label: 'Direccion IP' },
+];
 
 const AuditLog: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
+  const theme = useTheme();
+
+  // RESPONSIVE: Media queries
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
+
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [stats, setStats] = useState<AuditStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -158,8 +180,66 @@ const AuditLog: React.FC = () => {
     return labels[entityType] || entityType;
   };
 
+  // Helper para formatear valores JSON de forma legible
+  const formatJsonValue = (value: any): string => {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+    if (typeof value === 'number') return value.toLocaleString('es-MX');
+    if (typeof value === 'string') {
+      // Intentar parsear como fecha
+      const dateMatch = value.match(/^\d{4}-\d{2}-\d{2}/);
+      if (dateMatch) {
+        try {
+          return format(new Date(value), "d MMM yyyy HH:mm", { locale: es });
+        } catch { return value; }
+      }
+      return value;
+    }
+    if (Array.isArray(value)) return value.join(', ');
+    if (typeof value === 'object') return JSON.stringify(value, null, 2);
+    return String(value);
+  };
+
+  // Renderiza valores JSON como lista de key-value
+  const renderJsonValues = (values: Record<string, any> | null) => {
+    if (!values || typeof values !== 'object') return null;
+    return Object.entries(values).map(([key, value]) => (
+      <Box key={key} sx={{ display: 'flex', gap: 1, py: 0.5, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
+        <Typography variant="caption" sx={{ fontWeight: 600, minWidth: 100, color: 'text.secondary' }}>
+          {key.replace(/_/g, ' ')}:
+        </Typography>
+        <Typography variant="caption" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+          {formatJsonValue(value)}
+        </Typography>
+      </Box>
+    ));
+  };
+
   const handleExport = () => {
-    // TODO: Implement export functionality
+    if (filteredLogs.length === 0) {
+      setSnackbar({
+        open: true,
+        message: 'No hay registros para exportar',
+        severity: 'error'
+      });
+      return;
+    }
+
+    try {
+      exportToCSV(filteredLogs, AUDIT_LOG_COLUMNS, 'MOVICAR_Auditoria');
+      setSnackbar({
+        open: true,
+        message: `Exportación completada: ${filteredLogs.length} registros`,
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error exporting audit logs:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al exportar los registros',
+        severity: 'error'
+      });
+    }
   };
 
   // Client-side search filter (API already handles action and entity filters)
@@ -189,14 +269,21 @@ const AuditLog: React.FC = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      {/* Header - RESPONSIVE */}
+      <Box sx={{
+        mb: { xs: 3, sm: 4 },
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'flex-start' },
+        gap: { xs: 2, sm: 0 }
+      }}>
         <Box>
-          <Typography variant="h3" fontWeight="700" sx={{ fontSize: '2rem', letterSpacing: '-0.02em', mb: 0.5 }}>
+          <Typography variant="h3" fontWeight="700" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' }, letterSpacing: '-0.02em', mb: 0.5 }}>
             Auditoría
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-            Registro de todas las acciones realizadas en el sistema
+            Registro de acciones del sistema
           </Typography>
         </Box>
 
@@ -204,120 +291,141 @@ const AuditLog: React.FC = () => {
           variant="outlined"
           startIcon={<DownloadIcon />}
           onClick={handleExport}
+          fullWidth={isMobile}
+          sx={{ minHeight: { xs: 48, sm: 40 } }}
         >
-          Exportar Logs
+          Exportar
         </Button>
       </Box>
 
       {/* Stats Cards */}
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 2, sm: 3, md: 4 } }}>
+        <Grid item xs={6} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Total de Acciones
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                    {isMobile ? 'Total' : 'Total de Acciones'}
                   </Typography>
-                  <Typography variant="h4" fontWeight="bold">
+                  <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' } }}>
                     {totalActions}
                   </Typography>
                 </Box>
-                <HistoryIcon sx={{ fontSize: 40, color: '#8b5cf6', opacity: 0.5 }} />
+                <HistoryIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: '#8b5cf6', opacity: 0.5 }} />
               </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+        <Grid item xs={6} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
                     Hoy
                   </Typography>
-                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#3b82f6' }}>
+                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#3b82f6', fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' } }}>
                     {todayActions}
                   </Typography>
                 </Box>
-                <EventIcon sx={{ fontSize: 40, color: '#3b82f6', opacity: 0.5 }} />
+                <EventIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: '#3b82f6', opacity: 0.5 }} />
               </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+        <Grid item xs={6} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Creaciones
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                    {isMobile ? 'Creados' : 'Creaciones'}
                   </Typography>
-                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#10b981' }}>
+                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#10b981', fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' } }}>
                     {createActions}
                   </Typography>
                 </Box>
-                <CreateIcon sx={{ fontSize: 40, color: '#10b981', opacity: 0.5 }} />
+                <CreateIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: '#10b981', opacity: 0.5 }} />
               </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+        <Grid item xs={6} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Modificaciones
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                    {isMobile ? 'Modific.' : 'Modificaciones'}
                   </Typography>
-                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#f59e0b' }}>
+                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#f59e0b', fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' } }}>
                     {updateActions}
                   </Typography>
                 </Box>
-                <EditIcon sx={{ fontSize: 40, color: '#f59e0b', opacity: 0.5 }} />
+                <EditIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: '#f59e0b', opacity: 0.5 }} />
               </Box>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Filters */}
+      {/* Filters - RESPONSIVE */}
       <Card sx={{
         mb: 3,
-        p: 3,
+        p: { xs: 2, sm: 3 },
         bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
         border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-          <FilterIcon />
-          <Typography variant="h6" fontWeight={600}>
-            Filtros
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <FilterIcon />
+            <Typography variant="h6" fontWeight={600}>
+              Filtros
+            </Typography>
+          </Box>
+          {isMobile && (
+            <Button
+              size="small"
+              onClick={() => setFiltersExpanded(!filtersExpanded)}
+              endIcon={<ExpandMoreIcon sx={{ transform: filtersExpanded ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />}
+            >
+              {filtersExpanded ? 'Menos' : 'Más'}
+            </Button>
+          )}
         </Box>
 
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Buscar por usuario, entidad o acción..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                )
-              }}
-            />
-          </Grid>
+        {/* Búsqueda siempre visible */}
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Buscar..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{
+            mb: { xs: 1.5, sm: 2 },
+            '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } }
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            )
+          }}
+        />
 
-          <Grid item xs={12} md={2}>
-            <FormControl fullWidth size="small">
+        {/* Filtros adicionales - colapsables en móvil */}
+        <Collapse in={!isMobile || filtersExpanded}>
+          <Box sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' },
+            gap: { xs: 1.5, sm: 2 }
+          }}>
+            <FormControl fullWidth size="small" sx={{ '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } } }}>
               <InputLabel>Acción</InputLabel>
               <Select
                 value={actionFilter}
@@ -331,10 +439,8 @@ const AuditLog: React.FC = () => {
                 <MenuItem value="VIEW">Ver</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
 
-          <Grid item xs={12} md={2}>
-            <FormControl fullWidth size="small">
+            <FormControl fullWidth size="small" sx={{ '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } } }}>
               <InputLabel>Entidad</InputLabel>
               <Select
                 value={entityFilter}
@@ -349,9 +455,7 @@ const AuditLog: React.FC = () => {
                 <MenuItem value="user">Usuarios</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
 
-          <Grid item xs={12} md={2}>
             <TextField
               fullWidth
               size="small"
@@ -359,13 +463,10 @@ const AuditLog: React.FC = () => {
               label="Desde"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              InputLabelProps={{
-                shrink: true
-              }}
+              sx={{ '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } } }}
+              InputLabelProps={{ shrink: true }}
             />
-          </Grid>
 
-          <Grid item xs={12} md={2}>
             <TextField
               fullWidth
               size="small"
@@ -373,128 +474,228 @@ const AuditLog: React.FC = () => {
               label="Hasta"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              InputLabelProps={{
-                shrink: true
-              }}
+              sx={{ '& .MuiInputBase-root': { minHeight: { xs: 48, sm: 40 } } }}
+              InputLabelProps={{ shrink: true }}
             />
-          </Grid>
-        </Grid>
+          </Box>
+        </Collapse>
       </Card>
 
-      {/* Audit Logs Table */}
-      <TableContainer component={Paper} sx={{
-        bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
-        border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-      }}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : alpha('#8b5cf6', 0.1) }}>
-              <TableCell sx={{ fontWeight: 700 }}>Fecha y Hora</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Usuario</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Acción</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Entidad</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>ID</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>IP</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Detalles</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredLogs.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    No se encontraron registros de auditoría
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredLogs.map((log) => (
-                <React.Fragment key={log.id}>
-                  <TableRow hover sx={{ cursor: 'pointer' }} onClick={() => setExpandedRow(expandedRow === log.id ? null : log.id)}>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {format(new Date(log.createdAt), "d MMM yyyy", { locale: es })}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {format(new Date(log.createdAt), "HH:mm:ss", { locale: es })}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <PersonIcon fontSize="small" sx={{ color: '#8b5cf6' }} />
-                        <Typography variant="body2">{log.userName}</Typography>
+      {/* RESPONSIVE: Cards en móvil, Tabla en desktop */}
+      {isMobile ? (
+        /* Vista de Cards para móvil */
+        <Box>
+          {filteredLogs.length === 0 ? (
+            <Paper sx={{
+              p: 4,
+              textAlign: 'center',
+              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff'
+            }}>
+              <HistoryIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+              <Typography color="text.secondary">No hay registros</Typography>
+            </Paper>
+          ) : (
+            <Stack spacing={1.5}>
+              {filteredLogs.map((log) => (
+                <Card
+                  key={log.id}
+                  sx={{
+                    bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
+                    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                  }}
+                >
+                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                    {/* Header: Fecha + Acción */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                      <Box>
+                        <Typography variant="body2" fontWeight="700">
+                          {format(new Date(log.createdAt), "d MMM yyyy", { locale: es })}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {format(new Date(log.createdAt), "HH:mm:ss", { locale: es })}
+                        </Typography>
                       </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {getActionIcon(log.action)}
                         {getActionChip(log.action)}
                       </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {getEntityTypeLabel(log.entityType)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={600}>
-                        #{log.entityId || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                        {log.ipAddress}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="small"
-                        endIcon={<ExpandMoreIcon sx={{ transform: expandedRow === log.id ? 'rotate(180deg)' : 'none' }} />}
-                      >
-                        {expandedRow === log.id ? 'Ocultar' : 'Ver'}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  {expandedRow === log.id && (
-                    <TableRow>
-                      <TableCell colSpan={7} sx={{ bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.05)' : alpha('#8b5cf6', 0.05) }}>
-                        <Box sx={{ p: 2 }}>
-                          <Grid container spacing={2}>
+                    </Box>
+
+                    <Divider sx={{ my: 1.5, borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }} />
+
+                    {/* Info Grid */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                          Usuario
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
+                          <PersonIcon fontSize="small" sx={{ color: '#8b5cf6', fontSize: 16 }} />
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>{log.userName}</Typography>
+                        </Box>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                          Entidad
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                          {getEntityTypeLabel(log.entityType)} #{log.entityId || '-'}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    {/* Expandir detalles */}
+                    {(log.oldValues || log.newValues) && (
+                      <>
+                        <Button
+                          size="small"
+                          onClick={() => setExpandedRow(expandedRow === log.id ? null : log.id)}
+                          endIcon={<ExpandMoreIcon sx={{ transform: expandedRow === log.id ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />}
+                          sx={{ mt: 1.5, width: '100%' }}
+                        >
+                          {expandedRow === log.id ? 'Ocultar' : 'Ver cambios'}
+                        </Button>
+                        <Collapse in={expandedRow === log.id}>
+                          <Box sx={{ mt: 1.5 }}>
                             {log.oldValues && (
-                              <Grid item xs={12} md={6}>
-                                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                                  Valores Anteriores
-                                </Typography>
-                                <Paper sx={{ p: 2, bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.05)' : alpha('#ef4444', 0.05) }}>
-                                  <pre style={{ margin: 0, fontSize: '0.75rem', whiteSpace: 'pre-wrap' }}>
-                                    {JSON.stringify(log.oldValues, null, 2)}
-                                  </pre>
+                              <Box sx={{ mb: 1.5 }}>
+                                <Typography variant="caption" fontWeight={600} sx={{ color: '#ef4444' }}>Anterior:</Typography>
+                                <Paper sx={{ p: 1.5, mt: 0.5, bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.05)' : alpha('#ef4444', 0.05) }}>
+                                  {renderJsonValues(log.oldValues)}
                                 </Paper>
-                              </Grid>
+                              </Box>
                             )}
                             {log.newValues && (
-                              <Grid item xs={12} md={6}>
-                                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                                  Valores Nuevos
-                                </Typography>
-                                <Paper sx={{ p: 2, bgcolor: isDarkMode ? 'rgba(16, 185, 129, 0.05)' : alpha('#10b981', 0.05) }}>
-                                  <pre style={{ margin: 0, fontSize: '0.75rem', whiteSpace: 'pre-wrap' }}>
-                                    {JSON.stringify(log.newValues, null, 2)}
-                                  </pre>
+                              <Box>
+                                <Typography variant="caption" fontWeight={600} sx={{ color: '#10b981' }}>Nuevo:</Typography>
+                                <Paper sx={{ p: 1.5, mt: 0.5, bgcolor: isDarkMode ? 'rgba(16, 185, 129, 0.05)' : alpha('#10b981', 0.05) }}>
+                                  {renderJsonValues(log.newValues)}
                                 </Paper>
-                              </Grid>
+                              </Box>
                             )}
-                          </Grid>
+                          </Box>
+                        </Collapse>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </Box>
+      ) : (
+        /* Vista de Tabla para desktop */
+        <TableContainer component={Paper} sx={{
+          bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
+          border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+          overflowX: 'auto'
+        }}>
+          <Table sx={{ minWidth: 900 }}>
+            <TableHead>
+              <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : alpha('#8b5cf6', 0.1) }}>
+                <TableCell sx={{ fontWeight: 700 }}>Fecha y Hora</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Usuario</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Acción</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Entidad</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>ID</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>IP</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Detalles</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredLogs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No se encontraron registros de auditoría
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredLogs.map((log) => (
+                  <React.Fragment key={log.id}>
+                    <TableRow hover sx={{ cursor: 'pointer' }} onClick={() => setExpandedRow(expandedRow === log.id ? null : log.id)}>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {format(new Date(log.createdAt), "d MMM yyyy", { locale: es })}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {format(new Date(log.createdAt), "HH:mm:ss", { locale: es })}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <PersonIcon fontSize="small" sx={{ color: '#8b5cf6' }} />
+                          <Typography variant="body2">{log.userName}</Typography>
                         </Box>
                       </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {getActionIcon(log.action)}
+                          {getActionChip(log.action)}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {getEntityTypeLabel(log.entityType)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600}>
+                          #{log.entityId || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                          {log.ipAddress}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="small"
+                          endIcon={<ExpandMoreIcon sx={{ transform: expandedRow === log.id ? 'rotate(180deg)' : 'none' }} />}
+                        >
+                          {expandedRow === log.id ? 'Ocultar' : 'Ver'}
+                        </Button>
+                      </TableCell>
                     </TableRow>
-                  )}
-                </React.Fragment>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                    {expandedRow === log.id && (
+                      <TableRow>
+                        <TableCell colSpan={7} sx={{ bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.05)' : alpha('#8b5cf6', 0.05) }}>
+                          <Box sx={{ p: 2 }}>
+                            <Grid container spacing={2}>
+                              {log.oldValues && (
+                                <Grid item xs={12} md={6}>
+                                  <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ color: '#ef4444' }}>
+                                    Valores Anteriores
+                                  </Typography>
+                                  <Paper sx={{ p: 2, bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.05)' : alpha('#ef4444', 0.05) }}>
+                                    {renderJsonValues(log.oldValues)}
+                                  </Paper>
+                                </Grid>
+                              )}
+                              {log.newValues && (
+                                <Grid item xs={12} md={6}>
+                                  <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ color: '#10b981' }}>
+                                    Valores Nuevos
+                                  </Typography>
+                                  <Paper sx={{ p: 2, bgcolor: isDarkMode ? 'rgba(16, 185, 129, 0.05)' : alpha('#10b981', 0.05) }}>
+                                    {renderJsonValues(log.newValues)}
+                                  </Paper>
+                                </Grid>
+                              )}
+                            </Grid>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (

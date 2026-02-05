@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { body, param, query } from 'express-validator';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { requireRole } from '../middleware/roleMiddleware';
 import { RentalController } from '../controllers/rentalController';
+
+// Roles que pueden aprobar/rechazar rentas
+const ROLES_APROBACION = ['admin', 'director_general', 'jefe_ventas'] as const;
 
 const router = Router();
 
@@ -272,6 +276,15 @@ const createRentalValidation = [
   body('deposit_amount')
     .optional()
     .isDecimal({ decimal_digits: '0,2' }).withMessage('El monto del depósito debe ser un número válido'),
+  body('shipping_cost')
+    .optional()
+    .isDecimal({ decimal_digits: '0,2' }).withMessage('El costo de envío debe ser un número válido'),
+  body('price_adjustment')
+    .optional()
+    .isDecimal({ decimal_digits: '0,2' }).withMessage('El ajuste de precio debe ser un número válido'),
+  body('adjustment_reason')
+    .optional()
+    .isLength({ max: 500 }).withMessage('La razón del ajuste no puede exceder 500 caracteres'),
   body('payment_method')
     .optional()
     .isIn(['cash', 'credit_card', 'debit_card', 'transfer', 'check'])
@@ -312,9 +325,18 @@ const updateRentalValidation = [
   body('extras_amount')
     .optional()
     .isDecimal({ decimal_digits: '0,2' }).withMessage('El monto de extras debe ser un número válido'),
+  body('shipping_cost')
+    .optional()
+    .isDecimal({ decimal_digits: '0,2' }).withMessage('El costo de envío debe ser un número válido'),
+  body('price_adjustment')
+    .optional()
+    .isDecimal({ decimal_digits: '0,2' }).withMessage('El ajuste de precio debe ser un número válido'),
+  body('adjustment_reason')
+    .optional()
+    .isLength({ max: 500 }).withMessage('La razón del ajuste no puede exceder 500 caracteres'),
   body('status')
     .optional()
-    .isIn(['reserved', 'active', 'completed', 'cancelled'])
+    .isIn(['pending_approval', 'reserved', 'active', 'completed', 'cancelled', 'overdue'])
     .withMessage('Estado de renta inválido'),
   body('notes')
     .optional()
@@ -337,7 +359,7 @@ const cancelRentalValidation = [
 const getAllValidation = [
   query('status')
     .optional()
-    .isIn(['reserved', 'active', 'completed', 'cancelled'])
+    .isIn(['pending_approval', 'reserved', 'active', 'completed', 'cancelled', 'overdue'])
     .withMessage('Estado de renta inválido'),
   query('customer_id')
     .optional()
@@ -364,6 +386,42 @@ const getAllValidation = [
 
 // GET /api/rentals - Obtener todas las rentas
 router.get('/', getAllValidation, RentalController.getAll);
+
+// ============================================
+// RUTAS DE APROBACIÓN (deben ir ANTES de /:id)
+// ============================================
+
+// GET /api/rentals/pending-approvals - Obtener rentas pendientes de aprobación
+router.get(
+  '/pending-approvals',
+  requireRole(...ROLES_APROBACION),
+  RentalController.getPendingApprovals
+);
+
+// POST /api/rentals/:id/approve - Aprobar una renta
+router.post(
+  '/:id/approve',
+  requireRole(...ROLES_APROBACION),
+  [param('id').isInt({ min: 1 }).withMessage('El ID de la renta debe ser un número válido')],
+  RentalController.approve
+);
+
+// POST /api/rentals/:id/reject - Rechazar una renta
+router.post(
+  '/:id/reject',
+  requireRole(...ROLES_APROBACION),
+  [
+    param('id').isInt({ min: 1 }).withMessage('El ID de la renta debe ser un número válido'),
+    body('reason')
+      .notEmpty().withMessage('La razón del rechazo es requerida')
+      .isLength({ min: 10, max: 500 }).withMessage('La razón debe tener entre 10 y 500 caracteres')
+  ],
+  RentalController.reject
+);
+
+// ============================================
+// RUTAS CRUD ESTÁNDAR
+// ============================================
 
 // GET /api/rentals/:id - Obtener una renta por ID
 router.get('/:id', getByIdValidation, RentalController.getById);

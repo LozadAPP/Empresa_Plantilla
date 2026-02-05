@@ -1,12 +1,38 @@
 /**
- * Formulario para Registrar Pago (CHAT 2) - VERSIÓN MEJORADA
- * Cambios: Validación de overpayment, modal de recibo, botón pago completo
+ * Formulario para Registrar Pago (CHAT 2)
+ * CONVERTIDO A MATERIAL UI - Soporte completo Dark/Light Mode
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { useTheme as useMuiTheme } from '@mui/material';
 import { useSnackbar } from 'notistack';
+import {
+  Box,
+  Typography,
+  Paper,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  Checkbox,
+  FormControlLabel,
+  Dialog,
+  DialogContent,
+  Divider,
+  CircularProgress
+} from '@mui/material';
+import {
+  ArrowBack as BackIcon,
+  Check as CheckIcon,
+  CheckCircle as SuccessIcon,
+  Print as PrintIcon,
+  Email as EmailIcon,
+  List as ListIcon
+} from '@mui/icons-material';
+import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { AppDispatch } from '../store';
 import { createPayment } from '../store/slices/paymentSlice';
 import { CreatePaymentDTO, PaymentType } from '../types/payment';
@@ -19,8 +45,7 @@ const PaymentForm: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [searchParams] = useSearchParams();
-  const muiTheme = useMuiTheme();
-  const isDarkMode = muiTheme.palette.mode === 'dark';
+  const { isDarkMode } = useCustomTheme();
   const { enqueueSnackbar } = useSnackbar();
   const invoiceId = searchParams.get('invoice');
 
@@ -29,8 +54,6 @@ const PaymentForm: React.FC = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [confirmOverpayment, setConfirmOverpayment] = useState(false);
-
-  // ✅ Estado para modal de recibo
   const [paymentReceipt, setPaymentReceipt] = useState<any>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
 
@@ -77,11 +100,9 @@ const PaymentForm: React.FC = () => {
     } else {
       setSelectedInvoice(null);
     }
-    // Reset overpayment confirmation cuando cambia factura
     setConfirmOverpayment(false);
   }, [formData.invoice_id, invoices]);
 
-  // ✅ Reset confirmación cuando cambia el monto
   useEffect(() => {
     setConfirmOverpayment(false);
   }, [formData.amount]);
@@ -119,12 +140,11 @@ const PaymentForm: React.FC = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { name: string; value: unknown } }) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name as string]: value }));
   };
 
-  // ✅ Botón para pagar saldo completo
   const handlePayFullBalance = () => {
     if (selectedInvoice) {
       setFormData(prev => ({
@@ -142,7 +162,6 @@ const PaymentForm: React.FC = () => {
       return;
     }
 
-    // ✅ VALIDACIÓN DE OVERPAYMENT
     if (selectedInvoice && Number(formData.amount) > selectedInvoice.balance) {
       if (!confirmOverpayment) {
         enqueueSnackbar('Por favor confirma el sobrepago marcando la casilla de verificación', { variant: 'warning' });
@@ -153,11 +172,8 @@ const PaymentForm: React.FC = () => {
     setLoading(true);
     try {
       const result = await dispatch(createPayment(formData)).unwrap();
-
-      // ✅ Buscar el cliente para el recibo
       const customer = customers.find(c => c.id === formData.customer_id);
 
-      // ✅ Crear recibo con los datos del pago
       const receipt = {
         payment_code: result.payment_code || `PAY-${Date.now()}`,
         date: new Date(),
@@ -180,341 +196,399 @@ const PaymentForm: React.FC = () => {
     }
   };
 
-  // Helpers para etiquetas
   const getPaymentMethodLabel = (method: string) => PAYMENT_METHOD_LABELS[method] || method;
   const getPaymentTypeLabel = (type: string) => PAYMENT_TYPE_LABELS[type] || type;
 
-  // ✅ Detectar overpayment
   const isOverpayment = selectedInvoice && Number(formData.amount) > selectedInvoice.balance;
   const overpaymentAmount = isOverpayment ? Number(formData.amount) - selectedInvoice.balance : 0;
 
+  const paperStyles = {
+    p: { xs: 2, sm: 3 },
+    background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
+    borderRadius: { xs: '12px', sm: 2 },
+    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+  };
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Registrar Pago</h1>
-        <p className={`mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Completa el formulario para registrar un nuevo pago</p>
-      </div>
+    <Box sx={{ maxWidth: 900, mx: 'auto' }}>
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" fontWeight="700" sx={{ mb: 0.5 }}>
+          Registrar Pago
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Completa el formulario para registrar un nuevo pago
+        </Typography>
+      </Box>
 
-      <form onSubmit={handleSubmit} className={`rounded-lg shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Tipo de Pago */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Tipo de Pago *
-            </label>
-            <select
-              name="payment_type"
-              value={formData.payment_type}
-              onChange={handleChange}
-              required
-              className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+      <Paper sx={paperStyles}>
+        <form onSubmit={handleSubmit}>
+          <Grid container spacing={3}>
+            {/* Tipo de Pago */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Tipo de Pago *</InputLabel>
+                <Select
+                  name="payment_type"
+                  value={formData.payment_type}
+                  onChange={(e) => handleChange({ target: { name: 'payment_type', value: e.target.value } })}
+                  label="Tipo de Pago *"
+                  required
+                >
+                  <MenuItem value="rental_payment">Pago de Renta</MenuItem>
+                  <MenuItem value="deposit">Depósito</MenuItem>
+                  <MenuItem value="penalty">Penalidad</MenuItem>
+                  <MenuItem value="refund">Reembolso</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Factura */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Factura (opcional)</InputLabel>
+                <Select
+                  name="invoice_id"
+                  value={formData.invoice_id || ''}
+                  onChange={(e) => handleChange({ target: { name: 'invoice_id', value: e.target.value } })}
+                  label="Factura (opcional)"
+                >
+                  <MenuItem value="">Sin factura</MenuItem>
+                  {invoices.filter(inv => inv.balance > 0).map(invoice => (
+                    <MenuItem key={invoice.id} value={invoice.id}>
+                      {invoice.invoice_code} - Saldo: {formatCurrency(invoice.balance)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Cliente */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Cliente *</InputLabel>
+                <Select
+                  name="customer_id"
+                  value={formData.customer_id || ''}
+                  onChange={(e) => handleChange({ target: { name: 'customer_id', value: e.target.value } })}
+                  label="Cliente *"
+                  required
+                  disabled={!!selectedInvoice}
+                >
+                  <MenuItem value="">Seleccionar cliente</MenuItem>
+                  {customers.map(customer => (
+                    <MenuItem key={customer.id} value={customer.id}>
+                      {customer.first_name} {customer.last_name} - {customer.email}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Monto */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Monto *"
+                type="number"
+                name="amount"
+                value={formData.amount}
+                onChange={handleChange}
+                required
+                inputProps={{ min: 0.01, step: 0.01 }}
+              />
+              {selectedInvoice && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Saldo pendiente: <strong>{formatCurrency(selectedInvoice.balance)}</strong>
+                  </Typography>
+                  {Number(formData.amount) !== selectedInvoice.balance && (
+                    <Button
+                      size="small"
+                      onClick={handlePayFullBalance}
+                      sx={{ ml: 1, fontSize: '0.75rem', textTransform: 'none', color: '#8b5cf6' }}
+                    >
+                      Pagar saldo completo
+                    </Button>
+                  )}
+                </Box>
+              )}
+            </Grid>
+
+            {/* Método de Pago */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Método de Pago *</InputLabel>
+                <Select
+                  name="payment_method"
+                  value={formData.payment_method}
+                  onChange={(e) => handleChange({ target: { name: 'payment_method', value: e.target.value } })}
+                  label="Método de Pago *"
+                  required
+                >
+                  <MenuItem value="cash">Efectivo</MenuItem>
+                  <MenuItem value="credit_card">Tarjeta de Crédito</MenuItem>
+                  <MenuItem value="debit_card">Tarjeta de Débito</MenuItem>
+                  <MenuItem value="transfer">Transferencia</MenuItem>
+                  <MenuItem value="check">Cheque</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Número de Referencia */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Número de Referencia (opcional)"
+                name="reference_number"
+                value={formData.reference_number}
+                onChange={handleChange}
+                placeholder="Ej: TRF-123456"
+              />
+            </Grid>
+
+            {/* Notas */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
+                label="Notas (opcional)"
+                placeholder="Información adicional sobre el pago..."
+              />
+            </Grid>
+          </Grid>
+
+          {/* Warning de Overpayment */}
+          {isOverpayment && (
+            <Paper
+              sx={{
+                mt: 3,
+                p: 2,
+                background: isDarkMode ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.05)',
+                border: `1px solid ${isDarkMode ? 'rgba(234, 179, 8, 0.5)' : 'rgba(234, 179, 8, 0.3)'}`
+              }}
             >
-              <option value="rental_payment">Pago de Renta</option>
-              <option value="deposit">Depósito</option>
-              <option value="penalty">Penalidad</option>
-              <option value="refund">Reembolso</option>
-            </select>
-          </div>
+              <Typography variant="subtitle2" sx={{ color: isDarkMode ? '#fcd34d' : '#b45309', mb: 1 }}>
+                ⚠️ Advertencia: Sobrepago Detectado
+              </Typography>
+              <Typography variant="body2" sx={{ color: isDarkMode ? '#fde68a' : '#92400e' }}>
+                El monto ingresado (<strong>{formatCurrency(Number(formData.amount))}</strong>) es MAYOR que el saldo pendiente (<strong>{formatCurrency(selectedInvoice.balance)}</strong>).
+              </Typography>
+              <Typography variant="body2" sx={{ color: isDarkMode ? '#fde68a' : '#92400e', mt: 0.5 }}>
+                Sobrepago: <strong>{formatCurrency(overpaymentAmount)}</strong>
+              </Typography>
+              <FormControlLabel
+                sx={{ mt: 1 }}
+                control={
+                  <Checkbox
+                    checked={confirmOverpayment}
+                    onChange={(e) => setConfirmOverpayment(e.target.checked)}
+                    sx={{ color: isDarkMode ? '#fcd34d' : '#b45309' }}
+                  />
+                }
+                label={
+                  <Typography variant="body2" sx={{ color: isDarkMode ? '#fcd34d' : '#92400e' }}>
+                    Confirmo que quiero procesar un sobrepago de {formatCurrency(overpaymentAmount)}
+                  </Typography>
+                }
+              />
+            </Paper>
+          )}
 
-          {/* Factura (opcional) */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Factura (opcional)
-            </label>
-            <select
-              name="invoice_id"
-              value={formData.invoice_id || ''}
-              onChange={handleChange}
-              className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+          {/* Resumen de Factura */}
+          {selectedInvoice && (
+            <Paper
+              sx={{
+                mt: 3,
+                p: 2,
+                background: isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+                border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`
+              }}
             >
-              <option value="">Sin factura</option>
-              {invoices.filter(inv => inv.balance > 0).map(invoice => (
-                <option key={invoice.id} value={invoice.id}>
-                  {invoice.invoice_code} - Saldo: {formatCurrency(invoice.balance)}
-                </option>
-              ))}
-            </select>
-          </div>
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2 }}>
+                Resumen de la Factura
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">Factura:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{selectedInvoice.invoice_code}</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">Total:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{formatCurrency(selectedInvoice.total_amount)}</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">Pagado:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{formatCurrency(selectedInvoice.paid_amount || 0)}</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">Saldo:</Typography>
+                  <Typography variant="body2" fontWeight={500} sx={{ color: '#ef4444' }}>{formatCurrency(selectedInvoice.balance)}</Typography>
+                </Grid>
+              </Grid>
+            </Paper>
+          )}
 
-          {/* Cliente */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Cliente *
-            </label>
-            <select
-              name="customer_id"
-              value={formData.customer_id}
-              onChange={handleChange}
-              required
-              disabled={!!selectedInvoice}
-              className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white disabled:bg-gray-600' : 'bg-white border-gray-300 text-gray-900 disabled:bg-gray-100'}`}
+          {/* Botones */}
+          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<BackIcon />}
+              onClick={() => navigate('/payments')}
+              sx={{
+                borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)',
+                color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
+              }}
             >
-              <option value="">Seleccionar cliente</option>
-              {customers.map(customer => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.first_name} {customer.last_name} - {customer.email}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Monto */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Monto *
-            </label>
-            <input
-              type="number"
-              name="amount"
-              value={formData.amount}
-              onChange={handleChange}
-              required
-              min="0.01"
-              step="0.01"
-              className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-            />
-            {selectedInvoice && (
-              <div className="mt-1 space-y-1">
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Saldo pendiente: <strong>{formatCurrency(selectedInvoice.balance)}</strong>
-                </p>
-                {/* Boton pago completo */}
-                {Number(formData.amount) !== selectedInvoice.balance && (
-                  <button
-                    type="button"
-                    onClick={handlePayFullBalance}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    Pagar saldo completo ({formatCurrency(selectedInvoice.balance)})
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Método de Pago */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Método de Pago *
-            </label>
-            <select
-              name="payment_method"
-              value={formData.payment_method}
-              onChange={handleChange}
-              required
-              className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loading}
+              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CheckIcon />}
+              sx={{
+                bgcolor: '#3b82f6',
+                '&:hover': { bgcolor: '#2563eb' }
+              }}
             >
-              <option value="cash">Efectivo</option>
-              <option value="credit_card">Tarjeta de Crédito</option>
-              <option value="debit_card">Tarjeta de Débito</option>
-              <option value="transfer">Transferencia</option>
-              <option value="check">Cheque</option>
-            </select>
-          </div>
+              {loading ? 'Registrando...' : 'Registrar Pago'}
+            </Button>
+          </Box>
+        </form>
+      </Paper>
 
-          {/* Número de Referencia */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Número de Referencia (opcional)
-            </label>
-            <input
-              type="text"
-              name="reference_number"
-              value={formData.reference_number}
-              onChange={handleChange}
-              placeholder="Ej: TRF-123456"
-              className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`}
-            />
-          </div>
+      {/* Modal de Recibo */}
+      <Dialog
+        open={showReceiptModal}
+        onClose={() => {}}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: isDarkMode ? '#1f2937' : '#fff',
+            borderRadius: 2
+          }
+        }}
+      >
+        {/* Header Verde */}
+        <Box sx={{ bgcolor: '#10b981', color: '#fff', p: 4, textAlign: 'center' }}>
+          <SuccessIcon sx={{ fontSize: 64, mb: 1 }} />
+          <Typography variant="h5" fontWeight="bold">¡Pago Registrado!</Typography>
+          <Typography variant="body2" sx={{ opacity: 0.9 }}>El pago se procesó exitosamente</Typography>
+        </Box>
 
-          {/* Notas */}
-          <div className="md:col-span-2">
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Notas (opcional)
-            </label>
-            <textarea
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              rows={3}
-              className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`}
-              placeholder="Información adicional sobre el pago..."
-            />
-          </div>
-        </div>
+        <DialogContent sx={{ p: 3 }}>
+          {paymentReceipt && (
+            <>
+              <Paper sx={{ p: 3, mb: 3, background: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f9fafb' }}>
+                <Box sx={{ textAlign: 'center', mb: 3 }}>
+                  <Typography variant="body2" color="text.secondary">Código de Pago</Typography>
+                  <Typography variant="h5" fontWeight="bold">{paymentReceipt.payment_code}</Typography>
+                </Box>
 
-        {/* WARNING DE OVERPAYMENT */}
-        {isOverpayment && (
-          <div className={`mt-6 p-4 rounded-lg border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700' : 'bg-yellow-50 border-yellow-200'}`}>
-            <div className="flex items-start">
-              <span className="text-2xl mr-3">!</span>
-              <div className="flex-1">
-                <p className={`font-semibold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-900'}`}>Advertencia: Sobrepago Detectado</p>
-                <p className={`text-sm mt-1 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>
-                  El monto ingresado (<strong>{formatCurrency(Number(formData.amount))}</strong>) es MAYOR que el saldo pendiente (<strong>{formatCurrency(selectedInvoice.balance)}</strong>).
-                </p>
-                <p className={`text-sm mt-1 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>
-                  Sobrepago: <strong>{formatCurrency(overpaymentAmount)}</strong>
-                </p>
+                <Divider sx={{ my: 2 }} />
 
-                <div className="mt-3">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={confirmOverpayment}
-                      onChange={(e) => setConfirmOverpayment(e.target.checked)}
-                      className={`h-4 w-4 text-blue-600 focus:ring-blue-500 rounded ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}
-                    />
-                    <span className={`ml-2 text-sm ${isDarkMode ? 'text-yellow-300' : 'text-yellow-900'}`}>
-                      Confirmo que quiero procesar un sobrepago de {formatCurrency(overpaymentAmount)}
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Resumen */}
-        {selectedInvoice && (
-          <div className={`mt-6 p-4 rounded-lg ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
-            <h3 className={`font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Resumen de la Factura</h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Factura:</span>
-                <span className={`ml-2 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedInvoice.invoice_code}</span>
-              </div>
-              <div>
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Total:</span>
-                <span className={`ml-2 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(selectedInvoice.total_amount)}</span>
-              </div>
-              <div>
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Pagado:</span>
-                <span className={`ml-2 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(selectedInvoice.paid_amount || 0)}</span>
-              </div>
-              <div>
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Saldo:</span>
-                <span className="ml-2 font-medium text-red-600">{formatCurrency(selectedInvoice.balance)}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Botones */}
-        <div className="mt-6 flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={() => navigate('/payments')}
-            className={`px-6 py-2 border rounded-lg ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50"
-          >
-            {loading ? 'Registrando...' : 'Registrar Pago'}
-          </button>
-        </div>
-      </form>
-
-      {/* ✅ MODAL DE RECIBO */}
-      {showReceiptModal && paymentReceipt && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-lg shadow-xl max-w-md w-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-            {/* Header del modal */}
-            <div className="bg-green-600 text-white p-6 rounded-t-lg">
-              <div className="flex items-center justify-center mb-2">
-                <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-bold text-center">¡Pago Registrado!</h2>
-              <p className="text-center text-green-100 mt-1">El pago se procesó exitosamente</p>
-            </div>
-
-            {/* Contenido del recibo */}
-            <div className="p-6">
-              <div className={`rounded-lg p-4 mb-4 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                <div className="text-center mb-4">
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Código de Pago</p>
-                  <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{paymentReceipt.payment_code}</p>
-                </div>
-
-                <div className={`border-t pt-4 space-y-3 ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                  <div className="flex justify-between text-sm">
-                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Fecha:</span>
-                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatDate(paymentReceipt.date)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Cliente:</span>
-                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{paymentReceipt.customer_name}</span>
-                  </div>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Fecha:</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" fontWeight={500} textAlign="right">{formatDate(paymentReceipt.date)}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Cliente:</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" fontWeight={500} textAlign="right">{paymentReceipt.customer_name}</Typography>
+                  </Grid>
                   {paymentReceipt.invoice_code && (
-                    <div className="flex justify-between text-sm">
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Factura:</span>
-                      <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{paymentReceipt.invoice_code}</span>
-                    </div>
+                    <>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Factura:</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" fontWeight={500} textAlign="right">{paymentReceipt.invoice_code}</Typography>
+                      </Grid>
+                    </>
                   )}
-                  <div className="flex justify-between text-sm">
-                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Tipo:</span>
-                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{getPaymentTypeLabel(paymentReceipt.payment_type)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Método:</span>
-                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{getPaymentMethodLabel(paymentReceipt.payment_method)}</span>
-                  </div>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Tipo:</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" fontWeight={500} textAlign="right">{getPaymentTypeLabel(paymentReceipt.payment_type)}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Método:</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" fontWeight={500} textAlign="right">{getPaymentMethodLabel(paymentReceipt.payment_method)}</Typography>
+                  </Grid>
                   {paymentReceipt.reference_number && (
-                    <div className="flex justify-between text-sm">
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Referencia:</span>
-                      <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{paymentReceipt.reference_number}</span>
-                    </div>
+                    <>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Referencia:</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" fontWeight={500} textAlign="right">{paymentReceipt.reference_number}</Typography>
+                      </Grid>
+                    </>
                   )}
-                  <div className={`flex justify-between text-lg font-bold border-t pt-3 mt-3 ${isDarkMode ? 'border-gray-600 text-white' : 'border-gray-200'}`}>
-                    <span>Monto:</span>
-                    <span className="text-green-600">{formatCurrency(Number(paymentReceipt.amount))}</span>
-                  </div>
-                </div>
-              </div>
+                </Grid>
 
-              {/* Acciones */}
-              <div className="space-y-2">
-                <button
+                <Divider sx={{ my: 2 }} />
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h6" fontWeight="bold">Monto:</Typography>
+                  <Typography variant="h5" fontWeight="bold" sx={{ color: '#10b981' }}>
+                    {formatCurrency(Number(paymentReceipt.amount))}
+                  </Typography>
+                </Box>
+              </Paper>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<PrintIcon />}
                   onClick={() => window.print()}
-                  className={`w-full px-4 py-2 rounded-lg font-medium flex items-center justify-center ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  sx={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' }}
                 >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
                   Imprimir Recibo
-                </button>
-                <button
-                  onClick={() => {
-                    enqueueSnackbar(`Recibo enviado a: ${paymentReceipt.customer_email}`, { variant: 'success' });
-                  }}
-                  className={`w-full px-4 py-2 rounded-lg font-medium flex items-center justify-center ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<EmailIcon />}
+                  onClick={() => enqueueSnackbar(`Recibo enviado a: ${paymentReceipt.customer_email}`, { variant: 'success' })}
+                  sx={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' }}
                 >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
                   Enviar por Email
-                </button>
-                <button
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  startIcon={<ListIcon />}
                   onClick={() => {
                     setShowReceiptModal(false);
                     navigate('/payments');
                   }}
-                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                  sx={{ bgcolor: '#3b82f6', '&:hover': { bgcolor: '#2563eb' } }}
                 >
                   Ver Lista de Pagos
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+                </Button>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Box>
   );
 };
 
