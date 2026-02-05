@@ -19,9 +19,53 @@ app.use(helmet({
 // Additional security headers (X-Frame-Options, X-XSS-Protection, etc.)
 app.use(securityHeaders);
 
+// Parse CORS origins from environment (supports comma-separated values)
+const getAllowedOrigins = (): string[] => {
+  const corsOrigin = env.CORS_ORIGIN;
+  if (!corsOrigin) {
+    return ['http://localhost:5173', 'http://localhost:3000'];
+  }
+  // Handle comma-separated origins
+  return corsOrigin.split(',').map(o => o.trim()).filter(Boolean);
+};
+
+// Log allowed origins at startup for debugging
+const allowedOrigins = getAllowedOrigins();
+console.log(`[CORS] Allowed origins: ${allowedOrigins.join(', ')}`);
+
+// Handle preflight OPTIONS requests explicitly for all routes
+app.options('*', cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 // CORS configuration for HTTP-only cookie authentication
 app.use(cors({
-  origin: env.CORS_ORIGIN,
+  origin: (origin, callback) => {
+    const allowedOrigins = getAllowedOrigins();
+
+    // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // Check if origin is in allowed list (handle trailing slashes)
+    const isAllowed = allowedOrigins.some(allowed => {
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      const normalizedAllowed = allowed.replace(/\/$/, '');
+      return normalizedOrigin === normalizedAllowed;
+    });
+
+    if (isAllowed) {
+      return callback(null, true);
+    }
+
+    // Log blocked origins for debugging
+    console.warn(`[CORS] Blocked request from origin: ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
+    return callback(new Error('Not allowed by CORS'), false);
+  },
   credentials: true,  // Required for cookies to be sent cross-origin
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

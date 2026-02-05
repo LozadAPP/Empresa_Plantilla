@@ -274,23 +274,41 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
       // USAR COLOR BASADO EN STATUS DEL ARTÍCULO (con soporte dark/light mode)
       const { color, label: statusLabel } = getStatusColorWithTheme(item.status, isDarkMode);
 
-      // Crear "aura" pulsante para todos los marcadores (efecto radar)
-      const glowMarker = new window.google.maps.Marker({
+      // EFECTO RADAR: Crear 2 ondas que salen del centro en secuencia
+      // Cada onda comienza pequeña, se expande y desvanece mientras otra aparece detrás
+      const wave1 = new window.google.maps.Marker({
         map: map,
         position: { lat, lng },
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 18,
-          fillColor: color,
-          fillOpacity: 0.2,
+          scale: 10,
+          fillColor: 'transparent',
+          fillOpacity: 0,
           strokeColor: color,
-          strokeWeight: 1,
-          strokeOpacity: 0.4,
+          strokeWeight: 2,
+          strokeOpacity: 0.6,
         },
-        zIndex: 5,
-        clickable: false, // No intercepta clicks
+        zIndex: 4,
+        clickable: false,
       });
-      glowMarkersRef.current.push(glowMarker);
+
+      const wave2 = new window.google.maps.Marker({
+        map: map,
+        position: { lat, lng },
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: 'transparent',
+          fillOpacity: 0,
+          strokeColor: color,
+          strokeWeight: 2,
+          strokeOpacity: 0.6,
+        },
+        zIndex: 3,
+        clickable: false,
+      });
+
+      glowMarkersRef.current.push(wave1, wave2);
 
       // Crear marcador principal con icono SVG
       const marker = new window.google.maps.Marker({
@@ -309,30 +327,44 @@ const InventoryMap: React.FC<InventoryMapProps> = ({
         zIndex: 10,
       });
 
-      // ANIMACIÓN PULSANTE: Solo si hay menos de 30 marcadores para no afectar rendimiento
+      // ANIMACIÓN TIPO RADAR: Ondas que salen del centro y se desvanecen
+      // Solo si hay menos de 30 marcadores para no afectar rendimiento
       if (items.length < 30) {
-        let animationFrame = 0;
-        const animationDuration = 60; // frames (~2 segundos a 30fps)
+        let frame = 0;
+        const totalFrames = 90; // ~3 segundos a 30fps para ciclo completo
 
         const animationInterval = setInterval(() => {
-          animationFrame = (animationFrame + 1) % animationDuration;
-          const progress = animationFrame / animationDuration;
-          const easedProgress = easeInOutCubic(progress);
+          frame = (frame + 1) % totalFrames;
 
-          // Escala del glow: de 18 a 28 y de vuelta
-          const scale = 18 + (easedProgress * 10);
-          // Opacidad: de 0.2 a 0.05 y de vuelta
-          const fillOpacity = 0.2 - (easedProgress * 0.15);
-          const strokeOpacity = 0.4 - (easedProgress * 0.3);
+          // Onda 1: Empieza en frame 0
+          const wave1Progress = frame / totalFrames;
+          const wave1Scale = 10 + (wave1Progress * 20); // De 10 a 30
+          const wave1Opacity = Math.max(0, 0.6 - (wave1Progress * 0.7)); // De 0.6 a 0
 
-          glowMarker.setIcon({
+          wave1.setIcon({
             path: window.google.maps.SymbolPath.CIRCLE,
-            scale: scale,
-            fillColor: color,
-            fillOpacity: fillOpacity,
+            scale: wave1Scale,
+            fillColor: 'transparent',
+            fillOpacity: 0,
             strokeColor: color,
-            strokeWeight: 1,
-            strokeOpacity: strokeOpacity,
+            strokeWeight: Math.max(1, 2 - wave1Progress), // De 2 a 1
+            strokeOpacity: wave1Opacity,
+          });
+
+          // Onda 2: Empieza desfasada 50% (aparece cuando onda 1 está a mitad)
+          const wave2Frame = (frame + totalFrames / 2) % totalFrames;
+          const wave2Progress = wave2Frame / totalFrames;
+          const wave2Scale = 10 + (wave2Progress * 20); // De 10 a 30
+          const wave2Opacity = Math.max(0, 0.6 - (wave2Progress * 0.7)); // De 0.6 a 0
+
+          wave2.setIcon({
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: wave2Scale,
+            fillColor: 'transparent',
+            fillOpacity: 0,
+            strokeColor: color,
+            strokeWeight: Math.max(1, 2 - wave2Progress), // De 2 a 1
+            strokeOpacity: wave2Opacity,
           });
         }, 33); // ~30fps
 
