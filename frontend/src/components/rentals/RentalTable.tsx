@@ -143,7 +143,7 @@ const RentalTable: React.FC<RentalTableProps> = ({
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {rental.customer?.first_name} {rental.customer?.last_name}
+                      {rental.customer?.name}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {rental.customer?.email}
@@ -151,10 +151,10 @@ const RentalTable: React.FC<RentalTableProps> = ({
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {rental.vehicle?.brand} {rental.vehicle?.model}
+                      {rental.vehicle?.make} {rental.vehicle?.model}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {rental.vehicle?.plate}
+                      {rental.vehicle?.license_plate}
                     </Typography>
                   </TableCell>
                   <TableCell>

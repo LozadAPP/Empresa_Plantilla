@@ -2,6 +2,9 @@
 export interface Alert {
   id: number;
   alertType:
+    | 'rental_pending_approval'
+    | 'rental_approved'
+    | 'rental_rejected'
     | 'rental_expiring'
     | 'rental_overdue'
     | 'payment_pending'

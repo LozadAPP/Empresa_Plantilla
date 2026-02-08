@@ -220,21 +220,88 @@ const Login: React.FC = () => {
           <Box
             sx={{
               position: 'relative',
-              display: 'inline-block',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               mb: 4,
+              width: 160,
+              height: 160,
             }}
           >
-            {/* Outer ring */}
+            {/* Corner brackets - perfectly aligned to container */}
             <Box
               sx={{
-                width: 140,
-                height: 140,
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: 24,
+                height: 24,
+                borderTop: `2px solid ${colors.accent}`,
+                borderLeft: `2px solid ${colors.accent}`,
+              }}
+            />
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: 24,
+                height: 24,
+                borderTop: `2px solid ${colors.accent}`,
+                borderRight: `2px solid ${colors.accent}`,
+              }}
+            />
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                width: 24,
+                height: 24,
+                borderBottom: `2px solid ${colors.accent}`,
+                borderLeft: `2px solid ${colors.accent}`,
+              }}
+            />
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                right: 0,
+                width: 24,
+                height: 24,
+                borderBottom: `2px solid ${colors.accent}`,
+                borderRight: `2px solid ${colors.accent}`,
+              }}
+            />
+
+            {/* Logo image (place logo.png in public/) or fallback to styled circle */}
+            <Box
+              component="img"
+              src="/logo.png"
+              alt="MOVICAR"
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                e.currentTarget.style.display = 'none';
+                const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                if (fallback) fallback.style.display = 'flex';
+              }}
+              sx={{
+                width: 120,
+                height: 120,
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 0 20px rgba(201, 162, 39, 0.3))',
+              }}
+            />
+            {/* Fallback: circle + car icon */}
+            <Box
+              sx={{
+                display: 'none',
+                width: 120,
+                height: 120,
                 border: `2px solid ${colors.accent}`,
                 borderRadius: '50%',
-                display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                position: 'relative',
+                position: 'absolute',
                 '&::before': {
                   content: '""',
                   position: 'absolute',
@@ -244,99 +311,13 @@ const Login: React.FC = () => {
                 },
               }}
             >
-              {/* Car silhouette using CSS */}
-              <Box
-                sx={{
-                  position: 'relative',
-                  width: 70,
-                  height: 35,
-                }}
-              >
-                {/* Car body */}
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: 8,
-                    left: 0,
-                    right: 0,
-                    height: 16,
-                    background: colors.accent,
-                    borderRadius: '4px 4px 2px 2px',
-                  }}
-                />
-                {/* Car roof */}
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: 20,
-                    left: '15%',
-                    right: '15%',
-                    height: 14,
-                    background: colors.accent,
-                    borderRadius: '8px 8px 0 0',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 4,
-                      left: 4,
-                      right: 4,
-                      bottom: 0,
-                      background: colors.background,
-                      borderRadius: '4px 4px 0 0',
-                    },
-                  }}
-                />
-                {/* Wheels */}
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: 2,
-                    left: 8,
-                    width: 12,
-                    height: 12,
-                    background: colors.accent,
-                    borderRadius: '50%',
-                    border: `2px solid ${colors.background}`,
-                  }}
-                />
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: 2,
-                    right: 8,
-                    width: 12,
-                    height: 12,
-                    background: colors.accent,
-                    borderRadius: '50%',
-                    border: `2px solid ${colors.background}`,
-                  }}
-                />
+              <Box sx={{ position: 'relative', width: 60, height: 30 }}>
+                <Box sx={{ position: 'absolute', bottom: 6, left: 0, right: 0, height: 14, background: colors.accent, borderRadius: '4px 4px 2px 2px' }} />
+                <Box sx={{ position: 'absolute', bottom: 16, left: '15%', right: '15%', height: 12, background: colors.accent, borderRadius: '6px 6px 0 0', '&::before': { content: '""', position: 'absolute', top: 3, left: 3, right: 3, bottom: 0, background: colors.background, borderRadius: '3px 3px 0 0' } }} />
+                <Box sx={{ position: 'absolute', bottom: 1, left: 6, width: 10, height: 10, background: colors.accent, borderRadius: '50%', border: `2px solid ${colors.background}` }} />
+                <Box sx={{ position: 'absolute', bottom: 1, right: 6, width: 10, height: 10, background: colors.accent, borderRadius: '50%', border: `2px solid ${colors.background}` }} />
               </Box>
             </Box>
-
-            {/* Decorative elements */}
-            <Box
-              sx={{
-                position: 'absolute',
-                top: -10,
-                left: -10,
-                width: 20,
-                height: 20,
-                borderTop: `2px solid ${colors.accent}`,
-                borderLeft: `2px solid ${colors.accent}`,
-              }}
-            />
-            <Box
-              sx={{
-                position: 'absolute',
-                bottom: -10,
-                right: -10,
-                width: 20,
-                height: 20,
-                borderBottom: `2px solid ${colors.accent}`,
-                borderRight: `2px solid ${colors.accent}`,
-              }}
-            />
           </Box>
 
           {/* Brand name */}
@@ -354,32 +335,19 @@ const Login: React.FC = () => {
             MOVICAR
           </Typography>
 
-          {/* Tagline with animated underline */}
-          <Box sx={{ position: 'relative', display: 'inline-block' }}>
-            <Typography
-              sx={{
-                fontFamily: '"Outfit", sans-serif',
-                fontSize: '0.9rem',
-                fontWeight: 400,
-                letterSpacing: '0.25em',
-                color: colors.textSecondary,
-                textTransform: 'uppercase',
-              }}
-            >
-              Premium Vehicle Rental
-            </Typography>
-            <Box
-              sx={{
-                position: 'absolute',
-                bottom: -8,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: 60,
-                height: 1,
-                background: `linear-gradient(90deg, transparent, ${colors.accent}, transparent)`,
-              }}
-            />
-          </Box>
+          {/* Tagline */}
+          <Typography
+            sx={{
+              fontFamily: '"Outfit", sans-serif',
+              fontSize: '0.85rem',
+              fontWeight: 400,
+              letterSpacing: '0.25em',
+              color: colors.textSecondary,
+              textTransform: 'uppercase',
+            }}
+          >
+            Premium Vehicle Rental
+          </Typography>
 
           {/* Features list */}
           <Box

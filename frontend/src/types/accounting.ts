@@ -21,6 +21,7 @@ export interface Transaction {
   transactionCode: string;
   transactionType: 'income' | 'expense' | 'transfer';
   accountId: number;
+  destinationAccountId?: number;
   amount: number;
   description: string;
   referenceType?: string;
@@ -58,6 +59,7 @@ export interface Transaction {
 export interface CreateTransactionDto {
   transactionType: 'income' | 'expense' | 'transfer';
   accountId: number;
+  destinationAccountId?: number;
   amount: number;
   description: string;
   referenceType?: string;

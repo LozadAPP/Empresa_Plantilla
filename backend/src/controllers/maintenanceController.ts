@@ -65,6 +65,12 @@ export const createMaintenanceType = async (req: Request, res: Response) => {
       data: type,
     });
   } catch (error: any) {
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un tipo de mantenimiento con ese nombre',
+      });
+    }
     console.error('Error creating maintenance type:', error);
     res.status(500).json({
       success: false,
@@ -253,6 +259,25 @@ export const createMaintenanceOrder = async (req: Request, res: Response) => {
 
     const userId = (req as any).user.id;
 
+    // Validate FK references exist
+    const vehicle = await Vehicle.findByPk(vehicleId);
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vehículo no encontrado',
+      });
+    }
+
+    if (maintenanceTypeId) {
+      const type = await MaintenanceType.findByPk(maintenanceTypeId);
+      if (!type) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tipo de mantenimiento no encontrado',
+        });
+      }
+    }
+
     // Generate unique maintenance code using timestamp to avoid race conditions
     const now = new Date();
     const year = now.getFullYear();
@@ -334,6 +359,25 @@ export const updateMaintenanceOrder = async (req: Request, res: Response) => {
         success: false,
         message: 'Maintenance order not found',
       });
+    }
+
+    // Validate status transitions
+    if (updates.status) {
+      const validTransitions: Record<string, string[]> = {
+        scheduled: ['in_progress', 'cancelled'],
+        in_progress: ['completed', 'cancelled'],
+        completed: [],
+        cancelled: [],
+      };
+
+      const currentStatus = order.status;
+      const allowed = validTransitions[currentStatus] || [];
+      if (!allowed.includes(updates.status)) {
+        return res.status(400).json({
+          success: false,
+          message: `No se puede cambiar el estado de '${currentStatus}' a '${updates.status}'. Transiciones válidas: ${allowed.join(', ') || 'ninguna (estado final)'}`,
+        });
+      }
     }
 
     await order.update(updates);

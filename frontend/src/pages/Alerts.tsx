@@ -205,7 +205,10 @@ const Alerts: React.FC = () => {
   };
 
   const getAlertTypeLabel = (type: string) => {
-    const labels: any = {
+    const labels: Record<string, string> = {
+      rental_pending_approval: 'Renta Pendiente de Aprobación',
+      rental_approved: 'Renta Aprobada',
+      rental_rejected: 'Renta Rechazada',
       rental_expiring: 'Renta Próxima a Vencer',
       rental_overdue: 'Renta Vencida',
       payment_pending: 'Pago Pendiente',

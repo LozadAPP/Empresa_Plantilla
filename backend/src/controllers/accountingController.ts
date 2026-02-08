@@ -229,6 +229,7 @@ export const createTransaction = async (req: Request, res: Response) => {
     const {
       transactionType,
       accountId,
+      destinationAccountId,
       amount,
       description,
       referenceType,
@@ -240,6 +241,30 @@ export const createTransaction = async (req: Request, res: Response) => {
     } = req.body;
 
     const userId = (req as any).user.id;
+
+    // Validate transfer-specific fields
+    if (transactionType === 'transfer') {
+      if (!destinationAccountId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Las transferencias requieren una cuenta destino',
+        });
+      }
+      if (Number(destinationAccountId) === Number(accountId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'La cuenta destino debe ser diferente a la cuenta origen',
+        });
+      }
+      // Verify destination account exists
+      const destAccount = await Account.findByPk(destinationAccountId);
+      if (!destAccount) {
+        return res.status(404).json({
+          success: false,
+          message: 'La cuenta destino no existe',
+        });
+      }
+    }
 
     // Generate unique transaction code using timestamp to avoid race conditions
     const now = new Date();
@@ -254,6 +279,7 @@ export const createTransaction = async (req: Request, res: Response) => {
       transactionCode,
       transactionType,
       accountId,
+      destinationAccountId: transactionType === 'transfer' ? destinationAccountId : null,
       amount,
       description,
       referenceType,

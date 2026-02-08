@@ -20,7 +20,7 @@ const router = Router();
 router.use(authMiddleware);
 
 // RBAC: Define roles that can access alerts
-const alertReadRoles = ['admin', 'director_general', 'jefe_finanzas', 'jefe_admin', 'contador', 'jefe_ventas'] as const;
+const alertReadRoles = ['admin', 'director_general', 'jefe_finanzas', 'jefe_admin', 'contador', 'jefe_ventas', 'jefe_inventarios', 'encargado_inventario', 'tecnico', 'vendedor', 'asistente_admin'] as const;
 const alertWriteRoles = ['admin', 'director_general', 'jefe_finanzas', 'jefe_admin'] as const;
 const alertResolveRoles = ['admin', 'director_general', 'jefe_finanzas'] as const;
 
@@ -240,7 +240,7 @@ const alertResolveRoles = ['admin', 'director_general', 'jefe_finanzas'] as cons
 const createAlertValidation = [
   body('alertType')
     .notEmpty().withMessage('El tipo de alerta es requerido')
-    .isIn(['rental_expiring', 'rental_overdue', 'payment_pending', 'maintenance_due', 'insurance_expiring', 'low_inventory', 'system', 'custom'])
+    .isIn(['rental_pending_approval', 'rental_approved', 'rental_rejected', 'rental_expiring', 'rental_overdue', 'payment_pending', 'maintenance_due', 'insurance_expiring', 'low_inventory', 'system', 'custom'])
     .withMessage('Tipo de alerta inválido'),
   body('severity')
     .optional()
@@ -300,7 +300,7 @@ const deleteAlertValidation = [
 const getAllAlertsValidation = [
   query('alertType')
     .optional()
-    .isIn(['rental_expiring', 'rental_overdue', 'payment_pending', 'maintenance_due', 'insurance_expiring', 'low_inventory', 'system', 'custom'])
+    .isIn(['rental_pending_approval', 'rental_approved', 'rental_rejected', 'rental_expiring', 'rental_overdue', 'payment_pending', 'maintenance_due', 'insurance_expiring', 'low_inventory', 'system', 'custom'])
     .withMessage('Tipo de alerta inválido'),
   query('severity')
     .optional()

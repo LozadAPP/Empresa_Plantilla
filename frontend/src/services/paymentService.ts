@@ -48,6 +48,22 @@ export const paymentService = {
    */
   getByRental: async (rentalId: number): Promise<PaymentResponse> => {
     return paymentService.getAll({ rental_id: rentalId });
+  },
+
+  /**
+   * Confirmar un pago pendiente (transferencia/cheque verificado)
+   */
+  confirmPayment: async (id: number): Promise<SinglePaymentResponse> => {
+    const response = await api.patch<SinglePaymentResponse>(`/payments/${id}/confirm`);
+    return response.data;
+  },
+
+  /**
+   * Rechazar un pago pendiente
+   */
+  failPayment: async (id: number, reason?: string): Promise<SinglePaymentResponse> => {
+    const response = await api.patch<SinglePaymentResponse>(`/payments/${id}/fail`, { reason });
+    return response.data;
   }
 };
 

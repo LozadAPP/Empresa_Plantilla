@@ -57,7 +57,7 @@ export const dashboardService = {
     name: string;
     contactPerson: string;
     email: string;
-    totalSpent: number;
+    totalRevenue: number;
     totalRentals: number;
   }[]>> {
     const response = await api.get(`/dashboard/top-customers?limit=${limit}`);

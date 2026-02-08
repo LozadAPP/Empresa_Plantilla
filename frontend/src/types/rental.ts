@@ -61,18 +61,19 @@ export interface Rental {
   // Relaciones (cuando se incluyen en el GET)
   customer?: {
     id: number;
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    customer_type?: 'individual' | 'corporate' | 'government';
   };
   vehicle?: {
     id: number;
-    plate: string;
-    brand: string;
+    license_plate: string;
+    make: string;
     model: string;
     year: number;
-    category: string;
+    color?: string;
+    daily_rate: number;
   };
   // Relaciones adicionales (cuando se incluyen con include)
   invoice?: {

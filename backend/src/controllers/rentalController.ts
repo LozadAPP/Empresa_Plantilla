@@ -3,6 +3,8 @@ import { Op } from 'sequelize';
 import Rental from '../models/Rental';
 import Vehicle from '../models/Vehicle';
 import Customer from '../models/Customer';
+import Payment from '../models/Payment';
+import Return from '../models/Return';
 import Alert from '../models/Alert';
 import { RentalStatus, PaymentMethod } from '../models/Rental';
 import { VehicleStatus } from '../models/Vehicle';
@@ -95,7 +97,9 @@ export class RentalController {
       const rental = await Rental.findByPk(id, {
         include: [
           { model: Customer, as: 'customer' },
-          { model: Vehicle, as: 'vehicle' }
+          { model: Vehicle, as: 'vehicle' },
+          { model: Payment, as: 'payments' },
+          { model: Return, as: 'return' }
         ]
       });
 
@@ -204,7 +208,7 @@ export class RentalController {
       const overlappingRental = await Rental.findOne({
         where: {
           vehicle_id,
-          status: ['reserved', 'active'], // Solo rentas activas
+          status: { [Op.in]: [RentalStatus.RESERVED, RentalStatus.ACTIVE, RentalStatus.PENDING_APPROVAL] },
           [Op.or]: [
             // Caso 1: Nueva renta empieza durante una renta existente
             {

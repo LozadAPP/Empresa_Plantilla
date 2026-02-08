@@ -301,8 +301,21 @@ const createCustomerValidation = [
   body('phone')
     .optional()
     .trim()
-    .isLength({ min: 8 })
-    .withMessage('Phone must be at least 8 characters'),
+    .isLength({ min: 10 })
+    .withMessage('El teléfono debe tener al menos 10 dígitos'),
+  body('tax_id')
+    .optional()
+    .trim()
+    .custom((value, { req }) => {
+      const type = req.body.customer_type;
+      if (type === 'individual' && value.length !== 13) {
+        throw new Error('RFC debe tener 13 caracteres para personas físicas');
+      }
+      if (type === 'corporate' && value.length !== 12) {
+        throw new Error('RFC debe tener 12 caracteres para personas morales');
+      }
+      return true;
+    }),
   body('customer_type')
     .optional()
     .isIn(['individual', 'corporate', 'government'])
@@ -330,6 +343,24 @@ const updateCustomerValidation = [
     .isEmail()
     .normalizeEmail()
     .withMessage('Please provide a valid email'),
+  body('phone')
+    .optional()
+    .trim()
+    .isLength({ min: 10 })
+    .withMessage('El teléfono debe tener al menos 10 dígitos'),
+  body('tax_id')
+    .optional()
+    .trim()
+    .custom((value, { req }) => {
+      const type = req.body.customer_type;
+      if (type === 'individual' && value.length !== 13) {
+        throw new Error('RFC debe tener 13 caracteres para personas físicas');
+      }
+      if (type === 'corporate' && value.length !== 12) {
+        throw new Error('RFC debe tener 12 caracteres para personas morales');
+      }
+      return true;
+    }),
   body('customer_type')
     .optional()
     .isIn(['individual', 'corporate', 'government'])

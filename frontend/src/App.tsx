@@ -33,6 +33,7 @@ const Payments = lazy(() => import('./pages/Payments'));
 const PaymentForm = lazy(() => import('./pages/PaymentForm'));
 const Invoices = lazy(() => import('./pages/Invoices'));
 const InvoiceDetail = lazy(() => import('./pages/InvoiceDetail'));
+const InvoiceForm = lazy(() => import('./pages/InvoiceForm'));
 
 // Lazy loaded pages - CHAT 3: Administración + Reportes
 const Maintenance = lazy(() => import('./pages/Maintenance'));
@@ -46,6 +47,7 @@ const PricingConfig = lazy(() => import('./pages/PricingConfig'));
 const Users = lazy(() => import('./pages/Users'));
 const Locations = lazy(() => import('./pages/Locations'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
+const ExtraServiceForm = lazy(() => import('./pages/ExtraServiceForm'));
 
 // Protected Route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -123,6 +125,7 @@ const App: React.FC = () => {
             <Route path="/payments" element={<Payments />} />
             <Route path="/payments/new" element={<PaymentForm />} />
             <Route path="/invoices" element={<Invoices />} />
+            <Route path="/invoices/new" element={<InvoiceForm />} />
             <Route path="/invoices/:id" element={<InvoiceDetail />} />
 
             {/* CHAT 3: Administración + Reportes */}
@@ -136,8 +139,9 @@ const App: React.FC = () => {
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/pricing/new" element={<PricingConfig />} />
             <Route path="/settings/pricing/:id/edit" element={<PricingConfig />} />
+            <Route path="/settings/extra-services/new" element={<ExtraServiceForm />} />
+            <Route path="/settings/extra-services/:id/edit" element={<ExtraServiceForm />} />
             <Route path="/users" element={<Users />} />
-            <Route path="/settings/users" element={<Users />} />
             <Route path="/settings/locations" element={<Locations />} />
             <Route path="/audit" element={<AuditLog />} />
           </Route>

@@ -24,10 +24,11 @@ import {
   Select,
   MenuItem,
   Button,
-  Card,
-  CardContent,
-  Divider,
-  Stack,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   useTheme,
   useMediaQuery
 } from '@mui/material';
@@ -41,13 +42,15 @@ import {
   Pending as PendingIcon,
   Cancel as FailedIcon,
   Replay as RefundIcon,
-  CreditCard as CreditCardIcon,
-  AccountBalance as TransferIcon,
-  AttachMoney as CashIcon
+  AttachMoney as CashIcon,
+  ThumbUp as ConfirmIcon,
+  ThumbDown as RejectIcon
 } from '@mui/icons-material';
+import { useSnackbar } from 'notistack';
 import { AppDispatch, RootState } from '../store';
 import { fetchPayments } from '../store/slices/paymentSlice';
 import { PaymentStatus, PaymentType } from '../types/payment';
+import paymentService from '../services/paymentService';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { useThemeStyles } from '../hooks/useThemeStyles';
 import TableSkeleton from '../components/common/TableSkeleton';
@@ -68,11 +71,18 @@ const getDefaultDates = () => {
 const Payments: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  const { enqueueSnackbar } = useSnackbar();
   const { isDarkMode } = useCustomTheme();
   const themeStyles = useThemeStyles();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
+  // Estado para diálogo de rechazo
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectPaymentId, setRejectPaymentId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   const { payments, loading, error, paymentPagination } = useSelector((state: RootState) => state.payments);
 
@@ -133,6 +143,43 @@ const Payments: React.FC = () => {
   const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setFilters(prev => ({ ...prev, limit: Number.parseInt(event.target.value, 10), page: 1 }));
   }, []);
+
+  // Confirmar pago pendiente
+  const handleConfirmPayment = useCallback(async (paymentId: number) => {
+    setActionLoading(true);
+    try {
+      await paymentService.confirmPayment(paymentId);
+      enqueueSnackbar('Pago confirmado exitosamente', { variant: 'success' });
+      dispatch(fetchPayments(filters));
+    } catch {
+      enqueueSnackbar('Error al confirmar pago', { variant: 'error' });
+    } finally {
+      setActionLoading(false);
+    }
+  }, [dispatch, enqueueSnackbar, filters]);
+
+  // Abrir diálogo de rechazo
+  const handleOpenRejectDialog = useCallback((paymentId: number) => {
+    setRejectPaymentId(paymentId);
+    setRejectReason('');
+    setRejectDialogOpen(true);
+  }, []);
+
+  // Rechazar pago pendiente
+  const handleRejectPayment = useCallback(async () => {
+    if (!rejectPaymentId) return;
+    setActionLoading(true);
+    try {
+      await paymentService.failPayment(rejectPaymentId, rejectReason);
+      enqueueSnackbar('Pago rechazado', { variant: 'warning' });
+      setRejectDialogOpen(false);
+      dispatch(fetchPayments(filters));
+    } catch {
+      enqueueSnackbar('Error al rechazar pago', { variant: 'error' });
+    } finally {
+      setActionLoading(false);
+    }
+  }, [rejectPaymentId, rejectReason, dispatch, enqueueSnackbar, filters]);
 
   // Status chip configuration
   const STATUS_CONFIGS = useMemo(() => ({
@@ -493,12 +540,13 @@ const Payments: React.FC = () => {
               <TableCell><strong>Fecha</strong></TableCell>
               <TableCell><strong>Estado</strong></TableCell>
               <TableCell><strong>Referencia</strong></TableCell>
+              <TableCell align="center"><strong>Acciones</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {payments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
+                <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
                   <PaymentIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
                   <Typography variant="h6" color="text.secondary">
                     No hay pagos registrados
@@ -554,6 +602,34 @@ const Payments: React.FC = () => {
                       {payment.reference_number || '-'}
                     </Typography>
                   </TableCell>
+                  <TableCell align="center">
+                    {payment.status === 'pending' ? (
+                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                        <Tooltip title="Confirmar pago">
+                          <IconButton
+                            size="small"
+                            color="success"
+                            onClick={(e) => { e.stopPropagation(); handleConfirmPayment(payment.id); }}
+                            disabled={actionLoading}
+                          >
+                            <ConfirmIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Rechazar pago">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={(e) => { e.stopPropagation(); handleOpenRejectDialog(payment.id); }}
+                            disabled={actionLoading}
+                          >
+                            <RejectIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="text.disabled">—</Typography>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -575,6 +651,38 @@ const Payments: React.FC = () => {
           />
         )}
       </TableContainer>
+
+      {/* Diálogo de Rechazo */}
+      <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Rechazar Pago</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Ingresa el motivo por el cual se rechaza este pago.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Motivo del rechazo"
+            multiline
+            rows={3}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectDialogOpen(false)} disabled={actionLoading}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleRejectPayment}
+            color="error"
+            variant="contained"
+            disabled={actionLoading || !rejectReason.trim()}
+          >
+            Rechazar Pago
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

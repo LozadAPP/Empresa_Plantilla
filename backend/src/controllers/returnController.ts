@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Op } from 'sequelize';
 import { differenceInDays } from 'date-fns';
 import sequelize from '../config/database';
 import Return from '../models/Return';
@@ -26,6 +27,11 @@ export class ReturnController {
         rental_id,
         vehicle_id,
         location_id,
+        condition,
+        on_time,
+        startDate,
+        endDate,
+        search,
         page = 1,
         limit = 20
       } = req.query;
@@ -36,6 +42,37 @@ export class ReturnController {
       if (vehicle_id) where.vehicle_id = vehicle_id;
       if (location_id) where.return_location_id = location_id;
 
+      // Filtro por condición del vehículo
+      if (condition) where.vehicle_condition = condition;
+
+      // Filtro por entrega a tiempo
+      if (on_time === 'true') where.is_on_time = true;
+      if (on_time === 'false') where.is_on_time = false;
+
+      // Filtro por rango de fechas
+      if (startDate || endDate) {
+        where.return_date = {};
+        if (startDate) where.return_date[Op.gte] = new Date(startDate as string);
+        if (endDate) where.return_date[Op.lte] = new Date(endDate as string);
+      }
+
+      // Búsqueda por texto
+      const includeOptions: any[] = [
+        { model: Rental, as: 'rental' },
+        { model: Vehicle, as: 'vehicle' }
+      ];
+
+      if (search && typeof search === 'string') {
+        const searchTerm = `%${search}%`;
+        where[Op.or] = [
+          { return_code: { [Op.iLike]: searchTerm } },
+          { '$rental.rental_code$': { [Op.iLike]: searchTerm } },
+          { '$vehicle.license_plate$': { [Op.iLike]: searchTerm } },
+          { '$vehicle.make$': { [Op.iLike]: searchTerm } },
+          { '$vehicle.model$': { [Op.iLike]: searchTerm } }
+        ];
+      }
+
       const offset = (Number(page) - 1) * Number(limit);
 
       const { count, rows: returns } = await Return.findAndCountAll({
@@ -43,10 +80,8 @@ export class ReturnController {
         limit: Number(limit),
         offset,
         order: [['created_at', 'DESC']],
-        include: [
-          { model: Rental, as: 'rental' },
-          { model: Vehicle, as: 'vehicle' }
-        ]
+        include: includeOptions,
+        subQuery: false
       });
 
       res.json({

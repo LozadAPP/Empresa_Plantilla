@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
+import sequelize from '../config/database';
 import User from '../models/User';
 import Role from '../models/Role';
 import UserRole from '../models/UserRole';
@@ -142,53 +143,64 @@ export const createUser = async (req: Request, res: Response) => {
       });
     }
 
-    // Create user (password will be hashed by model hook)
-    const user = await User.create({
-      email,
-      password_hash: password,
-      first_name,
-      last_name,
-      phone,
-      location_id,
-      is_active: true,
-    });
+    // Use transaction to ensure atomicity (user + roles)
+    const t = await sequelize.transaction();
 
-    // Assign roles
-    if (roles && roles.length > 0) {
-      const roleRecords = await Role.findAll({
-        where: { name: { [Op.in]: roles } },
+    try {
+      // Create user (password will be hashed by model hook)
+      const user = await User.create({
+        email,
+        password_hash: password,
+        first_name,
+        last_name,
+        phone,
+        location_id,
+        is_active: true,
+      }, { transaction: t });
+
+      // Assign roles
+      if (roles && roles.length > 0) {
+        const roleRecords = await Role.findAll({
+          where: { name: { [Op.in]: roles } },
+          transaction: t,
+        });
+
+        for (const role of roleRecords) {
+          await UserRole.create({
+            user_id: user.id,
+            role_id: role.id,
+            location_id,
+          }, { transaction: t });
+        }
+      }
+
+      await t.commit();
+
+      // Fetch created user with roles
+      const createdUser = await User.findByPk(user.id, {
+        include: [
+          {
+            model: Role,
+            as: 'roles',
+            through: { attributes: [] },
+          },
+          {
+            model: Location,
+            as: 'location',
+          },
+        ],
+        attributes: { exclude: ['password_hash'] },
       });
 
-      for (const role of roleRecords) {
-        await UserRole.create({
-          user_id: user.id,
-          role_id: role.id,
-          location_id,
-        });
-      }
+      res.status(201).json({
+        success: true,
+        message: 'User created successfully',
+        data: createdUser,
+      });
+    } catch (error) {
+      await t.rollback();
+      throw error;
     }
-
-    // Fetch created user with roles
-    const createdUser = await User.findByPk(user.id, {
-      include: [
-        {
-          model: Role,
-          as: 'roles',
-          through: { attributes: [] },
-        },
-        {
-          model: Location,
-          as: 'location',
-        },
-      ],
-      attributes: { exclude: ['password_hash'] },
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'User created successfully',
-      data: createdUser,
-    });
   } catch (error: any) {
     console.error('Error creating user:', error);
     res.status(500).json({
@@ -227,55 +239,66 @@ export const updateUser = async (req: Request, res: Response) => {
       }
     }
 
-    // Update user fields
-    await user.update({
-      email: email || user.email,
-      first_name: first_name || user.first_name,
-      last_name: last_name || user.last_name,
-      phone: phone !== undefined ? phone : user.phone,
-      location_id: location_id !== undefined ? location_id : user.location_id,
-    });
+    // Use transaction to ensure atomicity (user + roles)
+    const t = await sequelize.transaction();
 
-    // Update roles if provided
-    if (roles && Array.isArray(roles)) {
-      // Remove existing roles
-      await UserRole.destroy({ where: { user_id: id } });
+    try {
+      // Update user fields
+      await user.update({
+        email: email || user.email,
+        first_name: first_name || user.first_name,
+        last_name: last_name || user.last_name,
+        phone: phone !== undefined ? phone : user.phone,
+        location_id: location_id !== undefined ? location_id : user.location_id,
+      }, { transaction: t });
 
-      // Add new roles
-      const roleRecords = await Role.findAll({
-        where: { name: { [Op.in]: roles } },
+      // Update roles if provided
+      if (roles && Array.isArray(roles)) {
+        // Remove existing roles
+        await UserRole.destroy({ where: { user_id: id }, transaction: t });
+
+        // Add new roles
+        const roleRecords = await Role.findAll({
+          where: { name: { [Op.in]: roles } },
+          transaction: t,
+        });
+
+        for (const role of roleRecords) {
+          await UserRole.create({
+            user_id: user.id,
+            role_id: role.id,
+            location_id: user.location_id,
+          }, { transaction: t });
+        }
+      }
+
+      await t.commit();
+
+      // Fetch updated user
+      const updatedUser = await User.findByPk(id, {
+        include: [
+          {
+            model: Role,
+            as: 'roles',
+            through: { attributes: [] },
+          },
+          {
+            model: Location,
+            as: 'location',
+          },
+        ],
+        attributes: { exclude: ['password_hash'] },
       });
 
-      for (const role of roleRecords) {
-        await UserRole.create({
-          user_id: user.id,
-          role_id: role.id,
-          location_id: user.location_id,
-        });
-      }
+      res.json({
+        success: true,
+        message: 'User updated successfully',
+        data: updatedUser,
+      });
+    } catch (error) {
+      await t.rollback();
+      throw error;
     }
-
-    // Fetch updated user
-    const updatedUser = await User.findByPk(id, {
-      include: [
-        {
-          model: Role,
-          as: 'roles',
-          through: { attributes: [] },
-        },
-        {
-          model: Location,
-          as: 'location',
-        },
-      ],
-      attributes: { exclude: ['password_hash'] },
-    });
-
-    res.json({
-      success: true,
-      message: 'User updated successfully',
-      data: updatedUser,
-    });
   } catch (error: any) {
     console.error('Error updating user:', error);
     res.status(500).json({

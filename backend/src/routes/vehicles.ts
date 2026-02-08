@@ -355,7 +355,11 @@ const updateVehicleValidation = [
   body('mileage')
     .optional()
     .isInt({ min: 0 })
-    .withMessage('Mileage must be positive')
+    .withMessage('Mileage must be positive'),
+  body('daily_rate')
+    .optional()
+    .isFloat({ min: 0.01 })
+    .withMessage('Daily rate must be greater than 0')
 ];
 
 const getVehicleByIdValidation = [

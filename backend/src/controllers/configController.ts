@@ -277,6 +277,27 @@ export const createPriceConfig = async (req: Request, res: Response) => {
 
     const userId = (req as any).user.id;
 
+    // Validate FK references exist
+    if (vehicleTypeId) {
+      const vehicleType = await VehicleType.findByPk(vehicleTypeId);
+      if (!vehicleType) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tipo de vehículo no encontrado',
+        });
+      }
+    }
+
+    if (locationId) {
+      const location = await Location.findByPk(locationId);
+      if (!location) {
+        return res.status(404).json({
+          success: false,
+          message: 'Ubicación no encontrada',
+        });
+      }
+    }
+
     const config = await PriceConfig.create({
       vehicleTypeId,
       locationId,

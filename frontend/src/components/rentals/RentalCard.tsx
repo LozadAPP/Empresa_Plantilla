@@ -77,7 +77,7 @@ const RentalCard: React.FC<RentalCardProps> = ({ rental, onMenuClick }) => {
           <PersonIcon sx={{ mr: 1, fontSize: 20, color: 'text.secondary' }} />
           <Box>
             <Typography variant="body2" fontWeight="500">
-              {rental.customer?.first_name} {rental.customer?.last_name}
+              {rental.customer?.name}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {rental.customer?.email}
@@ -90,10 +90,10 @@ const RentalCard: React.FC<RentalCardProps> = ({ rental, onMenuClick }) => {
           <VehicleIcon sx={{ mr: 1, fontSize: 20, color: 'text.secondary' }} />
           <Box>
             <Typography variant="body2" fontWeight="500">
-              {rental.vehicle?.brand} {rental.vehicle?.model}
+              {rental.vehicle?.make} {rental.vehicle?.model}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {rental.vehicle?.plate}
+              {rental.vehicle?.license_plate}
             </Typography>
           </Box>
         </Box>

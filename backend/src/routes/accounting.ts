@@ -20,7 +20,7 @@ const router = Router();
 router.use(authMiddleware);
 
 // Roles allowed to access accounting
-router.use(requireRole('admin', 'director_general', 'jefe_finanzas', 'contador'));
+router.use(requireRole('admin', 'director_general', 'jefe_finanzas', 'contador', 'jefe_admin'));
 
 /**
  * @swagger
@@ -377,6 +377,9 @@ const createTransactionValidation = [
   body('accountId')
     .notEmpty().withMessage('El ID de la cuenta es requerido')
     .isInt({ min: 1 }).withMessage('El ID de la cuenta debe ser un número válido'),
+  body('destinationAccountId')
+    .optional()
+    .isInt({ min: 1 }).withMessage('El ID de la cuenta destino debe ser un número válido'),
   body('amount')
     .notEmpty().withMessage('El monto es requerido')
     .isDecimal({ decimal_digits: '0,2' }).withMessage('El monto debe ser un número válido')

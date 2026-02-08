@@ -76,6 +76,7 @@ const Customers: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
 
   const canEdit = hasAnyRole('admin', 'director_general', 'jefe_ventas', 'vendedor');
+  const canDelete = hasAnyRole('admin', 'director_general', 'jefe_admin');
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -549,10 +550,12 @@ const Customers: React.FC = () => {
             <MenuItem onClick={handleToggleActive}>
               {selectedCustomer?.is_active ? 'Desactivar' : 'Activar'}
             </MenuItem>
-            <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
-              <DeleteIcon sx={{ mr: 1 }} fontSize="small" /> Eliminar
-            </MenuItem>
           </>
+        )}
+        {canDelete && (
+          <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
+            <DeleteIcon sx={{ mr: 1 }} fontSize="small" /> Eliminar
+          </MenuItem>
         )}
       </Menu>
 

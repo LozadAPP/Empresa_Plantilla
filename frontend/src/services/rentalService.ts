@@ -7,7 +7,8 @@ import {
   UpdateRentalDTO,
   RentalFilters,
   RentalResponse,
-  SingleRentalResponse
+  SingleRentalResponse,
+  RentalStatus
 } from '../types/rental';
 
 /**
@@ -99,14 +100,14 @@ export const rentalService = {
    * Obtener rentas activas
    */
   getActive: async (): Promise<RentalResponse> => {
-    return rentalService.getAll({ status: 'active' as any });
+    return rentalService.getAll({ status: RentalStatus.ACTIVE });
   },
 
   /**
    * Obtener rentas vencidas
    */
   getOverdue: async (): Promise<RentalResponse> => {
-    return rentalService.getAll({ status: 'overdue' as any });
+    return rentalService.getAll({ status: RentalStatus.OVERDUE });
   },
 
   /**

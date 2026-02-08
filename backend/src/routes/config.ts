@@ -362,7 +362,7 @@ const createPriceConfigValidation = [
     .isInt({ min: 1 }).withMessage('El ID de ubicación debe ser un número válido'),
   body('season')
     .optional()
-    .isIn(['low', 'mid', 'high', 'holiday'])
+    .isIn(['low', 'regular', 'high', 'peak'])
     .withMessage('Temporada inválida'),
   body('dailyRate')
     .notEmpty().withMessage('La tarifa diaria es requerida')

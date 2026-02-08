@@ -367,7 +367,8 @@ const resetPasswordValidation = [
     .isInt({ min: 1 }).withMessage('El ID del usuario debe ser un número válido'),
   body('newPassword')
     .notEmpty().withMessage('La nueva contraseña es requerida')
-    .isLength({ min: 6 }).withMessage('La contraseña debe tener al menos 6 caracteres')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/)
+    .withMessage('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial')
 ];
 
 const getAllUsersValidation = [

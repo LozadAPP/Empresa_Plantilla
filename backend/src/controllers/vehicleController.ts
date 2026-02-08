@@ -24,7 +24,9 @@ class VehicleController {
         minValue,
         maxValue,
         minYear,
-        maxYear
+        maxYear,
+        minMileage,
+        maxMileage
       } = req.query;
 
       const filters = {
@@ -36,7 +38,9 @@ class VehicleController {
         minValue: minValue ? parseFloat(minValue as string) : undefined,
         maxValue: maxValue ? parseFloat(maxValue as string) : undefined,
         minYear: minYear ? parseInt(minYear as string) : undefined,
-        maxYear: maxYear ? parseInt(maxYear as string) : undefined
+        maxYear: maxYear ? parseInt(maxYear as string) : undefined,
+        minMileage: minMileage ? parseInt(minMileage as string) : undefined,
+        maxMileage: maxMileage ? parseInt(maxMileage as string) : undefined
       };
 
       const pagination = {

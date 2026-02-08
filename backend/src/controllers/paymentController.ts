@@ -29,6 +29,7 @@ export class PaymentController {
         rental_id,
         status,
         payment_type,
+        search,
         page = 1,
         limit = 20
       } = req.query;
@@ -40,6 +41,17 @@ export class PaymentController {
       if (status) where.status = status;
       if (payment_type) where.payment_type = payment_type;
 
+      // Búsqueda por texto
+      if (search && typeof search === 'string') {
+        const searchTerm = `%${search}%`;
+        where[Op.or] = [
+          { payment_code: { [Op.iLike]: searchTerm } },
+          { reference_number: { [Op.iLike]: searchTerm } },
+          { '$customer.name$': { [Op.iLike]: searchTerm } },
+          { '$rental.rental_code$': { [Op.iLike]: searchTerm } }
+        ];
+      }
+
       const offset = (Number(page) - 1) * Number(limit);
 
       const { count, rows: payments } = await Payment.findAndCountAll({
@@ -50,7 +62,8 @@ export class PaymentController {
         include: [
           { model: Customer, as: 'customer' },
           { model: Rental, as: 'rental' }
-        ]
+        ],
+        subQuery: false
       });
 
       res.json({
@@ -162,6 +175,14 @@ export class PaymentController {
       // Generar código de pago
       const paymentCode = await CodeGenerator.generatePaymentCode();
 
+      // Determinar status según método de pago
+      // Efectivo y tarjetas = confirmado inmediatamente
+      // Transferencia y cheque = pendiente de verificación
+      const immediatePaymentMethods = ['cash', 'credit_card', 'debit_card'];
+      const paymentStatus = immediatePaymentMethods.includes(payment_method)
+        ? PaymentStatus.COMPLETED
+        : PaymentStatus.PENDING;
+
       // Crear el pago
       const payment = await Payment.create({
         payment_code: paymentCode,
@@ -171,45 +192,51 @@ export class PaymentController {
         amount,
         payment_method,
         payment_type: payment_type as PaymentType,
-        status: PaymentStatus.COMPLETED,
+        status: paymentStatus,
         reference_number,
         transaction_date: transaction_date ? new Date(transaction_date) : new Date(),
         notes,
         processed_by: (req as any).user?.id
       }, { transaction });
 
-      // Si hay factura asociada, actualizar balance
-      if (invoice_id) {
-        const invoice = await Invoice.findByPk(invoice_id, { transaction });
-        if (invoice) {
-          // Proteger contra pagos que excedan el total
-          const newPaidAmount = Math.min(
-            (invoice.paid_amount || 0) + amount,
-            invoice.total_amount
-          );
-          const newBalance = Math.max(0, invoice.total_amount - newPaidAmount);
+      // Solo actualizar balances si el pago está completado
+      if (paymentStatus === PaymentStatus.COMPLETED) {
+        // Si hay factura asociada, actualizar balance
+        if (invoice_id) {
+          const invoice = await Invoice.findByPk(invoice_id, { transaction });
+          if (invoice) {
+            const newPaidAmount = Math.min(
+              (invoice.paid_amount || 0) + amount,
+              invoice.total_amount
+            );
+            const newBalance = Math.max(0, invoice.total_amount - newPaidAmount);
 
-          await invoice.update({
-            paid_amount: newPaidAmount,
-            balance: newBalance,
-            status: newBalance <= 0 ? InvoiceStatus.PAID : invoice.status,
-            updated_at: new Date()
-          }, { transaction });
+            await invoice.update({
+              paid_amount: newPaidAmount,
+              balance: newBalance,
+              status: newBalance <= 0 ? InvoiceStatus.PAID : invoice.status,
+              updated_at: new Date()
+            }, { transaction });
+          }
         }
-      }
 
-      // Actualizar balance del cliente
-      const newCustomerBalance = (customer.current_balance || 0) - amount;
-      await customer.update({
-        current_balance: Math.max(0, newCustomerBalance)
-      }, { transaction });
+        // Actualizar balance del cliente
+        const newCustomerBalance = (customer.current_balance || 0) - amount;
+        await customer.update({
+          current_balance: Math.max(0, newCustomerBalance)
+        }, { transaction });
+      }
 
       // Commit de la transacción
       await transaction.commit();
 
+      const statusMessage = paymentStatus === PaymentStatus.COMPLETED
+        ? 'Pago registrado y confirmado exitosamente'
+        : 'Pago registrado como pendiente de confirmación';
+
       res.status(201).json({
         success: true,
-        message: 'Pago registrado exitosamente',
+        message: statusMessage,
         data: payment
       });
 
@@ -224,6 +251,111 @@ export class PaymentController {
   }
 
   /**
+   * PATCH /api/payments/:id/confirm
+   * Confirmar un pago pendiente (transferencia/cheque verificado)
+   */
+  static async confirmPayment(req: Request, res: Response) {
+    const transaction = await sequelize.transaction();
+
+    try {
+      const { id } = req.params;
+
+      const payment = await Payment.findByPk(id, { transaction });
+      if (!payment) {
+        await transaction.rollback();
+        return res.status(404).json({ success: false, message: 'Pago no encontrado' });
+      }
+
+      if (payment.status !== PaymentStatus.PENDING) {
+        await transaction.rollback();
+        return res.status(400).json({
+          success: false,
+          message: `Solo se pueden confirmar pagos pendientes. Estado actual: ${payment.status}`
+        });
+      }
+
+      // Marcar como completado
+      await payment.update({ status: PaymentStatus.COMPLETED }, { transaction });
+
+      // Ahora actualizar balances (factura y cliente)
+      if (payment.invoice_id) {
+        const invoice = await Invoice.findByPk(payment.invoice_id, { transaction });
+        if (invoice) {
+          const newPaidAmount = Math.min(
+            (invoice.paid_amount || 0) + Number(payment.amount),
+            invoice.total_amount
+          );
+          const newBalance = Math.max(0, invoice.total_amount - newPaidAmount);
+
+          await invoice.update({
+            paid_amount: newPaidAmount,
+            balance: newBalance,
+            status: newBalance <= 0 ? InvoiceStatus.PAID : invoice.status,
+            updated_at: new Date()
+          }, { transaction });
+        }
+      }
+
+      const customer = await Customer.findByPk(payment.customer_id, { transaction });
+      if (customer) {
+        const newBalance = (customer.current_balance || 0) - Number(payment.amount);
+        await customer.update({ current_balance: Math.max(0, newBalance) }, { transaction });
+      }
+
+      await transaction.commit();
+
+      res.json({
+        success: true,
+        message: 'Pago confirmado exitosamente',
+        data: payment
+      });
+
+    } catch (error) {
+      await transaction.rollback();
+      console.error('[PAYMENT] Error confirmando pago:', error);
+      res.status(500).json({ success: false, message: 'Error al confirmar pago' });
+    }
+  }
+
+  /**
+   * PATCH /api/payments/:id/fail
+   * Marcar un pago pendiente como fallido
+   */
+  static async failPayment(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+
+      const payment = await Payment.findByPk(id);
+      if (!payment) {
+        return res.status(404).json({ success: false, message: 'Pago no encontrado' });
+      }
+
+      if (payment.status !== PaymentStatus.PENDING) {
+        return res.status(400).json({
+          success: false,
+          message: `Solo se pueden rechazar pagos pendientes. Estado actual: ${payment.status}`
+        });
+      }
+
+      await payment.update({
+        status: PaymentStatus.FAILED,
+        notes: reason ? `${payment.notes || ''} | Rechazado: ${reason}`.trim() : payment.notes
+      });
+
+      res.json({
+        success: true,
+        message: 'Pago marcado como fallido',
+        data: payment
+      });
+
+    } catch (error) {
+      console.error('[PAYMENT] Error rechazando pago:', error);
+      res.status(500).json({ success: false, message: 'Error al rechazar pago' });
+    }
+  }
+
+  /**
    * GET /api/invoices
    * Obtener todas las facturas
    */
@@ -233,6 +365,7 @@ export class PaymentController {
         customer_id,
         rental_id,
         status,
+        search,
         page = 1,
         limit = 20
       } = req.query;
@@ -242,6 +375,16 @@ export class PaymentController {
       if (customer_id) where.customer_id = customer_id;
       if (rental_id) where.rental_id = rental_id;
       if (status) where.status = status;
+
+      // Búsqueda por texto
+      if (search && typeof search === 'string') {
+        const searchTerm = `%${search}%`;
+        where[Op.or] = [
+          { invoice_code: { [Op.iLike]: searchTerm } },
+          { '$customer.name$': { [Op.iLike]: searchTerm } },
+          { '$customer.email$': { [Op.iLike]: searchTerm } }
+        ];
+      }
 
       const offset = (Number(page) - 1) * Number(limit);
 
@@ -253,7 +396,8 @@ export class PaymentController {
         include: [
           { model: Customer, as: 'customer' },
           { model: Rental, as: 'rental' }
-        ]
+        ],
+        subQuery: false
       });
 
       res.json({

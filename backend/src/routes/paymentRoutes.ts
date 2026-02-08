@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { body, param, query } from 'express-validator';
 import { PaymentController } from '../controllers/paymentController';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { requireRole } from '../middleware/roleMiddleware';
 
 const router = Router();
 
@@ -400,15 +401,25 @@ const resendInvoiceValidation = [
 // Aplicar authMiddleware a TODAS las rutas de este módulo
 router.use(authMiddleware);
 
+// Roles que pueden acceder a pagos
+const paymentReadRoles = ['admin', 'director_general', 'jefe_finanzas', 'jefe_ventas', 'cajero', 'contador', 'vendedor'] as const;
+const paymentWriteRoles = ['admin', 'director_general', 'jefe_finanzas', 'cajero'] as const;
+
 // ========== PAGOS ==========
 // GET /api/v1/payments - Obtener todos los pagos
-router.get('/', getAllPaymentsValidation, PaymentController.getAllPayments);
+router.get('/', requireRole(...paymentReadRoles), getAllPaymentsValidation, PaymentController.getAllPayments);
 
 // GET /api/v1/payments/:id - Obtener un pago por ID
-router.get('/:id', getPaymentByIdValidation, PaymentController.getPaymentById);
+router.get('/:id', requireRole(...paymentReadRoles), getPaymentByIdValidation, PaymentController.getPaymentById);
 
 // POST /api/v1/payments - Registrar un nuevo pago
-router.post('/', createPaymentValidation, PaymentController.createPayment);
+router.post('/', requireRole(...paymentWriteRoles), createPaymentValidation, PaymentController.createPayment);
+
+// PATCH /api/v1/payments/:id/confirm - Confirmar un pago pendiente
+router.patch('/:id/confirm', requireRole(...paymentWriteRoles), getPaymentByIdValidation, PaymentController.confirmPayment);
+
+// PATCH /api/v1/payments/:id/fail - Rechazar un pago pendiente
+router.patch('/:id/fail', requireRole(...paymentWriteRoles), getPaymentByIdValidation, PaymentController.failPayment);
 
 export default router;
 
@@ -416,18 +427,22 @@ export default router;
 export const invoiceRouter = Router();
 invoiceRouter.use(authMiddleware);
 
+// Roles que pueden acceder a facturas
+const invoiceReadRoles = ['admin', 'director_general', 'jefe_finanzas', 'jefe_ventas', 'contador', 'cajero'] as const;
+const invoiceWriteRoles = ['admin', 'director_general', 'jefe_finanzas', 'jefe_ventas'] as const;
+
 // GET /api/v1/invoices - Obtener todas las facturas
-invoiceRouter.get('/', getAllInvoicesValidation, PaymentController.getAllInvoices);
+invoiceRouter.get('/', requireRole(...invoiceReadRoles), getAllInvoicesValidation, PaymentController.getAllInvoices);
 
 // GET /api/v1/invoices/overdue - Obtener facturas vencidas
 // IMPORTANTE: Esta ruta debe ir ANTES de /:id
-invoiceRouter.get('/overdue', PaymentController.getOverdueInvoices);
+invoiceRouter.get('/overdue', requireRole(...invoiceReadRoles), PaymentController.getOverdueInvoices);
 
 // GET /api/v1/invoices/:id - Obtener una factura por ID
-invoiceRouter.get('/:id', getInvoiceByIdValidation, PaymentController.getInvoiceById);
+invoiceRouter.get('/:id', requireRole(...invoiceReadRoles), getInvoiceByIdValidation, PaymentController.getInvoiceById);
 
 // POST /api/v1/invoices - Crear una nueva factura
-invoiceRouter.post('/', createInvoiceValidation, PaymentController.createInvoice);
+invoiceRouter.post('/', requireRole(...invoiceWriteRoles), createInvoiceValidation, PaymentController.createInvoice);
 
 // POST /api/v1/invoices/:id/send - Reenviar factura por email
 invoiceRouter.post('/:id/send', resendInvoiceValidation, PaymentController.resendInvoice);

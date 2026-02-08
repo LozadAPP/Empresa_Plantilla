@@ -43,6 +43,7 @@ import { ExtraService, SelectedService } from '../types/extraService';
 import customerService from '../services/customerService';
 import vehicleService from '../services/vehicleService';
 import extraServiceService from '../services/extraServiceService';
+import { locationService } from '../services/locationService';
 import { differenceInDays } from 'date-fns';
 
 const RentalForm: React.FC = () => {
@@ -134,14 +135,8 @@ const RentalForm: React.FC = () => {
 
   const loadLocations = async () => {
     try {
-      // TODO: Crear servicio de locations cuando esté disponible
-      setLocations([
-        { id: 1, name: 'CDMX - Norte', city: 'Ciudad de México' },
-        { id: 2, name: 'CDMX - Sur', city: 'Ciudad de México' },
-        { id: 3, name: 'Guadalajara', city: 'Guadalajara' },
-        { id: 4, name: 'Monterrey', city: 'Monterrey' },
-        { id: 5, name: 'Cancún', city: 'Cancún' }
-      ]);
+      const response = await locationService.getLocationsDropdown();
+      setLocations(response.data || []);
     } catch (error) {
       console.error('Error loading locations:', error);
     }
@@ -360,7 +355,7 @@ const RentalForm: React.FC = () => {
                   <MenuItem value="">Seleccionar cliente</MenuItem>
                   {customers.map(customer => (
                     <MenuItem key={customer.id} value={customer.id}>
-                      {customer.first_name} {customer.last_name} - {customer.email}
+                      {customer.name} - {customer.email || 'Sin email'}
                     </MenuItem>
                   ))}
                 </Select>
@@ -383,7 +378,7 @@ const RentalForm: React.FC = () => {
                   <MenuItem value="">Seleccionar vehículo</MenuItem>
                   {vehicles.map(vehicle => (
                     <MenuItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.brand} {vehicle.model} ({vehicle.plate}) - ${vehicle.daily_rate}/día
+                      {vehicle.make} {vehicle.model} ({vehicle.license_plate}) - ${vehicle.daily_rate}/día
                     </MenuItem>
                   ))}
                 </Select>

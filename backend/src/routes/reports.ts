@@ -16,7 +16,7 @@ const router = Router();
 router.use(authMiddleware);
 
 // Roles that can access reports (including jefe_ventas for sales reports)
-router.use(requireRole('admin', 'director_general', 'jefe_finanzas', 'jefe_ventas', 'contador'));
+router.use(requireRole('admin', 'director_general', 'jefe_finanzas', 'jefe_ventas', 'contador', 'jefe_inventarios', 'jefe_admin', 'encargado_inventario'));
 
 /**
  * @swagger

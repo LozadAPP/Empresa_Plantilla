@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { env } from '../config/env';
+import { isOriginAllowed, getOriginFromReferer } from '../config/cors';
 
 /**
  * CSRF Protection Middleware for REST APIs
@@ -9,26 +10,10 @@ import { env } from '../config/env';
  * which is effective for preventing cross-origin attacks.
  *
  * This middleware:
- * 1. Validates Origin header against allowed origins
+ * 1. Validates Origin header against allowed origins (uses centralized config/cors.ts)
  * 2. Falls back to Referer header validation
  * 3. Blocks requests from unknown origins on state-changing methods
  */
-
-// Parse allowed origins from environment
-const getAllowedOrigins = (): string[] => {
-  const corsOrigin = env.CORS_ORIGIN;
-
-  if (Array.isArray(corsOrigin)) {
-    return corsOrigin;
-  }
-
-  if (typeof corsOrigin === 'string') {
-    // Handle comma-separated origins or single origin
-    return corsOrigin.split(',').map(o => o.trim());
-  }
-
-  return ['http://localhost:5173', 'http://localhost:3000'];
-};
 
 // Methods that require CSRF protection (state-changing)
 const PROTECTED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
@@ -43,36 +28,6 @@ const EXEMPT_PATHS = [
   '/api-docs',
   '/'
 ];
-
-/**
- * Validates if the request origin is allowed
- */
-const isOriginAllowed = (origin: string | undefined): boolean => {
-  if (!origin) return false;
-
-  const allowedOrigins = getAllowedOrigins();
-  return allowedOrigins.some(allowed => {
-    // Exact match
-    if (origin === allowed) return true;
-    // Handle trailing slashes
-    if (origin === allowed.replace(/\/$/, '') || origin + '/' === allowed) return true;
-    return false;
-  });
-};
-
-/**
- * Extracts origin from Referer header
- */
-const getOriginFromReferer = (referer: string | undefined): string | undefined => {
-  if (!referer) return undefined;
-
-  try {
-    const url = new URL(referer);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return undefined;
-  }
-};
 
 /**
  * Checks if path is exempt from CSRF protection

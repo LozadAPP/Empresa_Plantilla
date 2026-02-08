@@ -86,12 +86,12 @@ Return.belongsTo(User, { foreignKey: 'inspected_by', as: 'inspector', onDelete: 
 User.hasMany(Return, { foreignKey: 'inspected_by', as: 'inspectedReturns' });
 
 // Payment - Customer (Many-to-One)
-Payment.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-Customer.hasMany(Payment, { foreignKey: 'customer_id', as: 'payments', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Payment.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer', onDelete: 'RESTRICT', onUpdate: 'CASCADE' });
+Customer.hasMany(Payment, { foreignKey: 'customer_id', as: 'payments' });
 
 // Payment - Rental (Many-to-One)
-Payment.belongsTo(Rental, { foreignKey: 'rental_id', as: 'rental', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-Rental.hasMany(Payment, { foreignKey: 'rental_id', as: 'payments', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Payment.belongsTo(Rental, { foreignKey: 'rental_id', as: 'rental', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+Rental.hasMany(Payment, { foreignKey: 'rental_id', as: 'payments' });
 
 // Payment - Invoice (Many-to-One)
 Payment.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
@@ -102,12 +102,12 @@ Payment.belongsTo(User, { foreignKey: 'processed_by', as: 'processor', onDelete:
 User.hasMany(Payment, { foreignKey: 'processed_by', as: 'processedPayments' });
 
 // Invoice - Rental (Many-to-One)
-Invoice.belongsTo(Rental, { foreignKey: 'rental_id', as: 'rental', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-Rental.hasMany(Invoice, { foreignKey: 'rental_id', as: 'invoices', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Invoice.belongsTo(Rental, { foreignKey: 'rental_id', as: 'rental', onDelete: 'RESTRICT', onUpdate: 'CASCADE' });
+Rental.hasMany(Invoice, { foreignKey: 'rental_id', as: 'invoices' });
 
 // Invoice - Customer (Many-to-One)
-Invoice.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-Customer.hasMany(Invoice, { foreignKey: 'customer_id', as: 'invoices', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Invoice.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer', onDelete: 'RESTRICT', onUpdate: 'CASCADE' });
+Customer.hasMany(Invoice, { foreignKey: 'customer_id', as: 'invoices' });
 
 // Invoice - User (Many-to-One) - created by
 Invoice.belongsTo(User, { foreignKey: 'created_by', as: 'creator', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
@@ -141,9 +141,13 @@ MaintenanceType.hasMany(MaintenanceOrder, { foreignKey: 'maintenance_type_id', a
 MaintenanceOrder.belongsTo(User, { foreignKey: 'created_by', as: 'creator', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
 User.hasMany(MaintenanceOrder, { foreignKey: 'created_by', as: 'createdMaintenanceOrders' });
 
-// Transaction - Account (Many-to-One)
+// Transaction - Account (Many-to-One) - source account
 Transaction.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 Account.hasMany(Transaction, { foreignKey: 'account_id', as: 'transactions' });
+
+// Transaction - Account (Many-to-One) - destination account (for transfers)
+Transaction.belongsTo(Account, { foreignKey: 'destination_account_id', as: 'destinationAccount' });
+Account.hasMany(Transaction, { foreignKey: 'destination_account_id', as: 'destinationTransactions' });
 
 // Transaction - Location (Many-to-One)
 Transaction.belongsTo(Location, { foreignKey: 'location_id', as: 'location' });

@@ -262,15 +262,15 @@ const RentalDetail: React.FC = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Nombre</Typography>
-                  <Typography variant="body1" fontWeight={500}>{rental.customer.first_name} {rental.customer.last_name}</Typography>
+                  <Typography variant="body1" fontWeight={500}>{rental.customer.name}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Email</Typography>
-                  <Typography variant="body1" fontWeight={500}>{rental.customer.email}</Typography>
+                  <Typography variant="body1" fontWeight={500}>{rental.customer.email || 'N/A'}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Teléfono</Typography>
-                  <Typography variant="body1" fontWeight={500}>{rental.customer.phone}</Typography>
+                  <Typography variant="body1" fontWeight={500}>{rental.customer.phone || 'N/A'}</Typography>
                 </Box>
               </Box>
             )}
@@ -285,11 +285,11 @@ const RentalDetail: React.FC = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Vehículo</Typography>
-                  <Typography variant="body1" fontWeight={500}>{rental.vehicle.brand} {rental.vehicle.model}</Typography>
+                  <Typography variant="body1" fontWeight={500}>{rental.vehicle.make} {rental.vehicle.model}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Placa</Typography>
-                  <Typography variant="body1" fontWeight={500}>{rental.vehicle.plate}</Typography>
+                  <Typography variant="body1" fontWeight={500}>{rental.vehicle.license_plate}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Año</Typography>
@@ -515,7 +515,7 @@ const RentalDetail: React.FC = () => {
                 {rental.payments.map((payment: any) => (
                   <TableRow key={payment.id} hover>
                     <TableCell>{payment.payment_code}</TableCell>
-                    <TableCell>{payment.payment_date && formatDate(payment.payment_date)}</TableCell>
+                    <TableCell>{payment.transaction_date && formatDate(payment.transaction_date)}</TableCell>
                     <TableCell sx={{ textTransform: 'capitalize' }}>
                       {payment.payment_method === 'cash' && '💵 Efectivo'}
                       {payment.payment_method === 'card' && '💳 Tarjeta'}

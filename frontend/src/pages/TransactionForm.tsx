@@ -13,7 +13,8 @@ import {
   InputLabel,
   Select,
   InputAdornment,
-  Alert
+  Alert,
+  alpha
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -74,6 +75,19 @@ const TransactionForm: React.FC = () => {
         setError('Debe seleccionar una cuenta');
         setLoading(false);
         return;
+      }
+
+      if (formData.transactionType === 'transfer') {
+        if (!formData.destinationAccountId) {
+          setError('Debe seleccionar una cuenta destino para transferencias');
+          setLoading(false);
+          return;
+        }
+        if (formData.destinationAccountId === formData.accountId) {
+          setError('La cuenta destino debe ser diferente a la cuenta origen');
+          setLoading(false);
+          return;
+        }
       }
 
       await accountingService.createTransaction(formData);
@@ -151,11 +165,11 @@ const TransactionForm: React.FC = () => {
               {/* Account */}
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth required>
-                  <InputLabel>Cuenta</InputLabel>
+                  <InputLabel>{formData.transactionType === 'transfer' ? 'Cuenta Origen' : 'Cuenta'}</InputLabel>
                   <Select
                     value={formData.accountId}
                     onChange={(e) => handleChange('accountId', e.target.value)}
-                    label="Cuenta"
+                    label={formData.transactionType === 'transfer' ? 'Cuenta Origen' : 'Cuenta'}
                   >
                     <MenuItem value={0} disabled>
                       Seleccione una cuenta
@@ -168,6 +182,31 @@ const TransactionForm: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
+
+              {/* Destination Account (only for transfers) */}
+              {formData.transactionType === 'transfer' && (
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Cuenta Destino</InputLabel>
+                    <Select
+                      value={formData.destinationAccountId || 0}
+                      onChange={(e) => handleChange('destinationAccountId' as keyof CreateTransactionDto, e.target.value)}
+                      label="Cuenta Destino"
+                    >
+                      <MenuItem value={0} disabled>
+                        Seleccione cuenta destino
+                      </MenuItem>
+                      {accounts
+                        .filter((acc) => acc.id !== formData.accountId)
+                        .map((account) => (
+                          <MenuItem key={account.id} value={account.id}>
+                            {account.accountCode} - {account.accountName}
+                          </MenuItem>
+                        ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
 
               {/* Amount */}
               <Grid item xs={12} md={6}>
@@ -318,9 +357,5 @@ const TransactionForm: React.FC = () => {
     </Box>
   );
 };
-
-function alpha(color: string, opacity: number): string {
-  return `${color}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`;
-}
 
 export default TransactionForm;

@@ -233,6 +233,17 @@ const toggleStatusValidation = [
 ];
 
 // ====================================
+// ADMIN ROUTES (Static routes first to avoid /:id capturing them)
+// ====================================
+
+// Roles that can manage extra services
+const adminRoles = requireRole('admin', 'director_general', 'jefe_admin', 'jefe_finanzas');
+
+// GET /api/extra-services/all - Get all services including inactive (admin)
+// IMPORTANT: Must be before /:id to avoid "all" being treated as an ID
+router.get('/all', adminRoles, getAllServicesValidation, getAllExtraServices);
+
+// ====================================
 // PUBLIC ROUTES (All authenticated users)
 // ====================================
 
@@ -242,18 +253,8 @@ router.get('/', getServicesValidation, getExtraServices);
 // GET /api/extra-services/by-category - Get services grouped by category
 router.get('/by-category', getServicesByCategory);
 
-// GET /api/extra-services/:id - Get single service
+// GET /api/extra-services/:id - Get single service (MUST be last among GETs)
 router.get('/:id', getServiceByIdValidation, getExtraServiceById);
-
-// ====================================
-// ADMIN ROUTES
-// ====================================
-
-// Roles that can manage extra services
-const adminRoles = requireRole('admin', 'director_general', 'jefe_admin', 'jefe_finanzas');
-
-// GET /api/extra-services/all - Get all services including inactive (admin)
-router.get('/all', adminRoles, getAllServicesValidation, getAllExtraServices);
 
 // POST /api/extra-services - Create new service
 router.post('/', adminRoles, createServiceValidation, createExtraService);

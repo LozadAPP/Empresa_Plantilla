@@ -521,7 +521,7 @@ const Rentals: React.FC = () => {
                           Cliente
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
-                          {rental.customer?.first_name} {rental.customer?.last_name}
+                          {rental.customer?.name}
                         </Typography>
                       </Box>
                       <Box>
@@ -529,10 +529,10 @@ const Rentals: React.FC = () => {
                           Vehículo
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
-                          {rental.vehicle?.brand} {rental.vehicle?.model}
+                          {rental.vehicle?.make} {rental.vehicle?.model}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {rental.vehicle?.plate}
+                          {rental.vehicle?.license_plate}
                         </Typography>
                       </Box>
                       <Box>
@@ -631,7 +631,7 @@ const Rentals: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {rental.customer?.first_name} {rental.customer?.last_name}
+                        {rental.customer?.name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {rental.customer?.email}
@@ -639,10 +639,10 @@ const Rentals: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {rental.vehicle?.brand} {rental.vehicle?.model}
+                        {rental.vehicle?.make} {rental.vehicle?.model}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {rental.vehicle?.plate}
+                        {rental.vehicle?.license_plate}
                       </Typography>
                     </TableCell>
                     <TableCell>

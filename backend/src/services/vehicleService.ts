@@ -11,6 +11,8 @@ interface VehicleFilters {
   maxValue?: number;
   minYear?: number;
   maxYear?: number;
+  minMileage?: number;
+  maxMileage?: number;
 }
 
 interface PaginationOptions {
@@ -93,6 +95,12 @@ class VehicleService {
       where.year = {};
       if (filters.minYear) where.year[Op.gte] = filters.minYear;
       if (filters.maxYear) where.year[Op.lte] = filters.maxYear;
+    }
+
+    if (filters.minMileage || filters.maxMileage) {
+      where.mileage = {};
+      if (filters.minMileage) where.mileage[Op.gte] = filters.minMileage;
+      if (filters.maxMileage) where.mileage[Op.lte] = filters.maxMileage;
     }
 
     const { count, rows } = await Vehicle.findAndCountAll({

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { body, param, query } from 'express-validator';
 import { ReturnController } from '../controllers/returnController';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { requireRole } from '../middleware/roleMiddleware';
 
 const router = Router();
 
@@ -288,20 +289,24 @@ const getAllValidation = [
 // Aplicar authMiddleware a TODAS las rutas de este módulo
 router.use(authMiddleware);
 
+// Roles que pueden acceder a devoluciones
+const returnReadRoles = ['admin', 'director_general', 'jefe_ventas', 'jefe_inventarios', 'vendedor', 'encargado_inventario'] as const;
+const returnWriteRoles = ['admin', 'director_general', 'jefe_ventas', 'jefe_inventarios', 'vendedor', 'encargado_inventario'] as const;
+
 // GET /api/returns - Obtener todas las devoluciones
-router.get('/', getAllValidation, ReturnController.getAll);
+router.get('/', requireRole(...returnReadRoles), getAllValidation, ReturnController.getAll);
 
 // GET /api/returns/rental/:rentalId - Obtener devolución por rental_id
 // IMPORTANTE: Esta ruta debe ir ANTES de /:id para evitar que "rental" sea capturado como :id
-router.get('/rental/:rentalId', getByRentalIdValidation, ReturnController.getByRentalId);
+router.get('/rental/:rentalId', requireRole(...returnReadRoles), getByRentalIdValidation, ReturnController.getByRentalId);
 
 // GET /api/returns/:id - Obtener una devolución por ID
-router.get('/:id', getByIdValidation, ReturnController.getById);
+router.get('/:id', requireRole(...returnReadRoles), getByIdValidation, ReturnController.getById);
 
 // POST /api/returns - Registrar una devolución
-router.post('/', createReturnValidation, ReturnController.create);
+router.post('/', requireRole(...returnWriteRoles), createReturnValidation, ReturnController.create);
 
 // PUT /api/returns/:id - Actualizar una devolución
-router.put('/:id', updateReturnValidation, ReturnController.update);
+router.put('/:id', requireRole(...returnWriteRoles), updateReturnValidation, ReturnController.update);
 
 export default router;
