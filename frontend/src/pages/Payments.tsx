@@ -150,7 +150,7 @@ const Payments: React.FC = () => {
     try {
       await paymentService.confirmPayment(paymentId);
       enqueueSnackbar('Pago confirmado exitosamente', { variant: 'success' });
-      dispatch(fetchPayments(filters));
+      dispatch(fetchPayments({ ...filters, status: filters.status || undefined, payment_type: filters.payment_type || undefined }));
     } catch {
       enqueueSnackbar('Error al confirmar pago', { variant: 'error' });
     } finally {
@@ -173,7 +173,7 @@ const Payments: React.FC = () => {
       await paymentService.failPayment(rejectPaymentId, rejectReason);
       enqueueSnackbar('Pago rechazado', { variant: 'warning' });
       setRejectDialogOpen(false);
-      dispatch(fetchPayments(filters));
+      dispatch(fetchPayments({ ...filters, status: filters.status || undefined, payment_type: filters.payment_type || undefined }));
     } catch {
       enqueueSnackbar('Error al rechazar pago', { variant: 'error' });
     } finally {
