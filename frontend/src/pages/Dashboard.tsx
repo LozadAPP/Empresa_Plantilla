@@ -129,14 +129,14 @@ const Dashboard: React.FC = () => {
   // OPTIMIZADO: Calcular totalVehicles con useMemo (movido antes de returns)
   const totalVehicles = useMemo(() => {
     const fleetTypes = [
-      { value: data?.vehicleTypes?.sedan || 45 },
-      { value: data?.vehicleTypes?.suv || 30 },
-      { value: data?.vehicleTypes?.pickup || 20 },
-      { value: 15 },
-      { value: 10 },
+      { value: data?.vehicleTypes?.sedan || 0 },
+      { value: data?.vehicleTypes?.suv || 0 },
+      { value: data?.vehicleTypes?.pickup || 0 },
+      { value: data?.vehicleTypes?.compact || 0 },
+      { value: data?.vehicleTypes?.premium || 0 },
     ];
     return fleetTypes.reduce((sum, type) => sum + type.value, 0);
-  }, [data?.vehicleTypes?.sedan, data?.vehicleTypes?.suv, data?.vehicleTypes?.pickup]);
+  }, [data?.vehicleTypes]);
 
   // Performance Chart Data - OPTIMIZADO con useMemo (movido antes de returns)
   const performanceChartData = useMemo(() => {
@@ -187,16 +187,16 @@ const Dashboard: React.FC = () => {
       3: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
     };
     const revenueData = {
-      0: [12000, 8500, 15000, 22000, 18000, 25000],
-      1: [45000, 52000, 48000, 61000, 55000, 67000, 58000],
-      2: [185000, 205000, 195000, 240000],
-      3: [145000, 152000, 148000, 161000, 155000, 167000, 170000, 168000, 172000, 175000, 178000, 182000]
+      0: [0, 0, 0, 0, 0, 0],
+      1: [0, 0, 0, 0, 0, 0, 0],
+      2: [0, 0, 0, 0],
+      3: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     };
     const occupancyData = {
-      0: [55, 48, 62, 70, 65, 72],
-      1: [62, 68, 65, 72, 70, 75, 68],
-      2: [65, 70, 68, 72],
-      3: [58, 62, 60, 65, 63, 68, 70, 69, 71, 72, 73, 68]
+      0: [0, 0, 0, 0, 0, 0],
+      1: [0, 0, 0, 0, 0, 0, 0],
+      2: [0, 0, 0, 0],
+      3: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     };
 
     return {
@@ -341,12 +341,12 @@ const Dashboard: React.FC = () => {
 
   // OPTIMIZADO: Fleet Distribution Chart Data - Memoizado para evitar re-creación (movido antes de returns)
   const fleetTypes = useMemo(() => [
-    { label: 'Sedán', value: data?.vehicleTypes?.sedan || 45, color: '#8b5cf6' },
-    { label: 'SUV', value: data?.vehicleTypes?.suv || 30, color: '#10b981' },
-    { label: 'Camioneta', value: data?.vehicleTypes?.pickup || 20, color: '#f59e0b' },
-    { label: 'Compacto', value: 15, color: '#3b82f6' },
-    { label: 'Lujo', value: 10, color: '#ef4444' },
-  ], [data?.vehicleTypes?.sedan, data?.vehicleTypes?.suv, data?.vehicleTypes?.pickup]);
+    { label: 'Sedán', value: data?.vehicleTypes?.sedan || 0, color: '#8b5cf6' },
+    { label: 'SUV', value: data?.vehicleTypes?.suv || 0, color: '#10b981' },
+    { label: 'Camioneta', value: data?.vehicleTypes?.pickup || 0, color: '#f59e0b' },
+    { label: 'Compacto', value: data?.vehicleTypes?.compact || 0, color: '#3b82f6' },
+    { label: 'Lujo', value: data?.vehicleTypes?.premium || 0, color: '#ef4444' },
+  ], [data?.vehicleTypes]);
 
   const fleetDistributionData = useMemo(() => ({
     labels: fleetTypes.map(t => t.label),
@@ -459,53 +459,12 @@ const Dashboard: React.FC = () => {
         itemsLoaded = true;
       }
 
-      // FALLBACK: Si no hay datos del backend, usar datos de demostración
+      // Si no hay datos del backend, dejar arrays vacíos (sin datos demo)
       if (!categoriesLoaded) {
-        const fallbackCategories: ItemCategory[] = [
-          { id: 1, name: 'Sedán', slug: 'sedan', icon: '🚗', color: '#8b5cf6', types: ['Compacto', 'Mediano', 'Ejecutivo'], isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-          { id: 2, name: 'SUV', slug: 'suv', icon: '🚙', color: '#10b981', types: ['Compacta', 'Mediana', 'Grande'], isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-          { id: 3, name: 'Camioneta', slug: 'pickup', icon: '🛻', color: '#f59e0b', types: ['Sencilla', 'Doble Cabina'], isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-          { id: 4, name: 'Compacto', slug: 'compact', icon: '🚕', color: '#3b82f6', types: ['Económico', 'City Car'], isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-          { id: 5, name: 'Lujo', slug: 'luxury', icon: '🏎️', color: '#ef4444', types: ['Premium', 'Deportivo', 'Ejecutivo'], isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-        ];
-        setCategories(fallbackCategories);
+        setCategories([]);
       }
-
       if (!itemsLoaded) {
-        const fallbackItems: InventoryItem[] = [
-          {
-            id: 1, name: 'Toyota Corolla 2022', serialNumber: 'TC-2022-001', categoryId: 1, categoryName: 'Sedán', categoryColor: '#8b5cf6', categoryIcon: '🚗',
-            type: 'Sedán Mediano', status: 'available', condition: 'excellent', purchaseDate: '2022-01-15', purchasePrice: 250000, currentValue: 230000,
-            currentLocationId: 1, currentLocationName: 'Sucursal Querétaro', currentLocationAddress: 'Av. Universidad 1001', currentLocationCity: 'Querétaro', currentLocationState: 'Querétaro',
-            currentLocationCoordinates: { lat: 20.5888, lng: -100.3899 }, rentalPriceDaily: 800, createdAt: '2024-01-01', updatedAt: '2024-01-01'
-          },
-          {
-            id: 2, name: 'Honda CR-V 2023', serialNumber: 'HCR-2023-002', categoryId: 2, categoryName: 'SUV', categoryColor: '#10b981', categoryIcon: '🚙',
-            type: 'SUV Mediana', status: 'rented', condition: 'excellent', purchaseDate: '2023-03-10', purchasePrice: 450000, currentValue: 420000,
-            currentLocationId: 2, currentLocationName: 'Sucursal CDMX', currentLocationAddress: 'Reforma 500', currentLocationCity: 'Ciudad de México', currentLocationState: 'CDMX',
-            currentLocationCoordinates: { lat: 19.4326, lng: -99.1332 }, currentCustomerName: 'Juan Pérez', currentCustomerCompany: 'Turismo XYZ S.A.',
-            rentalPriceDaily: 1200, createdAt: '2024-01-01', updatedAt: '2024-01-01'
-          },
-          {
-            id: 3, name: 'Ford F-150 2022', serialNumber: 'FF-2022-003', categoryId: 3, categoryName: 'Camioneta', categoryColor: '#f59e0b', categoryIcon: '🛻',
-            type: 'Pickup Doble Cabina', status: 'available', condition: 'good', purchaseDate: '2022-06-20', purchasePrice: 550000, currentValue: 500000,
-            currentLocationId: 3, currentLocationName: 'Sucursal Guadalajara', currentLocationAddress: 'Av. Chapultepec 200', currentLocationCity: 'Guadalajara', currentLocationState: 'Jalisco',
-            currentLocationCoordinates: { lat: 20.6597, lng: -103.3496 }, rentalPriceDaily: 1500, createdAt: '2024-01-01', updatedAt: '2024-01-01'
-          },
-          {
-            id: 4, name: 'Mazda 3 2023', serialNumber: 'M3-2023-004', categoryId: 1, categoryName: 'Sedán', categoryColor: '#8b5cf6', categoryIcon: '🚗',
-            type: 'Sedán Compacto', status: 'available', condition: 'excellent', purchaseDate: '2023-02-10', purchasePrice: 320000, currentValue: 300000,
-            currentLocationId: 4, currentLocationName: 'Sucursal Monterrey', currentLocationAddress: 'Av. Constitución 850', currentLocationCity: 'Monterrey', currentLocationState: 'Nuevo León',
-            currentLocationCoordinates: { lat: 25.6866, lng: -100.3161 }, rentalPriceDaily: 900, createdAt: '2024-01-01', updatedAt: '2024-01-01'
-          },
-          {
-            id: 5, name: 'Nissan Versa 2022', serialNumber: 'NV-2022-005', categoryId: 4, categoryName: 'Compacto', categoryColor: '#3b82f6', categoryIcon: '🚕',
-            type: 'Compacto Económico', status: 'maintenance', condition: 'good', purchaseDate: '2022-09-15', purchasePrice: 220000, currentValue: 190000,
-            currentLocationId: 5, currentLocationName: 'Sucursal Puebla', currentLocationAddress: 'Blvd. 5 de Mayo 100', currentLocationCity: 'Puebla', currentLocationState: 'Puebla',
-            currentLocationCoordinates: { lat: 19.0414, lng: -98.2063 }, rentalPriceDaily: 600, createdAt: '2024-01-01', updatedAt: '2024-01-01'
-          },
-        ];
-        setInventoryItems(fallbackItems);
+        setInventoryItems([]);
       }
 
     } catch (error: any) {
@@ -1362,7 +1321,7 @@ const Dashboard: React.FC = () => {
             </Box>
             <Box>
               <Typography variant="h3" sx={{ color: '#f59e0b', mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-                8
+                {data?.kpis?.vehicles?.available ?? 0}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 Autos Ociosos

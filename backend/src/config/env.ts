@@ -20,7 +20,6 @@ export interface EnvConfig {
   DB_PASSWORD: string;
   DB_LOGGING: 'true' | 'false' | 'minimal';
   DB_SYNC: boolean;  // Solo sincronizar tablas si es true
-  DB_SEED: boolean;  // Solo ejecutar seeders si es true
 
   // JWT
   JWT_SECRET: string;
@@ -154,7 +153,6 @@ function validateEnv(): EnvConfig {
     DB_PASSWORD: process.env.DB_PASSWORD!,
     DB_LOGGING: (process.env.DB_LOGGING as EnvConfig['DB_LOGGING']) || 'false',  // Por defecto sin logs SQL
     DB_SYNC: parseBoolean(process.env.DB_SYNC, false),   // Por defecto NO sincroniza
-    DB_SEED: parseBoolean(process.env.DB_SEED, false),   // Por defecto NO seedea
 
     // JWT
     JWT_SECRET: jwtSecret,

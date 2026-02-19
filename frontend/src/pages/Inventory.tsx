@@ -54,6 +54,7 @@ import {
   Tune as TuneIcon
 } from '@mui/icons-material';
 import { vehicleService } from '../services/vehicleService';
+import { locationService, LocationDropdown } from '../services/locationService';
 import { Vehicle, VehicleStatus, VehicleFilters, Pagination, VehicleFormData } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
@@ -106,6 +107,9 @@ const Inventory: React.FC = () => {
     maintenance: 0
   });
 
+  // Locations for dropdown
+  const [locations, setLocations] = useState<LocationDropdown[]>([]);
+
   // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<VehicleStatus | ''>('');
@@ -136,6 +140,12 @@ const Inventory: React.FC = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [vehicleToEdit, setVehicleToEdit] = useState<Vehicle | null>(null);
+
+  useEffect(() => {
+    locationService.getLocationsDropdown()
+      .then(res => { if (res.data) setLocations(res.data); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchVehicles();
@@ -681,10 +691,9 @@ const Inventory: React.FC = () => {
                       onChange={(e) => setLocationFilter(e.target.value as number | '')}
                     >
                       <MenuItem value="">Todas</MenuItem>
-                      <MenuItem value={1}>Querétaro</MenuItem>
-                      <MenuItem value={2}>CDMX</MenuItem>
-                      <MenuItem value={3}>Guadalajara</MenuItem>
-                      <MenuItem value={4}>Monterrey</MenuItem>
+                      {locations.map(loc => (
+                        <MenuItem key={loc.id} value={loc.id}>{loc.name}</MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </Grid>

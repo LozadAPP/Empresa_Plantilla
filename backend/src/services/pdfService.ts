@@ -6,6 +6,7 @@ import Customer from '../models/Customer';
 import Vehicle from '../models/Vehicle';
 import Location from '../models/Location';
 import Invoice from '../models/Invoice';
+import SystemConfig from '../models/SystemConfig';
 
 /**
  * Servicio para generar PDFs (Contratos y Facturas)
@@ -165,6 +166,12 @@ export class PDFService {
     const fileName = `invoice-${invoice.invoice_code}.pdf`;
     const filePath = path.join(this.STORAGE_PATH, fileName);
 
+    // Leer datos de empresa desde system_configs
+    const companyConfigs = await SystemConfig.findAll({
+      where: { configKey: ['company_name', 'company_rfc', 'company_address'] }
+    });
+    const configMap = Object.fromEntries(companyConfigs.map(c => [c.configKey, c.configValue]));
+
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ margin: 50 });
@@ -178,11 +185,11 @@ export class PDFService {
         doc.fontSize(12).text(`Factura No: ${invoice.invoice_code}`, { align: 'center' });
         doc.moveDown(2);
 
-        // Información de la empresa (hardcoded por ahora)
-        doc.fontSize(14).text('MOVICAR SYSTEM', { underline: true });
+        // Información de la empresa
+        doc.fontSize(14).text(configMap.company_name || 'MOVICAR', { underline: true });
         doc.fontSize(10);
-        doc.text('RFC: MOV123456789');
-        doc.text('Dirección: Av. Principal #123, Ciudad');
+        doc.text(`RFC: ${configMap.company_rfc || ''}`);
+        doc.text(`Dirección: ${configMap.company_address || ''}`);
         doc.moveDown(1);
 
         // Información del cliente

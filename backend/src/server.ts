@@ -4,10 +4,6 @@ import { env } from './config/env';
 import app from './app';
 import { testConnection } from './config/database';
 import { syncDatabase } from './models';
-import { seedInventoryData } from './seeders/inventorySeed';
-import seedSystemConfig from './seeders/systemConfigSeed';
-import seedChartOfAccounts from './seeders/chartOfAccountsSeed';
-import seedInitialData from './seeders/initialData';
 import alertScheduler from './jobs/alertScheduler';
 
 const startServer = async (): Promise<void> => {
@@ -20,16 +16,6 @@ const startServer = async (): Promise<void> => {
     if (env.DB_SYNC) {
       console.log('🔄 DB_SYNC=true: Synchronizing database tables...');
       await syncDatabase(false);
-    }
-
-    // Seed data ONLY if explicitly requested with DB_SEED=true
-    // Use: DB_SEED=true npm run dev (first time setup)
-    if (env.DB_SEED) {
-      console.log('🌱 DB_SEED=true: Running seeders...');
-      await seedInitialData();
-      await seedSystemConfig();
-      await seedChartOfAccounts();
-      console.log('✅ Seeders completed');
     }
 
     // Start server
