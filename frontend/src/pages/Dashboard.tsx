@@ -5,6 +5,7 @@ import {
   alpha,
   Chip,
   CircularProgress,
+  LinearProgress,
   Table,
   TableBody,
   TableCell,
@@ -28,6 +29,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  Menu,
+  Tooltip,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -63,7 +66,7 @@ import {
   BarElement,
   ArcElement,
   Title,
-  Tooltip,
+  Tooltip as ChartTooltip,
   Legend,
   Filler
 } from 'chart.js';
@@ -76,7 +79,7 @@ ChartJS.register(
   BarElement,
   ArcElement,
   Title,
-  Tooltip,
+  ChartTooltip,
   Legend,
   Filler
 );
@@ -91,7 +94,8 @@ const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<ItemCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [periodTab, setPeriodTab] = useState(2); // 0: Hoy, 1: Semana, 2: Mes, 3: Año
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
@@ -108,6 +112,47 @@ const Dashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [performanceData, setPerformanceData] = useState<any[]>([]);
   const [maintenanceData, setMaintenanceData] = useState<any>(null);
+
+  // Estado para selector de moneda
+  const [currency, setCurrency] = useState<string>('MXN');
+  const [currencyMenuAnchor, setCurrencyMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // Configuración de monedas
+  const currencies: Record<string, { symbol: string; rate: number; name: string }> = {
+    MXN: { symbol: '$', rate: 1, name: 'Peso Mexicano' },
+    USD: { symbol: 'US$', rate: 0.058, name: 'Dólar Americano' },
+    EUR: { symbol: '€', rate: 0.053, name: 'Euro' },
+    COP: { symbol: 'COL$', rate: 228, name: 'Peso Colombiano' },
+    BRL: { symbol: 'R$', rate: 0.29, name: 'Real Brasileño' },
+    GBP: { symbol: '£', rate: 0.046, name: 'Libra Esterlina' },
+  };
+
+  // Helper: convertir monto a moneda seleccionada
+  const convertCurrency = (amountMXN: number): number => {
+    return amountMXN * currencies[currency].rate;
+  };
+
+  // Helper: formato compacto para números monetarios grandes
+  const formatCompactCurrency = (amountMXN: number): string => {
+    const converted = convertCurrency(amountMXN);
+    const sym = currencies[currency].symbol;
+    const abs = Math.abs(converted);
+
+    if (abs >= 1_000_000_000) {
+      return `${sym}${(converted / 1_000_000_000).toFixed(1)}B`;
+    }
+    if (abs >= 1_000_000) {
+      return `${sym}${(converted / 1_000_000).toFixed(1)}M`;
+    }
+    return `${sym}${converted.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
+
+  // Helper: valor exacto para tooltip
+  const formatExactCurrency = (amountMXN: number): string => {
+    const converted = convertCurrency(amountMXN);
+    const sym = currencies[currency].symbol;
+    return `${sym}${converted.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+  };
 
   // Filtrar items por categoría seleccionada
   const filteredInventoryItems = useMemo(() => {
@@ -388,28 +433,32 @@ const Dashboard: React.FC = () => {
     return { start, end };
   };
 
+  // Carga inicial: todos los endpoints (solo una vez)
   useEffect(() => {
-    loadDashboardData();
-  }, [periodTab]); // Recargar cuando cambie el periodo
+    loadAllData();
+  }, []);
 
-  const loadDashboardData = async () => {
+  // Cambio de periodo: solo endpoints que dependen del periodo
+  useEffect(() => {
+    if (!initialLoading) {
+      refreshPeriodData();
+    }
+  }, [periodTab]);
+
+  const getPeriodParam = (tab: number): 'day' | 'week' | 'month' | 'year' => {
+    const map: { [key: number]: 'day' | 'week' | 'month' | 'year' } = { 0: 'day', 1: 'week', 2: 'month', 3: 'year' };
+    return map[tab] || 'month';
+  };
+
+  // Carga completa inicial (8 endpoints en paralelo)
+  const loadAllData = async () => {
     try {
-      setLoading(true);
-      setError(null); // Clear any previous errors
+      setInitialLoading(true);
+      setError(null);
 
-      // Obtener rango de fechas según el periodo seleccionado
       const { start, end } = getDateRange(periodTab);
+      const selectedPeriod = getPeriodParam(periodTab);
 
-      // Determinar el periodo para performanceData
-      const periodMap: { [key: number]: 'day' | 'week' | 'month' | 'year' } = {
-        0: 'day',
-        1: 'week',
-        2: 'month',
-        3: 'year'
-      };
-      const selectedPeriod = periodMap[periodTab] || 'month';
-
-      // Cargar TODOS los datos en paralelo (Fase 2.3 - Datos reales)
       const [
         mainResponse,
         rentalsResponse,
@@ -420,10 +469,7 @@ const Dashboard: React.FC = () => {
         categoriesData,
         itemsData
       ] = await Promise.all([
-        dashboardService.getMain({
-          start_date: start.toISOString(),
-          end_date: end.toISOString()
-        }),
+        dashboardService.getMain({ start_date: start.toISOString(), end_date: end.toISOString() }),
         dashboardService.getRecentRentals(5).catch(() => ({ data: [] })),
         dashboardService.getTopCustomers(5).catch(() => ({ data: [] })),
         dashboardService.getCriticalAlerts().catch(() => ({ data: [] })),
@@ -433,35 +479,14 @@ const Dashboard: React.FC = () => {
         inventoryService.getAllItems().catch(() => ({ data: [] }))
       ]);
 
-      // Actualizar estados con datos reales
       setData(mainResponse.data || null);
       setRecentRentals(rentalsResponse.data || []);
       setTopCustomers(customersResponse.data || []);
       setAlerts(alertsResponse.data || []);
       setPerformanceData(performanceResponse.data || []);
       setMaintenanceData(maintenanceResponse.data || { overdue: [], upcoming: [] });
-
-      // Inventario: usar datos reales o fallback
-      let categoriesLoaded = false;
-      let itemsLoaded = false;
-
-      if (categoriesData.data && categoriesData.data.length > 0) {
-        setCategories(categoriesData.data);
-        categoriesLoaded = true;
-      }
-
-      if (itemsData.data && itemsData.data.length > 0) {
-        setInventoryItems(itemsData.data);
-        itemsLoaded = true;
-      }
-
-      // Si no hay datos del backend, dejar arrays vacíos (sin datos demo)
-      if (!categoriesLoaded) {
-        setCategories([]);
-      }
-      if (!itemsLoaded) {
-        setInventoryItems([]);
-      }
+      setCategories(categoriesData.data?.length > 0 ? categoriesData.data : []);
+      setInventoryItems(itemsData.data?.length > 0 ? itemsData.data : []);
 
     } catch (error: any) {
       console.error('Error loading dashboard:', error);
@@ -469,11 +494,35 @@ const Dashboard: React.FC = () => {
       setError(errorMessage);
       enqueueSnackbar(errorMessage, { variant: 'error' });
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
     }
   };
 
-  if (loading) {
+  // Refresh suave: solo datos que dependen del periodo (KPIs + gráfica)
+  const refreshPeriodData = async () => {
+    try {
+      setRefreshing(true);
+
+      const { start, end } = getDateRange(periodTab);
+      const selectedPeriod = getPeriodParam(periodTab);
+
+      const [mainResponse, performanceResponse] = await Promise.all([
+        dashboardService.getMain({ start_date: start.toISOString(), end_date: end.toISOString() }),
+        dashboardService.getPerformanceData(selectedPeriod).catch(() => ({ data: [] }))
+      ]);
+
+      setData(mainResponse.data || null);
+      setPerformanceData(performanceResponse.data || []);
+
+    } catch (error: any) {
+      console.error('Error refreshing period data:', error);
+      enqueueSnackbar('Error al actualizar datos del periodo', { variant: 'warning' });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  if (initialLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress />
@@ -497,7 +546,7 @@ const Dashboard: React.FC = () => {
           startIcon={<RefreshIcon />}
           onClick={() => {
             setError(null);
-            loadDashboardData();
+            loadAllData();
           }}
           sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 600 }}
         >
@@ -536,20 +585,84 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <Box>
+    <Box sx={{ position: 'relative' }}>
+      {/* Barra de progreso sutil al cambiar periodo */}
+      {refreshing && (
+        <LinearProgress
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 10,
+            height: 3,
+            borderRadius: 2,
+            '& .MuiLinearProgress-bar': { backgroundColor: '#8b5cf6' },
+            backgroundColor: alpha('#8b5cf6', 0.15),
+          }}
+        />
+      )}
       {/* Header */}
-      <Box sx={{ mb: { xs: 2, sm: 4 } }}>
-        <Typography variant="h2" sx={{ mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-          Dashboard Ejecutivo
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
-          Resumen del negocio en tiempo real
-        </Typography>
+      <Box sx={{ mb: { xs: 2, sm: 4 }, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box>
+          <Typography variant="h2" sx={{ mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+            Dashboard Ejecutivo
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
+            Resumen del negocio en tiempo real
+          </Typography>
+        </Box>
+
+        {/* Currency Switcher */}
+        <Box>
+          <Chip
+            label={`${currencies[currency].symbol} ${currency}`}
+            onClick={(e) => setCurrencyMenuAnchor(e.currentTarget)}
+            variant="outlined"
+            size="small"
+            sx={{
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              borderColor: alpha('#8b5cf6', 0.4),
+              color: isDarkMode ? '#e2e8f0' : '#374151',
+              '&:hover': { borderColor: '#8b5cf6', backgroundColor: alpha('#8b5cf6', 0.08) },
+              cursor: 'pointer',
+            }}
+          />
+          <Menu
+            anchorEl={currencyMenuAnchor}
+            open={Boolean(currencyMenuAnchor)}
+            onClose={() => setCurrencyMenuAnchor(null)}
+            PaperProps={{
+              sx: {
+                mt: 1,
+                borderRadius: '12px',
+                minWidth: 180,
+                ...(isDarkMode ? {
+                  background: 'rgba(6, 11, 40, 0.95)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                } : {}),
+              }
+            }}
+          >
+            {Object.entries(currencies).map(([code, { symbol, name }]) => (
+              <MenuItem
+                key={code}
+                selected={currency === code}
+                onClick={() => { setCurrency(code); setCurrencyMenuAnchor(null); }}
+                sx={{ fontSize: '0.85rem', gap: 1 }}
+              >
+                <Typography sx={{ fontWeight: 700, minWidth: 40 }}>{symbol}</Typography>
+                <Typography sx={{ fontSize: '0.85rem' }}>{code} — {name}</Typography>
+              </MenuItem>
+            ))}
+          </Menu>
+        </Box>
       </Box>
 
-      {/* KPI Row - 6 Cards */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', lg: 'repeat(6, 1fr)' }, gap: { xs: 1.5, sm: 2 }, mb: { xs: 3, sm: 4 } }}>
-        {/* KPI 1: Ocupación de Flota */}
+      {/* KPI Grid - 3 columnas (2 filas de 3) */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' }, gap: { xs: 1.5, sm: 2 }, mb: { xs: 3, sm: 4 } }}>
+        {/* KPI 1: Ocupación de Flota con barra de progreso */}
         <StyledKPI
           icon={<TrendingUpIcon />}
           label="Ocupación de Flota"
@@ -557,6 +670,23 @@ const Dashboard: React.FC = () => {
           subtitle={`Meta: ${kpiData.occupancyGoal}%`}
           color={getOccupancyColor(kpiData.fleetOccupancy, kpiData.occupancyGoal)}
           index={0}
+          extra={
+            <Box sx={{ mt: 0.5 }}>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min((kpiData.fleetOccupancy / kpiData.occupancyGoal) * 100, 100)}
+                sx={{
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: alpha(getOccupancyColor(kpiData.fleetOccupancy, kpiData.occupancyGoal), 0.15),
+                  '& .MuiLinearProgress-bar': {
+                    borderRadius: 3,
+                    backgroundColor: getOccupancyColor(kpiData.fleetOccupancy, kpiData.occupancyGoal),
+                  },
+                }}
+              />
+            </Box>
+          }
         />
 
         {/* KPI 2: Disponibles */}
@@ -590,33 +720,41 @@ const Dashboard: React.FC = () => {
         />
 
         {/* KPI 5: Ingresos del Periodo */}
-        <StyledKPI
-          icon={<MoneyIcon />}
-          label={
-            periodTab === 0 ? "Ingresos de Hoy" :
-            periodTab === 1 ? "Ingresos de la Semana" :
-            periodTab === 2 ? "Ingresos del Mes" :
-            "Ingresos del Año"
-          }
-          value={`$${kpiData.monthRevenue.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-          color="#8b5cf6"
-          subtitle={
-            periodTab === 0 && kpiData.todayIncome > 0
-              ? `Hoy: $${kpiData.todayIncome.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-              : 'desde pagos completados'
-          }
-          index={4}
-        />
+        <Tooltip title={formatExactCurrency(kpiData.monthRevenue)} arrow placement="top">
+          <Box>
+            <StyledKPI
+              icon={<MoneyIcon />}
+              label={
+                periodTab === 0 ? "Ingresos de Hoy" :
+                periodTab === 1 ? "Ingresos de la Semana" :
+                periodTab === 2 ? "Ingresos del Mes" :
+                "Ingresos del Año"
+              }
+              value={formatCompactCurrency(kpiData.monthRevenue)}
+              color="#8b5cf6"
+              subtitle={
+                periodTab === 0 && kpiData.todayIncome > 0
+                  ? `Hoy: ${formatCompactCurrency(kpiData.todayIncome)}`
+                  : 'desde pagos completados'
+              }
+              index={4}
+            />
+          </Box>
+        </Tooltip>
 
         {/* KPI 6: Pagos Pendientes */}
-        <StyledKPI
-          icon={<ReceiptIcon />}
-          label="Pagos Pendientes"
-          value={`$${kpiData.pendingPayments.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-          color="#f59e0b"
-          subtitle="de rentas activas"
-          index={5}
-        />
+        <Tooltip title={formatExactCurrency(kpiData.pendingPayments)} arrow placement="top">
+          <Box>
+            <StyledKPI
+              icon={<ReceiptIcon />}
+              label="Pagos Pendientes"
+              value={formatCompactCurrency(kpiData.pendingPayments)}
+              color="#f59e0b"
+              subtitle="de rentas activas"
+              index={5}
+            />
+          </Box>
+        </Tooltip>
       </Box>
 
       {/* Fila 1: Desempeño (75%) + Distribución Flota (25%) */}

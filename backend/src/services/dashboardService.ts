@@ -77,7 +77,7 @@ class DashboardService {
     });
 
     const pendingPayments = activeRentals.reduce((sum: number, rental: any) => {
-      return sum + (rental.total_amount || 0) - (rental.deposit_amount || 0);
+      return sum + (Number.parseFloat(rental.total_amount) || 0) - (Number.parseFloat(rental.deposit_amount) || 0);
     }, 0);
 
     return {
