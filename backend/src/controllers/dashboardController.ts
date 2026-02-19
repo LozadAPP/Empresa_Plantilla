@@ -195,7 +195,7 @@ class DashboardController {
       // Use existing getAlerts method but filter for critical/high severity
       const allAlerts = await dashboardService.getAlerts(locationId);
       const criticalAlerts = allAlerts.filter(
-        (alert: any) => alert.severity === 'critical' || alert.severity === 'high'
+        (alert: any) => alert.severity === 'critical' || alert.severity === 'urgent'
       ).slice(0, 5);
 
       res.status(200).json({

@@ -128,15 +128,9 @@ const Dashboard: React.FC = () => {
 
   // OPTIMIZADO: Calcular totalVehicles con useMemo (movido antes de returns)
   const totalVehicles = useMemo(() => {
-    const fleetTypes = [
-      { value: data?.vehicleTypes?.sedan || 0 },
-      { value: data?.vehicleTypes?.suv || 0 },
-      { value: data?.vehicleTypes?.pickup || 0 },
-      { value: data?.vehicleTypes?.compact || 0 },
-      { value: data?.vehicleTypes?.premium || 0 },
-    ];
-    return fleetTypes.reduce((sum, type) => sum + type.value, 0);
-  }, [data?.vehicleTypes]);
+    const types = data?.charts?.vehiclesByType || [];
+    return types.reduce((sum, t) => sum + (t.count || 0), 0);
+  }, [data?.charts?.vehiclesByType]);
 
   // Performance Chart Data - OPTIMIZADO con useMemo (movido antes de returns)
   const performanceChartData = useMemo(() => {
@@ -340,13 +334,15 @@ const Dashboard: React.FC = () => {
   }), [isDarkMode, tooltip.backgroundColor, tooltip.titleColor, tooltip.bodyColor, tooltip.borderColor, totalVehicles]);
 
   // OPTIMIZADO: Fleet Distribution Chart Data - Memoizado para evitar re-creación (movido antes de returns)
-  const fleetTypes = useMemo(() => [
-    { label: 'Sedán', value: data?.vehicleTypes?.sedan || 0, color: '#8b5cf6' },
-    { label: 'SUV', value: data?.vehicleTypes?.suv || 0, color: '#10b981' },
-    { label: 'Camioneta', value: data?.vehicleTypes?.pickup || 0, color: '#f59e0b' },
-    { label: 'Compacto', value: data?.vehicleTypes?.compact || 0, color: '#3b82f6' },
-    { label: 'Lujo', value: data?.vehicleTypes?.premium || 0, color: '#ef4444' },
-  ], [data?.vehicleTypes]);
+  const fleetTypes = useMemo(() => {
+    const types = data?.charts?.vehiclesByType || [];
+    const colors = ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#ec4899'];
+    return types.map((t, i) => ({
+      label: t.type,
+      value: t.count || 0,
+      color: colors[i % colors.length]
+    }));
+  }, [data?.charts?.vehiclesByType]);
 
   const fleetDistributionData = useMemo(() => ({
     labels: fleetTypes.map(t => t.label),
