@@ -48,6 +48,9 @@ const InventoryManagement: React.FC = () => {
     inWarehouse: 0,
     rented: 0,
     maintenance: 0,
+    movementsToday: 0,
+    movementsThisWeek: 0,
+    movementsThisMonth: 0,
   });
   const [loadingKpis, setLoadingKpis] = useState(true);
 
@@ -65,6 +68,9 @@ const InventoryManagement: React.FC = () => {
         inWarehouse: response.data.inWarehouse,
         rented: response.data.rented,
         maintenance: response.data.maintenance,
+        movementsToday: response.data.movementsToday || 0,
+        movementsThisWeek: response.data.movementsThisWeek || 0,
+        movementsThisMonth: response.data.movementsThisMonth || 0,
       });
     } catch (error: any) {
       console.error('Error loading KPIs:', error);
@@ -147,7 +153,7 @@ const InventoryManagement: React.FC = () => {
         {loadingKpis ? (
           // Mostrar loading state en cada KPI
           <>
-            {[1, 2, 3, 4].map((index) => (
+            {[1, 2, 3, 4, 5, 6, 7].map((index) => (
               <Paper
                 key={index}
                 sx={{
@@ -202,6 +208,33 @@ const InventoryManagement: React.FC = () => {
               value={kpiData.maintenance}
               subtitle="en servicio"
               color="#f59e0b"
+            />
+
+            {/* KPI 5: Movimientos Hoy */}
+            <StyledKPI
+              icon={<MovementsIcon />}
+              label="Mov. Hoy"
+              value={kpiData.movementsToday}
+              subtitle="registrados"
+              color="#ec4899"
+            />
+
+            {/* KPI 6: Movimientos Semana */}
+            <StyledKPI
+              icon={<HistoryIcon />}
+              label="Mov. Semana"
+              value={kpiData.movementsThisWeek}
+              subtitle="últimos 7 días"
+              color="#06b6d4"
+            />
+
+            {/* KPI 7: Movimientos Mes */}
+            <StyledKPI
+              icon={<EntryIcon />}
+              label="Mov. Mes"
+              value={kpiData.movementsThisMonth}
+              subtitle="últimos 30 días"
+              color="#84cc16"
             />
           </>
         )}
