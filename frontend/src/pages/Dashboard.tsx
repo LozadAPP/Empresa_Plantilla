@@ -585,7 +585,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <Box sx={{ position: 'relative' }}>
+    <Box sx={{ position: 'relative', maxWidth: 1400, mx: 'auto' }}>
       {/* Barra de progreso sutil al cambiar periodo */}
       {refreshing && (
         <LinearProgress
@@ -603,62 +603,44 @@ const Dashboard: React.FC = () => {
         />
       )}
       {/* Header */}
-      <Box sx={{ mb: { xs: 2, sm: 4 }, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box>
-          <Typography variant="h2" sx={{ mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-            Dashboard Ejecutivo
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
-            Resumen del negocio en tiempo real
-          </Typography>
-        </Box>
-
-        {/* Currency Switcher */}
-        <Box>
-          <Chip
-            label={`${currencies[currency].symbol} ${currency}`}
-            onClick={(e) => setCurrencyMenuAnchor(e.currentTarget)}
-            variant="outlined"
-            size="small"
-            sx={{
-              fontWeight: 600,
-              fontSize: '0.8rem',
-              borderColor: alpha('#8b5cf6', 0.4),
-              color: isDarkMode ? '#e2e8f0' : '#374151',
-              '&:hover': { borderColor: '#8b5cf6', backgroundColor: alpha('#8b5cf6', 0.08) },
-              cursor: 'pointer',
-            }}
-          />
-          <Menu
-            anchorEl={currencyMenuAnchor}
-            open={Boolean(currencyMenuAnchor)}
-            onClose={() => setCurrencyMenuAnchor(null)}
-            PaperProps={{
-              sx: {
-                mt: 1,
-                borderRadius: '12px',
-                minWidth: 180,
-                ...(isDarkMode ? {
-                  background: 'rgba(6, 11, 40, 0.95)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                } : {}),
-              }
-            }}
-          >
-            {Object.entries(currencies).map(([code, { symbol, name }]) => (
-              <MenuItem
-                key={code}
-                selected={currency === code}
-                onClick={() => { setCurrency(code); setCurrencyMenuAnchor(null); }}
-                sx={{ fontSize: '0.85rem', gap: 1 }}
-              >
-                <Typography sx={{ fontWeight: 700, minWidth: 40 }}>{symbol}</Typography>
-                <Typography sx={{ fontSize: '0.85rem' }}>{code} — {name}</Typography>
-              </MenuItem>
-            ))}
-          </Menu>
-        </Box>
+      <Box sx={{ mb: { xs: 2, sm: 4 } }}>
+        <Typography variant="h2" sx={{ mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+          Dashboard Ejecutivo
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
+          Resumen del negocio en tiempo real
+        </Typography>
       </Box>
+
+      {/* Currency Menu (anclado al chip dentro del KPI de Pagos Pendientes) */}
+      <Menu
+        anchorEl={currencyMenuAnchor}
+        open={Boolean(currencyMenuAnchor)}
+        onClose={() => setCurrencyMenuAnchor(null)}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            borderRadius: '12px',
+            minWidth: 180,
+            ...(isDarkMode ? {
+              background: 'rgba(6, 11, 40, 0.95)',
+              border: '1px solid rgba(255,255,255,0.12)',
+            } : {}),
+          }
+        }}
+      >
+        {Object.entries(currencies).map(([code, { symbol, name }]) => (
+          <MenuItem
+            key={code}
+            selected={currency === code}
+            onClick={() => { setCurrency(code); setCurrencyMenuAnchor(null); }}
+            sx={{ fontSize: '0.85rem', gap: 1 }}
+          >
+            <Typography sx={{ fontWeight: 700, minWidth: 40 }}>{symbol}</Typography>
+            <Typography sx={{ fontSize: '0.85rem' }}>{code} — {name}</Typography>
+          </MenuItem>
+        ))}
+      </Menu>
 
       {/* KPI Grid - 3 columnas (2 filas de 3) */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' }, gap: { xs: 1.5, sm: 2 }, mb: { xs: 3, sm: 4 } }}>
@@ -721,7 +703,7 @@ const Dashboard: React.FC = () => {
 
         {/* KPI 5: Ingresos del Periodo */}
         <Tooltip title={formatExactCurrency(kpiData.monthRevenue)} arrow placement="top">
-          <Box>
+          <Box sx={{ height: '100%' }}>
             <StyledKPI
               icon={<MoneyIcon />}
               label={
@@ -742,9 +724,9 @@ const Dashboard: React.FC = () => {
           </Box>
         </Tooltip>
 
-        {/* KPI 6: Pagos Pendientes */}
+        {/* KPI 6: Pagos Pendientes + Currency Switcher */}
         <Tooltip title={formatExactCurrency(kpiData.pendingPayments)} arrow placement="top">
-          <Box>
+          <Box sx={{ height: '100%' }}>
             <StyledKPI
               icon={<ReceiptIcon />}
               label="Pagos Pendientes"
@@ -752,6 +734,26 @@ const Dashboard: React.FC = () => {
               color="#f59e0b"
               subtitle="de rentas activas"
               index={5}
+              extra={
+                <Chip
+                  label={`${currencies[currency].symbol} ${currency} ▾`}
+                  size="small"
+                  onClick={(e) => setCurrencyMenuAnchor(e.currentTarget)}
+                  sx={{
+                    mt: 0.5,
+                    height: 24,
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    bgcolor: 'rgba(245, 158, 11, 0.12)',
+                    color: '#f59e0b',
+                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                    '&:hover': {
+                      bgcolor: 'rgba(245, 158, 11, 0.2)',
+                    },
+                  }}
+                />
+              }
             />
           </Box>
         </Tooltip>

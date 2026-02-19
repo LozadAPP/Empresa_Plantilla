@@ -36,6 +36,7 @@ const KPIPaper = styled(Paper, {
   [theme.breakpoints.up('sm')]: {
     borderRadius: '20px',
   },
+  width: '100%',
   display: 'flex',
   alignItems: 'center',
   // RESPONSIVE: Gap escalable
