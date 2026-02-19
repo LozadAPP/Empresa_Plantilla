@@ -617,13 +617,13 @@ const Dashboard: React.FC = () => {
         anchorEl={currencyMenuAnchor}
         open={Boolean(currencyMenuAnchor)}
         onClose={() => setCurrencyMenuAnchor(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         PaperProps={{
           sx: {
-            mt: 1,
+            mt: 0.5,
             borderRadius: '12px',
-            minWidth: 180,
+            minWidth: 220,
             ...(isDarkMode ? {
               background: 'rgba(6, 11, 40, 0.95)',
               border: '1px solid rgba(255,255,255,0.12)',
@@ -634,12 +634,33 @@ const Dashboard: React.FC = () => {
         {Object.entries(currencies).map(([code, { symbol, name }]) => (
           <MenuItem
             key={code}
-            selected={currency === code}
             onClick={() => { setCurrency(code); setCurrencyMenuAnchor(null); }}
-            sx={{ fontSize: '0.85rem', gap: 1 }}
+            sx={{
+              fontSize: '0.85rem',
+              gap: 1.5,
+              py: 1,
+              ...(currency === code ? {
+                bgcolor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)',
+                fontWeight: 700,
+              } : {}),
+            }}
           >
-            <Typography sx={{ fontWeight: 700, minWidth: 40 }}>{symbol}</Typography>
-            <Typography sx={{ fontSize: '0.85rem' }}>{code} — {name}</Typography>
+            <Typography sx={{
+              fontWeight: 700,
+              minWidth: 40,
+              textAlign: 'center',
+              pr: 1.5,
+              borderRight: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
+              color: currency === code ? '#f59e0b' : 'inherit',
+            }}>
+              {symbol}
+            </Typography>
+            <Typography sx={{
+              fontSize: '0.85rem',
+              fontWeight: currency === code ? 700 : 400,
+            }}>
+              {code} — {name}
+            </Typography>
           </MenuItem>
         ))}
       </Menu>
