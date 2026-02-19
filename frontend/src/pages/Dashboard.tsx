@@ -100,8 +100,8 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [periodTab, setPeriodTab] = useState(2); // 0: Hoy, 1: Semana, 2: Mes, 3: Año
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
-  const [showAllMaintenance, setShowAllMaintenance] = useState(false);
-  const [showAllInventory, setShowAllInventory] = useState(false);
+  const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
+  const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Estados para modal de imagen del inventario
@@ -917,12 +917,7 @@ const Dashboard: React.FC = () => {
             </Box>
           )}
 
-          <Box sx={{
-            height: showAllInventory ? 'auto' : { xs: 300, sm: 400, md: 500 },
-            minHeight: { xs: 300, sm: 400, md: 500 },
-            display: 'flex',
-            gap: 2,
-          }}>
+          <Box sx={{ height: { xs: 300, sm: 400, md: 500 }, display: 'flex', gap: 2 }}>
             {/* Sidebar List - Hidden on mobile */}
             <Box
               sx={{
@@ -979,7 +974,7 @@ const Dashboard: React.FC = () => {
                   position: 'relative',
                 }}
               >
-              {(showAllInventory ? filteredInventoryItems : filteredInventoryItems.slice(0, VISIBLE_CARDS)).map((item) => {
+              {filteredInventoryItems.slice(0, VISIBLE_CARDS).map((item) => {
                 // Usar color por defecto si categoryColor no está definido
                 const itemColor = item.categoryColor || '#8b5cf6';
                 const itemIcon = item.categoryIcon || '🚗';
@@ -1095,7 +1090,7 @@ const Dashboard: React.FC = () => {
                 );
               })}
               {/* Fade overlay cuando hay más items */}
-              {!showAllInventory && filteredInventoryItems.length > VISIBLE_CARDS && (
+              {filteredInventoryItems.length > VISIBLE_CARDS && (
                 <Box
                   sx={{
                     position: 'absolute',
@@ -1113,11 +1108,11 @@ const Dashboard: React.FC = () => {
               )}
               </Box>
 
-              {/* Botón Ver más / Ver menos para inventario */}
+              {/* Botón Ver más para inventario — abre Dialog */}
               {filteredInventoryItems.length > VISIBLE_CARDS && (
                 <Box
                   component="button"
-                  onClick={() => setShowAllInventory(!showAllInventory)}
+                  onClick={() => setInventoryDialogOpen(true)}
                   sx={{
                     mt: 1,
                     py: 1,
@@ -1141,10 +1136,7 @@ const Dashboard: React.FC = () => {
                     },
                   }}
                 >
-                  {showAllInventory
-                    ? '▲ Ver menos'
-                    : `▼ Ver más (${filteredInventoryItems.length - VISIBLE_CARDS} más)`
-                  }
+                  {`Ver todos (${filteredInventoryItems.length})`}
                 </Box>
               )}
             </Box>
@@ -1181,16 +1173,13 @@ const Dashboard: React.FC = () => {
         >
           <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
             {/* Mantenimiento Vencido */}
-            <Box sx={{ mb: showAllMaintenance ? 3 : 0 }}>
+            <Box sx={{ mb: 0 }}>
               <Typography variant="body2" fontWeight={700} color="error.main" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <ErrorIcon sx={{ fontSize: 18 }} />
                 Mantenimiento Vencido
               </Typography>
               {maintenanceData?.overdue && maintenanceData.overdue.length > 0 ? (
-                (showAllMaintenance
-                  ? maintenanceData.overdue
-                  : maintenanceData.overdue.slice(0, VISIBLE_CARDS)
-                ).map((item: any) => (
+                maintenanceData.overdue.slice(0, VISIBLE_CARDS).map((item: any) => (
                   <Paper
                     key={item.id}
                     sx={{
@@ -1235,7 +1224,7 @@ const Dashboard: React.FC = () => {
             </Box>
 
             {/* Fade overlay para overdue colapsado */}
-            {!showAllMaintenance && maintenanceData?.overdue?.length > VISIBLE_CARDS && (
+            {maintenanceData?.overdue?.length > VISIBLE_CARDS && (
               <Box
                 sx={{
                   height: 60,
@@ -1251,67 +1240,15 @@ const Dashboard: React.FC = () => {
               />
             )}
 
-            {/* Mantenimiento Próximo - Solo visible cuando está expandido */}
-            {showAllMaintenance && (
-              <Box>
-                <Typography variant="body2" fontWeight={700} color="warning.main" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <WarningIcon sx={{ fontSize: 18 }} />
-                  Próximos 15 días
-                </Typography>
-                {maintenanceData?.upcoming && maintenanceData.upcoming.length > 0 ? (
-                  maintenanceData.upcoming.map((item: any) => (
-                    <Paper
-                      key={item.id}
-                      sx={{
-                        p: 2,
-                        mb: 2,
-                        borderLeft: 4,
-                        borderColor: '#f59e0b',
-                        background: isDarkMode ? 'rgba(245, 158, 11, 0.05)' : alpha('#f59e0b', 0.03),
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                        <Box>
-                          <Typography variant="body2" fontWeight={700}>
-                            {item.vehicleName}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {item.licensePlate}
-                          </Typography>
-                        </Box>
-                        <Chip
-                          label={`En ${item.daysUntil} días`}
-                          size="small"
-                          sx={{
-                            fontSize: '0.7rem',
-                            fontWeight: 600,
-                            bgcolor: isDarkMode ? 'rgba(255, 181, 71, 0.2)' : 'rgba(180, 83, 9, 0.12)',
-                            color: isDarkMode ? '#ffb547' : '#92400e',
-                            border: `1px solid ${isDarkMode ? 'rgba(255, 181, 71, 0.4)' : 'rgba(180, 83, 9, 0.3)'}`,
-                          }}
-                        />
-                      </Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Próximo mantenimiento: {new Date(item.scheduledDate).toLocaleDateString('es-ES')}
-                      </Typography>
-                    </Paper>
-                  ))
-                ) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                    No hay mantenimientos próximos
-                  </Typography>
-                )}
-              </Box>
-            )}
-
-            {/* Botón Ver más / Ver menos */}
+            {/* Botón Ver información — abre Dialog */}
             <Box
               component="button"
-              onClick={() => setShowAllMaintenance(!showAllMaintenance)}
+              onClick={() => setMaintenanceDialogOpen(true)}
               sx={{
                 mt: 2,
                 py: 1.5,
                 px: 2,
+                width: '100%',
                 borderRadius: '12px',
                 border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'}`,
                 bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)',
@@ -1319,7 +1256,7 @@ const Dashboard: React.FC = () => {
                 cursor: 'pointer',
                 fontSize: '0.875rem',
                 fontWeight: 600,
-                transition: 'background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
+                transition: 'all 0.2s ease',
                 '&:hover': {
                   bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)',
                   borderColor: isDarkMode ? '#a78bfa' : '#8b5cf6',
@@ -1327,10 +1264,10 @@ const Dashboard: React.FC = () => {
                 },
                 '&:active': {
                   transform: 'translateY(0)',
-                }
+                },
               }}
             >
-              {showAllMaintenance ? '▲ Ver menos' : `▼ Ver más (${maintenanceData?.upcoming?.length || 0} programados)`}
+              {`Ver información (${(maintenanceData?.overdue?.length || 0) + (maintenanceData?.upcoming?.length || 0)})`}
             </Box>
           </Box>
         </StyledSection>
@@ -1677,6 +1614,237 @@ const Dashboard: React.FC = () => {
                 </Box>
               </Box>
             </Box>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Inventario completo */}
+      <Dialog
+        open={inventoryDialogOpen}
+        onClose={() => setInventoryDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: isDarkMode ? '#0a0f2e' : '#ffffff',
+            borderRadius: '16px',
+            maxHeight: '80vh',
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          pb: 1,
+        }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Artículos en Inventario
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {filteredInventoryItems.length} artículos{selectedCategory !== 'all' ? ` en ${selectedCategory}` : ''}
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setInventoryDialogOpen(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {filteredInventoryItems.map((item) => {
+              const itemColor = item.categoryColor || '#8b5cf6';
+              const itemIcon = item.categoryIcon || '🚗';
+              const statusColor = item.status === 'available' ? '#10b981'
+                : item.status === 'rented' ? '#f59e0b'
+                : item.status === 'maintenance' ? '#ef4444'
+                : '#6b7280';
+              const statusLabel = item.status === 'available' ? 'Disponible'
+                : item.status === 'rented' ? 'Rentado'
+                : item.status === 'maintenance' ? 'Mant.'
+                : item.status || 'N/A';
+              return (
+                <Paper
+                  key={item.id}
+                  onClick={() => {
+                    setInventoryDialogOpen(false);
+                    handleInventoryItemClick(item);
+                  }}
+                  sx={{
+                    p: 2,
+                    cursor: 'pointer',
+                    borderLeft: 4,
+                    borderColor: itemColor,
+                    background: isDarkMode ? 'rgba(139, 92, 246, 0.05)' : alpha(itemColor, 0.03),
+                    transition: 'background-color 0.2s ease',
+                    '&:hover': {
+                      background: isDarkMode ? 'rgba(139, 92, 246, 0.12)' : alpha('#8b5cf6', 0.06),
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{ fontSize: '1.2rem', width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {itemIcon}
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        <Typography variant="body2" fontWeight={700} noWrap>
+                          {item.name}
+                        </Typography>
+                        <Chip
+                          label={statusLabel}
+                          size="small"
+                          sx={{
+                            fontSize: '0.65rem',
+                            fontWeight: 600,
+                            bgcolor: `${statusColor}20`,
+                            color: statusColor,
+                            border: `1px solid ${statusColor}40`,
+                            ml: 1,
+                          }}
+                        />
+                      </Box>
+                      <Typography variant="caption" color="text.secondary" noWrap>
+                        {item.serialNumber || item.internalCode || ''}
+                      </Typography>
+                      {item.currentLocationName && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          📍 {item.currentLocationName}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                </Paper>
+              );
+            })}
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Mantenimiento completo */}
+      <Dialog
+        open={maintenanceDialogOpen}
+        onClose={() => setMaintenanceDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: isDarkMode ? '#0a0f2e' : '#ffffff',
+            borderRadius: '16px',
+            maxHeight: '80vh',
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          pb: 1,
+        }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Mantenimiento
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {maintenanceData?.overdue?.length || 0} vencidos · {maintenanceData?.upcoming?.length || 0} próximos
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setMaintenanceDialogOpen(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          {/* Sección Vencido */}
+          {maintenanceData?.overdue?.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="body2" fontWeight={700} color="error.main" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ErrorIcon sx={{ fontSize: 18 }} />
+                Mantenimiento Vencido
+              </Typography>
+              {maintenanceData.overdue.map((item: any) => (
+                <Paper
+                  key={item.id}
+                  sx={{
+                    p: 2,
+                    mb: 1.5,
+                    borderLeft: 4,
+                    borderColor: '#ef4444',
+                    background: isDarkMode ? 'rgba(239, 68, 68, 0.05)' : alpha('#ef4444', 0.03),
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                    <Box>
+                      <Typography variant="body2" fontWeight={700}>{item.vehicleName}</Typography>
+                      <Typography variant="caption" color="text.secondary">{item.licensePlate}</Typography>
+                    </Box>
+                    <Chip
+                      label={`${item.daysOverdue} días vencido`}
+                      size="small"
+                      sx={{
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        bgcolor: isDarkMode ? 'rgba(255, 82, 82, 0.2)' : 'rgba(220, 38, 38, 0.12)',
+                        color: isDarkMode ? '#ff8a80' : '#dc2626',
+                        border: `1px solid ${isDarkMode ? 'rgba(255, 82, 82, 0.4)' : 'rgba(220, 38, 38, 0.3)'}`,
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Programado: {new Date(item.scheduledDate).toLocaleDateString('es-ES')}
+                  </Typography>
+                </Paper>
+              ))}
+            </Box>
+          )}
+
+          {/* Sección Próximos */}
+          {maintenanceData?.upcoming?.length > 0 && (
+            <Box>
+              <Typography variant="body2" fontWeight={700} color="warning.main" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <WarningIcon sx={{ fontSize: 18 }} />
+                Próximos 15 días
+              </Typography>
+              {maintenanceData.upcoming.map((item: any) => (
+                <Paper
+                  key={item.id}
+                  sx={{
+                    p: 2,
+                    mb: 1.5,
+                    borderLeft: 4,
+                    borderColor: '#f59e0b',
+                    background: isDarkMode ? 'rgba(245, 158, 11, 0.05)' : alpha('#f59e0b', 0.03),
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                    <Box>
+                      <Typography variant="body2" fontWeight={700}>{item.vehicleName}</Typography>
+                      <Typography variant="caption" color="text.secondary">{item.licensePlate}</Typography>
+                    </Box>
+                    <Chip
+                      label={`En ${item.daysUntil} días`}
+                      size="small"
+                      sx={{
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        bgcolor: isDarkMode ? 'rgba(255, 181, 71, 0.2)' : 'rgba(180, 83, 9, 0.12)',
+                        color: isDarkMode ? '#ffb547' : '#92400e',
+                        border: `1px solid ${isDarkMode ? 'rgba(255, 181, 71, 0.4)' : 'rgba(180, 83, 9, 0.3)'}`,
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Próximo mantenimiento: {new Date(item.scheduledDate).toLocaleDateString('es-ES')}
+                  </Typography>
+                </Paper>
+              ))}
+            </Box>
+          )}
+
+          {/* Estado vacío */}
+          {(!maintenanceData?.overdue?.length && !maintenanceData?.upcoming?.length) && (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+              No hay mantenimientos pendientes
+            </Typography>
           )}
         </DialogContent>
       </Dialog>
