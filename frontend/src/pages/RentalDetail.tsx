@@ -38,7 +38,8 @@ import RentalRejectDialog from '../components/rentals/RentalRejectDialog';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { AppDispatch, RootState } from '../store';
 import { fetchRentalById } from '../store/slices/rentalSlice';
-import { formatDate, formatCurrency, safeNumber } from '../utils/formatters';
+import { formatDate, safeNumber } from '../utils/formatters';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { getLocationById } from '../constants/locations';
 import { FUEL_LEVEL_LABELS } from '../constants/statusColors';
 
@@ -47,6 +48,7 @@ const RentalDetail: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
 
   const { selectedRental: rental, loading } = useSelector((state: RootState) => state.rentals);
   const { user } = useSelector((state: RootState) => state.auth);

@@ -30,6 +30,7 @@ import {
 import { inventoryService } from '../../services/inventoryService';
 import { InventoryItem, InventoryMovement } from '../../types/inventory';
 import { useTheme as useCustomTheme } from '../../contexts/ThemeContext';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 interface ItemDetailsModalProps {
   open: boolean;
@@ -47,6 +48,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
   onNewMovement,
 }) => {
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
 
   const [loading, setLoading] = useState(false);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
@@ -405,7 +407,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                       Valor Actual
                     </Typography>
                     <Typography variant="h6" fontWeight={700} sx={{ mt: 0.5 }}>
-                      ${item.currentValue?.toLocaleString('es-MX')}
+                      {formatCurrency(item.currentValue)}
                     </Typography>
                   </Box>
 
@@ -415,7 +417,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                         Precio de Compra
                       </Typography>
                       <Typography variant="body2" fontWeight={500} sx={{ mt: 0.5 }}>
-                        ${item.purchasePrice.toLocaleString('es-MX')}
+                        {formatCurrency(item.purchasePrice)}
                       </Typography>
                     </Box>
                   )}
@@ -426,7 +428,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                         Precio de Renta Diario
                       </Typography>
                       <Typography variant="body2" fontWeight={500} sx={{ mt: 0.5 }}>
-                        ${item.rentalPriceDaily.toLocaleString('es-MX')} / día
+                        {formatCurrency(item.rentalPriceDaily)} / día
                       </Typography>
                     </Box>
                   )}

@@ -16,7 +16,8 @@ import {
   AttachMoney as MoneyIcon
 } from '@mui/icons-material';
 import { differenceInDays } from 'date-fns';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatDate } from '../../utils/formatters';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 interface PenaltyCalculatorProps {
   expectedEndDate: Date | string;
@@ -46,6 +47,7 @@ const PenaltyCalculator: React.FC<PenaltyCalculatorProps> = ({
   lateFeeMultiplier = 1.5,
   cleaningCost = 50
 }) => {
+  const { formatCurrency } = useCurrency();
   const [penalties, setPenalties] = useState<PenaltyBreakdown>({
     lateDays: 0,
     lateFee: 0,

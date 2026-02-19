@@ -57,7 +57,8 @@ import { useThemeStyles } from '../hooks/useThemeStyles';
 import TableSkeleton from '../components/common/TableSkeleton';
 import EmptyState from '../components/common/EmptyState';
 import { exportToCSV, RENTALS_COLUMNS } from '../utils/exportCSV';
-import { formatDate, formatCurrency } from '../utils/formatters';
+import { formatDate } from '../utils/formatters';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 // Función para calcular fechas por defecto (últimos 30 días)
 const getDefaultDates = () => {
@@ -74,6 +75,7 @@ const Rentals: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
   const themeStyles = useThemeStyles();
   const theme = useTheme();
 

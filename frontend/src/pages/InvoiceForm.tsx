@@ -30,11 +30,13 @@ import rentalService from '../services/rentalService';
 import invoiceService from '../services/invoiceService';
 import { Rental } from '../types/rental';
 import { CreateInvoiceDTO } from '../types/invoice';
-import { formatCurrency, getErrorMessage } from '../utils/formatters';
+import { getErrorMessage } from '../utils/formatters';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 const InvoiceForm: React.FC = () => {
   const navigate = useNavigate();
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
   const themeStyles = useThemeStyles();
   const { enqueueSnackbar } = useSnackbar();
 

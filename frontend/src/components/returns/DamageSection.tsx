@@ -3,7 +3,7 @@
  * Maneja seleccion de tipo de dano, descripcion, costo y fotos
  */
 import React from 'react';
-import { formatCurrency } from '../../utils/formatters';
+import { useCurrency } from '../../contexts/CurrencyContext';
 import { DAMAGE_CATALOG } from '../../constants/damages';
 
 interface DamageSectionProps {
@@ -31,6 +31,8 @@ const DamageSection: React.FC<DamageSectionProps> = ({
   onPhotoUpload,
   onRemovePhoto
 }) => {
+  const { formatCurrency } = useCurrency();
+
   const inputStyles = `w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${
     isDarkMode
       ? 'bg-gray-700 border-gray-600 text-white'

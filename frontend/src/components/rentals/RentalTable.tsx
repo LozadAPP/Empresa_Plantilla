@@ -26,7 +26,8 @@ import {
 } from '@mui/icons-material';
 import RentalStatusChip from './RentalStatusChip';
 import { Rental } from '../../types/rental';
-import { formatDate, formatCurrency } from '../../utils/formatters';
+import { formatDate } from '../../utils/formatters';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 interface RentalTableProps {
   rentals: Rental[];
@@ -53,6 +54,7 @@ const RentalTable: React.FC<RentalTableProps> = ({
   onCancel
 }) => {
   const navigate = useNavigate();
+  const { formatCurrency } = useCurrency();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
 

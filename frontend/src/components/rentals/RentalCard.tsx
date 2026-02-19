@@ -23,7 +23,8 @@ import {
 } from '@mui/icons-material';
 import RentalStatusChip from './RentalStatusChip';
 import { Rental } from '../../types/rental';
-import { formatDate, formatCurrency } from '../../utils/formatters';
+import { formatDate } from '../../utils/formatters';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 interface RentalCardProps {
   rental: Rental;
@@ -32,6 +33,7 @@ interface RentalCardProps {
 
 const RentalCard: React.FC<RentalCardProps> = ({ rental, onMenuClick }) => {
   const navigate = useNavigate();
+  const { formatCurrency } = useCurrency();
 
   return (
     <Card

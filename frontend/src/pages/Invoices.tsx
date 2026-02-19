@@ -60,7 +60,8 @@ import { InvoiceStatus } from '../types/invoice';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import TableSkeleton from '../components/common/TableSkeleton';
 import EmptyState from '../components/common/EmptyState';
-import { formatDate, formatCurrency } from '../utils/formatters';
+import { formatDate } from '../utils/formatters';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { exportToCSV, formatCurrencyForCSV, formatDateForCSV } from '../utils/exportCSV';
 
 // Invoice CSV columns
@@ -83,6 +84,7 @@ const Invoices: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));

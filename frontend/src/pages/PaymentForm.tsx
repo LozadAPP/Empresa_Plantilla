@@ -38,7 +38,8 @@ import { createPayment } from '../store/slices/paymentSlice';
 import { CreatePaymentDTO, PaymentType } from '../types/payment';
 import customerService from '../services/customerService';
 import invoiceService from '../services/invoiceService';
-import { formatDate, formatCurrency, getErrorMessage, safeNumber } from '../utils/formatters';
+import { formatDate, getErrorMessage, safeNumber } from '../utils/formatters';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { PAYMENT_METHOD_LABELS, PAYMENT_TYPE_LABELS } from '../constants/statusColors';
 
 const PaymentForm: React.FC = () => {
@@ -46,6 +47,7 @@ const PaymentForm: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [searchParams] = useSearchParams();
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
   const { enqueueSnackbar } = useSnackbar();
   const invoiceId = searchParams.get('invoice');
 

@@ -25,7 +25,7 @@ import {
 } from '@mui/icons-material';
 import { useReturnForm } from '../hooks/useReturnForm';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
-import { formatCurrency } from '../utils/formatters';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { DUMMY_LOCATIONS } from '../constants/locations';
 import { FUEL_LEVEL_LABELS } from '../constants/statusColors';
 import {
@@ -38,6 +38,7 @@ const ReturnForm: React.FC = () => {
   const [searchParams] = useSearchParams();
   const rentalId = searchParams.get('rental');
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
 
   const {
     loading,

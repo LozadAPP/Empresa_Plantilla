@@ -53,7 +53,8 @@ import { useThemeStyles } from '../hooks/useThemeStyles';
 import TableSkeleton from '../components/common/TableSkeleton';
 import EmptyState from '../components/common/EmptyState';
 import { exportToCSV, RETURNS_COLUMNS } from '../utils/exportCSV';
-import { formatDateTime, formatCurrency } from '../utils/formatters';
+import { formatDateTime } from '../utils/formatters';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 // Función para calcular fechas por defecto (últimos 30 días)
 const getDefaultDates = () => {
@@ -70,6 +71,7 @@ const Returns: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
   const themeStyles = useThemeStyles();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));

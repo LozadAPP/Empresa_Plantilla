@@ -55,7 +55,7 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import CustomerForm from '../components/forms/CustomerForm';
 import CustomerRentalsDialog from '../components/dialogs/CustomerRentalsDialog';
 import EmptyState from '../components/common/EmptyState';
-import { formatCurrency } from '../utils/formatters';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 const typeIcons: Record<CustomerType, React.ReactNode> = {
   individual: <PersonIcon fontSize="small" />,
@@ -72,6 +72,7 @@ const typeLabels: Record<CustomerType, string> = {
 const Customers: React.FC = () => {
   const { hasAnyRole } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
+  const { formatCurrency } = useCurrency();
   const theme = useTheme();
 
   // RESPONSIVE: Media queries

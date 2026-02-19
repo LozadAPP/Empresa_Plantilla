@@ -56,6 +56,7 @@ import {
   CalendarToday as CalendarIcon
 } from '@mui/icons-material';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
+import { useCurrency } from '../contexts/CurrencyContext';
 import accountingService from '../services/accountingService';
 import { Account, Transaction } from '../types/accounting';
 import { format } from 'date-fns';
@@ -66,6 +67,7 @@ import TabPanel from '../components/common/TabPanel';
 
 const Accounting: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
@@ -371,7 +373,7 @@ const Accounting: React.FC = () => {
           </TableCell>
           <TableCell>
             <Typography variant="body2" fontWeight={600}>
-              ${account.balance.toLocaleString()}
+              {formatCurrency(account.balance)}
             </Typography>
           </TableCell>
           <TableCell>
@@ -480,7 +482,7 @@ const Accounting: React.FC = () => {
             ⚠️ Balance Desbalanceado
           </Typography>
           <Typography variant="caption">
-            El balance sheet no está cuadrado. Activos ({totalAssets.toLocaleString()}) ≠ Pasivos ({totalLiabilities.toLocaleString()}) + Patrimonio ({totalEquity.toLocaleString()})
+            El balance sheet no está cuadrado. Activos ({formatCurrency(totalAssets)}) ≠ Pasivos ({formatCurrency(totalLiabilities)}) + Patrimonio ({formatCurrency(totalEquity)})
           </Typography>
         </Alert>
       </Collapse>
@@ -496,7 +498,7 @@ const Accounting: React.FC = () => {
                     Activos Totales
                   </Typography>
                   <Typography variant="h4" fontWeight="bold" sx={{ color: '#10b981' }}>
-                    ${totalAssets.toLocaleString()}
+                    {formatCurrency(totalAssets)}
                   </Typography>
                 </Box>
                 <TrendingUpIcon sx={{ fontSize: 40, color: '#10b981', opacity: 0.5 }} />
@@ -514,7 +516,7 @@ const Accounting: React.FC = () => {
                     Pasivos Totales
                   </Typography>
                   <Typography variant="h4" fontWeight="bold" sx={{ color: '#ef4444' }}>
-                    ${totalLiabilities.toLocaleString()}
+                    {formatCurrency(totalLiabilities)}
                   </Typography>
                 </Box>
                 <TrendingDownIcon sx={{ fontSize: 40, color: '#ef4444', opacity: 0.5 }} />
@@ -532,7 +534,7 @@ const Accounting: React.FC = () => {
                     Patrimonio
                   </Typography>
                   <Typography variant="h4" fontWeight="bold" sx={{ color: '#8b5cf6' }}>
-                    ${totalEquity.toLocaleString()}
+                    {formatCurrency(totalEquity)}
                   </Typography>
                 </Box>
                 <AccountBalanceIcon sx={{ fontSize: 40, color: '#8b5cf6', opacity: 0.5 }} />
@@ -761,7 +763,7 @@ const Accounting: React.FC = () => {
                           }}
                         />
                         <Typography variant="body2" fontWeight={600}>
-                          ${(account.balance || 0).toLocaleString()}
+                          {formatCurrency(account.balance || 0)}
                         </Typography>
                       </Box>
                     </CardContent>
@@ -849,7 +851,7 @@ const Accounting: React.FC = () => {
                           color: transaction.transactionType === 'income' ? '#10b981' :
                                  transaction.transactionType === 'expense' ? '#ef4444' : 'text.primary'
                         }}>
-                          {transaction.transactionType === 'expense' ? '-' : ''}${transaction.amount.toLocaleString()}
+                          {transaction.transactionType === 'expense' ? '-' : ''}{formatCurrency(transaction.amount)}
                         </Typography>
                       </Box>
                     </CardContent>
@@ -908,7 +910,7 @@ const Accounting: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" fontWeight={600}>
-                          ${transaction.amount.toLocaleString()}
+                          {formatCurrency(transaction.amount)}
                         </Typography>
                       </TableCell>
                       <TableCell>
@@ -1002,7 +1004,7 @@ const Accounting: React.FC = () => {
           {selectedItem && (
             <Box sx={{ bgcolor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : alpha('#10b981', 0.1), p: 2, borderRadius: 1 }}>
               <Typography variant="body2"><strong>Código:</strong> {selectedItem.transactionCode}</Typography>
-              <Typography variant="body2"><strong>Monto:</strong> ${selectedItem.amount?.toLocaleString()}</Typography>
+              <Typography variant="body2"><strong>Monto:</strong> {formatCurrency(selectedItem.amount)}</Typography>
               <Typography variant="body2"><strong>Tipo:</strong> {selectedItem.transactionType}</Typography>
             </Box>
           )}

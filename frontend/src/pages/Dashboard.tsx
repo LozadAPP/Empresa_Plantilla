@@ -55,6 +55,7 @@ import { inventoryService } from '../services/inventoryService';
 import { DashboardData, InventoryItem, ItemCategory } from '../types';
 import { useThemeStyles } from '../hooks/useThemeStyles';
 import { StyledKPI, StyledSection } from '../components/styled';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { Doughnut, Line } from 'react-chartjs-2';
 import InventoryMap from '../components/maps/InventoryMap';
 import {
@@ -100,6 +101,7 @@ const Dashboard: React.FC = () => {
   const [periodTab, setPeriodTab] = useState(2); // 0: Hoy, 1: Semana, 2: Mes, 3: Año
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
   const [showAllMaintenance, setShowAllMaintenance] = useState(false);
+  const [showAllInventory, setShowAllInventory] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Estados para modal de imagen del inventario
@@ -113,46 +115,12 @@ const Dashboard: React.FC = () => {
   const [performanceData, setPerformanceData] = useState<any[]>([]);
   const [maintenanceData, setMaintenanceData] = useState<any>(null);
 
-  // Estado para selector de moneda
-  const [currency, setCurrency] = useState<string>('MXN');
+  // Moneda global desde CurrencyContext (persistida en localStorage)
+  const { currency, currencies, setCurrency, formatCompactCurrency, formatExactCurrency, formatChartValue } = useCurrency();
   const [currencyMenuAnchor, setCurrencyMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // Configuración de monedas
-  const currencies: Record<string, { symbol: string; rate: number; name: string }> = {
-    MXN: { symbol: '$', rate: 1, name: 'Peso Mexicano' },
-    USD: { symbol: 'US$', rate: 0.058, name: 'Dólar Americano' },
-    EUR: { symbol: '€', rate: 0.053, name: 'Euro' },
-    COP: { symbol: 'COL$', rate: 228, name: 'Peso Colombiano' },
-    BRL: { symbol: 'R$', rate: 0.29, name: 'Real Brasileño' },
-    GBP: { symbol: '£', rate: 0.046, name: 'Libra Esterlina' },
-  };
-
-  // Helper: convertir monto a moneda seleccionada
-  const convertCurrency = (amountMXN: number): number => {
-    return amountMXN * currencies[currency].rate;
-  };
-
-  // Helper: formato compacto para números monetarios grandes
-  const formatCompactCurrency = (amountMXN: number): string => {
-    const converted = convertCurrency(amountMXN);
-    const sym = currencies[currency].symbol;
-    const abs = Math.abs(converted);
-
-    if (abs >= 1_000_000_000) {
-      return `${sym}${(converted / 1_000_000_000).toFixed(1)}B`;
-    }
-    if (abs >= 1_000_000) {
-      return `${sym}${(converted / 1_000_000).toFixed(1)}M`;
-    }
-    return `${sym}${converted.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  };
-
-  // Helper: valor exacto para tooltip
-  const formatExactCurrency = (amountMXN: number): string => {
-    const converted = convertCurrency(amountMXN);
-    const sym = currencies[currency].symbol;
-    return `${sym}${converted.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
-  };
+  // Límite de tarjetas visibles antes de "Ver más"
+  const VISIBLE_CARDS = 3;
 
   // Filtrar items por categoría seleccionada
   const filteredInventoryItems = useMemo(() => {
@@ -286,7 +254,7 @@ const Dashboard: React.FC = () => {
         beginAtZero: true,
         ticks: {
           color: chart.tickColor,
-          callback: (value: number | string) => '$' + (Number(value) / 1000) + 'k',
+          callback: (value: number | string) => formatChartValue(Number(value)),
           font: { size: isMobile ? 10 : 12 }
         },
         grid: { color: chart.gridColor }
@@ -313,7 +281,7 @@ const Dashboard: React.FC = () => {
         grid: { color: chart.gridColor }
       }
     }
-  }), [text.primary, chart.tickColor, chart.gridColor, isMobile]);
+  }), [text.primary, chart.tickColor, chart.gridColor, isMobile, formatChartValue]);
 
   // OPTIMIZADO: doughnutOptions memoizado (movido antes de returns)
   const doughnutOptions = useMemo(() => ({
@@ -949,7 +917,12 @@ const Dashboard: React.FC = () => {
             </Box>
           )}
 
-          <Box sx={{ height: { xs: 300, sm: 400, md: 500 }, display: 'flex', gap: 2 }}>
+          <Box sx={{
+            height: showAllInventory ? 'auto' : { xs: 300, sm: 400, md: 500 },
+            minHeight: { xs: 300, sm: 400, md: 500 },
+            display: 'flex',
+            gap: 2,
+          }}>
             {/* Sidebar List - Hidden on mobile */}
             <Box
               sx={{
@@ -999,14 +972,14 @@ const Dashboard: React.FC = () => {
               <Box
                 sx={{
                   flex: 1,
-                  overflowY: 'auto',
-                  pr: 1,
+                  overflowY: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 1.5
+                  gap: 1.5,
+                  position: 'relative',
                 }}
               >
-              {filteredInventoryItems.map((item) => {
+              {(showAllInventory ? filteredInventoryItems : filteredInventoryItems.slice(0, VISIBLE_CARDS)).map((item) => {
                 // Usar color por defecto si categoryColor no está definido
                 const itemColor = item.categoryColor || '#8b5cf6';
                 const itemIcon = item.categoryIcon || '🚗';
@@ -1121,7 +1094,59 @@ const Dashboard: React.FC = () => {
                 </Paper>
                 );
               })}
+              {/* Fade overlay cuando hay más items */}
+              {!showAllInventory && filteredInventoryItems.length > VISIBLE_CARDS && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 80,
+                    background: isDarkMode
+                      ? 'linear-gradient(to bottom, transparent, rgba(6, 11, 40, 0.95))'
+                      : 'linear-gradient(to bottom, transparent, #ffffff)',
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                  }}
+                />
+              )}
               </Box>
+
+              {/* Botón Ver más / Ver menos para inventario */}
+              {filteredInventoryItems.length > VISIBLE_CARDS && (
+                <Box
+                  component="button"
+                  onClick={() => setShowAllInventory(!showAllInventory)}
+                  sx={{
+                    mt: 1,
+                    py: 1,
+                    px: 2,
+                    width: '100%',
+                    borderRadius: '12px',
+                    border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'}`,
+                    bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)',
+                    color: isDarkMode ? '#a78bfa' : '#8b5cf6',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)',
+                      borderColor: isDarkMode ? '#a78bfa' : '#8b5cf6',
+                      transform: 'translateY(-1px)',
+                    },
+                    '&:active': {
+                      transform: 'translateY(0)',
+                    },
+                  }}
+                >
+                  {showAllInventory
+                    ? '▲ Ver menos'
+                    : `▼ Ver más (${filteredInventoryItems.length - VISIBLE_CARDS} más)`
+                  }
+                </Box>
+              )}
             </Box>
 
             {/* Map */}
@@ -1142,17 +1167,19 @@ const Dashboard: React.FC = () => {
           title="Mantenimiento Próximo"
           subtitle="Equipos que requieren atención"
           action={
-            <Chip label={`${maintenanceData?.overdue?.length || 0} Vencidos`} color="error" size="small" />
+            <Chip
+              label={`${maintenanceData?.overdue?.length || 0} Vencidos`}
+              size="small"
+              sx={{
+                fontWeight: 600,
+                bgcolor: isDarkMode ? 'rgba(255, 82, 82, 0.2)' : 'rgba(220, 38, 38, 0.12)',
+                color: isDarkMode ? '#ff8a80' : '#dc2626',
+                border: `1px solid ${isDarkMode ? 'rgba(255, 82, 82, 0.4)' : 'rgba(220, 38, 38, 0.3)'}`,
+              }}
+            />
           }
         >
-          <Box sx={{
-            height: showAllMaintenance ? 500 : 'auto',
-            maxHeight: showAllMaintenance ? 500 : 'none',
-            overflowY: showAllMaintenance ? 'auto' : 'visible',
-            pr: showAllMaintenance ? 1 : 0,
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
+          <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
             {/* Mantenimiento Vencido */}
             <Box sx={{ mb: showAllMaintenance ? 3 : 0 }}>
               <Typography variant="body2" fontWeight={700} color="error.main" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1160,7 +1187,10 @@ const Dashboard: React.FC = () => {
                 Mantenimiento Vencido
               </Typography>
               {maintenanceData?.overdue && maintenanceData.overdue.length > 0 ? (
-                maintenanceData.overdue.map((item: any) => (
+                (showAllMaintenance
+                  ? maintenanceData.overdue
+                  : maintenanceData.overdue.slice(0, VISIBLE_CARDS)
+                ).map((item: any) => (
                   <Paper
                     key={item.id}
                     sx={{
@@ -1183,8 +1213,13 @@ const Dashboard: React.FC = () => {
                       <Chip
                         label={`${item.daysOverdue} días vencido`}
                         size="small"
-                        color="error"
-                        sx={{ fontSize: '0.7rem' }}
+                        sx={{
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          bgcolor: isDarkMode ? 'rgba(255, 82, 82, 0.2)' : 'rgba(220, 38, 38, 0.12)',
+                          color: isDarkMode ? '#ff8a80' : '#dc2626',
+                          border: `1px solid ${isDarkMode ? 'rgba(255, 82, 82, 0.4)' : 'rgba(220, 38, 38, 0.3)'}`,
+                        }}
                       />
                     </Box>
                     <Typography variant="caption" color="text.secondary">
@@ -1198,6 +1233,23 @@ const Dashboard: React.FC = () => {
                 </Typography>
               )}
             </Box>
+
+            {/* Fade overlay para overdue colapsado */}
+            {!showAllMaintenance && maintenanceData?.overdue?.length > VISIBLE_CARDS && (
+              <Box
+                sx={{
+                  height: 60,
+                  mt: -6,
+                  mb: 1,
+                  background: isDarkMode
+                    ? 'linear-gradient(to bottom, transparent, rgba(6, 11, 40, 0.95))'
+                    : 'linear-gradient(to bottom, transparent, #ffffff)',
+                  position: 'relative',
+                  zIndex: 1,
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
 
             {/* Mantenimiento Próximo - Solo visible cuando está expandido */}
             {showAllMaintenance && (
@@ -1230,8 +1282,13 @@ const Dashboard: React.FC = () => {
                         <Chip
                           label={`En ${item.daysUntil} días`}
                           size="small"
-                          color="warning"
-                          sx={{ fontSize: '0.7rem' }}
+                          sx={{
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            bgcolor: isDarkMode ? 'rgba(255, 181, 71, 0.2)' : 'rgba(180, 83, 9, 0.12)',
+                            color: isDarkMode ? '#ffb547' : '#92400e',
+                            border: `1px solid ${isDarkMode ? 'rgba(255, 181, 71, 0.4)' : 'rgba(180, 83, 9, 0.3)'}`,
+                          }}
                         />
                       </Box>
                       <Typography variant="caption" color="text.secondary">
@@ -1392,7 +1449,7 @@ const Dashboard: React.FC = () => {
                   </Box>
                   <Box sx={{ textAlign: 'right' }}>
                     <Typography variant="body2" sx={{ color: '#10b981', fontWeight: 700 }}>
-                      ${(customer.totalRevenue / 1000).toFixed(0)}K
+                      {formatCompactCurrency(customer.totalRevenue)}
                     </Typography>
                     {customer.trend === 'up' ? (
                       <TrendingUpIcon sx={{ fontSize: 14, color: '#10b981' }} />

@@ -13,6 +13,7 @@ import {
 } from 'chart.js';
 import { Box, Card, CardContent, Typography } from '@mui/material';
 import { useTheme as useCustomTheme } from '../../contexts/ThemeContext';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 ChartJS.register(
   CategoryScale,
@@ -44,6 +45,7 @@ const IncomeChart: React.FC<IncomeChartProps> = ({
   showLegend = true
 }) => {
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency, formatChartValue } = useCurrency();
 
   const chartData = {
     labels: data.map(d => d.period),
@@ -93,7 +95,7 @@ const IncomeChart: React.FC<IncomeChartProps> = ({
         padding: 12,
         callbacks: {
           label: function(context: any) {
-            return `${context.dataset.label}: $${context.raw.toLocaleString()}`;
+            return `${context.dataset.label}: ${formatCurrency(context.raw)}`;
           }
         }
       }
@@ -114,7 +116,7 @@ const IncomeChart: React.FC<IncomeChartProps> = ({
         ticks: {
           color: isDarkMode ? '#9ca3af' : '#6b7280',
           callback: function(value: any) {
-            return '$' + value.toLocaleString();
+            return formatChartValue(value);
           }
         }
       }

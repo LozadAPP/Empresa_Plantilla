@@ -30,6 +30,7 @@ import {
   FilterList as FilterIcon
 } from '@mui/icons-material';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
+import { useCurrency } from '../contexts/CurrencyContext';
 import reportService from '../services/reportService';
 import { locationService } from '../services/locationService';
 import {
@@ -84,6 +85,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
 
 const Reports: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(true);
@@ -536,7 +538,7 @@ const Reports: React.FC = () => {
               Ingresos del Período
             </Typography>
             <Typography variant="h4" fontWeight="bold" sx={{ color: '#10b981' }}>
-              ${incomeReport?.summary?.totalIncome?.toLocaleString() || summary?.today.income?.toLocaleString() || 0}
+              {formatCurrency(incomeReport?.summary?.totalIncome ?? summary?.today.income ?? 0)}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
               <TrendingUpIcon sx={{ fontSize: 16, color: '#10b981' }} />
@@ -730,7 +732,7 @@ const Reports: React.FC = () => {
                         Ingresos Totales
                       </Typography>
                       <Typography variant="h4" fontWeight="bold" sx={{ color: '#10b981' }}>
-                        ${profitabilityReport.summary.totalRevenue.toLocaleString()}
+                        {formatCurrency(profitabilityReport.summary.totalRevenue)}
                       </Typography>
                       <Typography variant="caption" sx={{ color: '#10b981' }}>
                         {profitabilityReport.breakdown.rentals} rentas
@@ -745,10 +747,10 @@ const Reports: React.FC = () => {
                         Costos Totales
                       </Typography>
                       <Typography variant="h4" fontWeight="bold" sx={{ color: '#ef4444' }}>
-                        ${profitabilityReport.summary.totalCosts.toLocaleString()}
+                        {formatCurrency(profitabilityReport.summary.totalCosts)}
                       </Typography>
                       <Typography variant="caption" sx={{ color: '#ef4444' }}>
-                        Mantenimiento: ${profitabilityReport.summary.totalMaintenanceCost.toLocaleString()}
+                        Mantenimiento: {formatCurrency(profitabilityReport.summary.totalMaintenanceCost)}
                       </Typography>
                     </CardContent>
                   </Card>
@@ -760,7 +762,7 @@ const Reports: React.FC = () => {
                         Ganancia Neta
                       </Typography>
                       <Typography variant="h4" fontWeight="bold" sx={{ color: '#8b5cf6' }}>
-                        ${profitabilityReport.summary.netProfit.toLocaleString()}
+                        {formatCurrency(profitabilityReport.summary.netProfit)}
                       </Typography>
                       <Typography variant="caption" sx={{ color: '#8b5cf6' }}>
                         {profitabilityReport.summary.profitMargin}% margen
@@ -804,7 +806,7 @@ const Reports: React.FC = () => {
                       </Typography>
                     </Box>
                     <Typography variant="h6" fontWeight="bold" sx={{ color: '#10b981', flexShrink: 0 }}>
-                      ${customer.totalRevenue.toLocaleString()}
+                      {formatCurrency(customer.totalRevenue)}
                     </Typography>
                   </Paper>
                 ))}

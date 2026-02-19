@@ -28,7 +28,7 @@ import {
   LocalGasStation as FuelIcon,
   Speed as SpeedIcon
 } from '@mui/icons-material';
-import { formatCurrency } from '../../utils/formatters';
+import { useCurrency } from '../../contexts/CurrencyContext';
 import { CreateReturnDTO } from '../../types/return';
 import { PenaltyCalculation } from '../../hooks/useReturnForm';
 import { FUEL_LEVEL_LABELS } from '../../constants/statusColors';
@@ -56,6 +56,7 @@ const ReturnConfirmModal: React.FC<ReturnConfirmModalProps> = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { formatCurrency } = useCurrency();
 
   if (!isOpen) return null;
 

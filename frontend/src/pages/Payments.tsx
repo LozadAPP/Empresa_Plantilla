@@ -56,7 +56,8 @@ import { useThemeStyles } from '../hooks/useThemeStyles';
 import TableSkeleton from '../components/common/TableSkeleton';
 import EmptyState from '../components/common/EmptyState';
 import { exportToCSV, PAYMENTS_COLUMNS } from '../utils/exportCSV';
-import { formatDateTime, formatCurrency } from '../utils/formatters';
+import { formatDateTime } from '../utils/formatters';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 // Función para calcular fechas por defecto (últimos 30 días)
 const getDefaultDates = () => {
@@ -74,6 +75,7 @@ const Payments: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { enqueueSnackbar } = useSnackbar();
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
   const themeStyles = useThemeStyles();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));

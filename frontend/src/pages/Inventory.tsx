@@ -58,6 +58,7 @@ import { locationService, LocationDropdown } from '../services/locationService';
 import { Vehicle, VehicleStatus, VehicleFilters, Pagination, VehicleFormData } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { StyledKPI, StyledSection } from '../components/styled';
 import VehicleForm from '../components/forms/VehicleForm';
 import EmptyState from '../components/common/EmptyState';
@@ -83,6 +84,7 @@ const getConditionColor = (condition: string): 'success' | 'info' | 'warning' =>
 const Inventory: React.FC = () => {
   const { hasAnyRole } = useAuth();
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -754,7 +756,7 @@ const Inventory: React.FC = () => {
                             Valor
                           </Typography>
                           <Typography variant="body2" fontWeight={600}>
-                            ${vehicle.current_value?.toLocaleString()}
+                            {formatCurrency(vehicle.current_value)}
                           </Typography>
                         </Grid>
                         <Grid item xs={6}>
@@ -918,7 +920,7 @@ const Inventory: React.FC = () => {
                       </TableCell>
                       <TableCell align="right">
                         <Typography variant="body2" fontWeight="600">
-                          ${vehicle.current_value?.toLocaleString()}
+                          {formatCurrency(vehicle.current_value)}
                         </Typography>
                       </TableCell>
                       <TableCell>
@@ -1013,11 +1015,11 @@ const Inventory: React.FC = () => {
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" color="textSecondary">Valor de Compra</Typography>
-                <Typography variant="body1" gutterBottom>${selectedVehicle.purchase_price?.toLocaleString()}</Typography>
+                <Typography variant="body1" gutterBottom>{formatCurrency(selectedVehicle.purchase_price)}</Typography>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" color="textSecondary">Valor Actual</Typography>
-                <Typography variant="body1" gutterBottom>${selectedVehicle.current_value?.toLocaleString()}</Typography>
+                <Typography variant="body1" gutterBottom>{formatCurrency(selectedVehicle.current_value)}</Typography>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" color="textSecondary">Kilometraje</Typography>

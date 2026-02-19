@@ -3,7 +3,7 @@
  * Muestra preview en tiempo real de penalidades y reembolsos
  */
 import React from 'react';
-import { formatCurrency } from '../../utils/formatters';
+import { useCurrency } from '../../contexts/CurrencyContext';
 import { PenaltyCalculation } from '../../hooks/useReturnForm';
 
 interface ReturnPenaltySummaryProps {
@@ -17,6 +17,8 @@ const ReturnPenaltySummary: React.FC<ReturnPenaltySummaryProps> = ({
   dailyRate,
   isDarkMode
 }) => {
+  const { formatCurrency } = useCurrency();
+
   if (!penaltyCalculation) return null;
 
   return (

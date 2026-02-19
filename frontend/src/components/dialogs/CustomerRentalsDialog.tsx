@@ -30,6 +30,7 @@ import {
 } from '@mui/icons-material';
 import { customerService } from '../../services/customerService';
 import { useTheme as useCustomTheme } from '../../contexts/ThemeContext';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 interface CustomerRentalsDialogProps {
   open: boolean;
@@ -45,6 +46,7 @@ const CustomerRentalsDialog: React.FC<CustomerRentalsDialogProps> = ({
   customerName
 }) => {
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
   const [rentals, setRentals] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -113,10 +115,6 @@ const CustomerRentalsDialog: React.FC<CustomerRentalsDialogProps> = ({
     if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
-  };
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount || 0);
   };
 
   return (

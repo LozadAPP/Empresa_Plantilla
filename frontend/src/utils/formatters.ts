@@ -46,17 +46,18 @@ export const formatDateTime = (
 };
 
 /**
- * Formatea un número como moneda MXN
+ * @deprecated Use useCurrency().formatCurrency del CurrencyContext para soporte global de moneda.
+ * Esta función se mantiene como fallback y siempre formatea en MXN.
  */
 export const formatCurrency = (amount: number | undefined | null): string => {
   if (amount === undefined || amount === null || isNaN(amount)) {
-    return '$0.00';
+    return '$0.00 MXN';
   }
 
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN'
-  }).format(amount);
+  }).format(amount) + ' MXN';
 };
 
 /**

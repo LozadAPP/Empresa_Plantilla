@@ -24,6 +24,7 @@ import {
 import { inventoryService } from '../../services/inventoryService';
 import { InventoryItem, ItemCategory } from '../../types/inventory';
 import { useTheme as useCustomTheme } from '../../contexts/ThemeContext';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 interface MovementTableProps {
   onViewDetails?: (item: InventoryItem) => void;
@@ -31,6 +32,7 @@ interface MovementTableProps {
 
 const MovementTable: React.FC<MovementTableProps> = ({ onViewDetails }) => {
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
 
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<ItemCategory[]>([]);
@@ -267,11 +269,11 @@ const MovementTable: React.FC<MovementTableProps> = ({ onViewDetails }) => {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" fontWeight={500}>
-                      ${item.currentValue?.toLocaleString('es-MX')}
+                      {formatCurrency(item.currentValue)}
                     </Typography>
                     {item.rentalPriceDaily && (
                       <Typography variant="caption" color="text.secondary" display="block">
-                        ${item.rentalPriceDaily}/día
+                        {formatCurrency(item.rentalPriceDaily)}/día
                       </Typography>
                     )}
                   </TableCell>

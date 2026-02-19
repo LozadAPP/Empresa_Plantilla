@@ -6,11 +6,13 @@ import { SnackbarProvider } from 'notistack';
 import App from './App';
 import store from './store';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { CurrencyProvider } from './contexts/CurrencyContext';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <Provider store={store}>
       <ThemeProvider>
+        <CurrencyProvider>
         <CssBaseline />
         <SnackbarProvider
           maxSnack={3}
@@ -19,6 +21,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         >
           <App />
         </SnackbarProvider>
+        </CurrencyProvider>
       </ThemeProvider>
     </Provider>
   </React.StrictMode>

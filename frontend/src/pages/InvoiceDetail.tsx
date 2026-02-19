@@ -39,13 +39,15 @@ import { AppDispatch, RootState } from '../store';
 import { fetchInvoiceById } from '../store/slices/paymentSlice';
 import { InvoiceStatus } from '../types/invoice';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
-import { formatDate, formatCurrency } from '../utils/formatters';
+import { formatDate } from '../utils/formatters';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 const InvoiceDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { isDarkMode } = useCustomTheme();
+  const { formatCurrency } = useCurrency();
 
   const { selectedInvoice: invoice, loading } = useSelector((state: RootState) => state.payments);
 

@@ -22,7 +22,8 @@ import {
   Payment as PaymentIcon
 } from '@mui/icons-material';
 import { Payment, PaymentType } from '../../types/payment';
-import { formatDateTime, formatCurrency } from '../../utils/formatters';
+import { formatDateTime } from '../../utils/formatters';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 interface PaymentTableProps {
   payments: Payment[];
@@ -43,6 +44,7 @@ const PaymentTable: React.FC<PaymentTableProps> = ({
   onRowsPerPageChange
 }) => {
   const navigate = useNavigate();
+  const { formatCurrency } = useCurrency();
 
   const handleChangePage = (_: unknown, newPage: number) => {
     if (onPageChange) {
