@@ -516,5 +516,17 @@ ADMINISTRACIÓN
 
 ---
 
-**Última actualización**: Enero 2026
+## ⏳ Tareas Pendientes para Producción
+
+### Cloudflare - Configurar al tener dominio
+Cuando se compre el dominio y se configure el hosting de producción, activar **Cloudflare** (plan gratuito) como capa de protección:
+- Protección DDoS
+- CDN global
+- SSL automático
+- WAF (Web Application Firewall)
+- **No requiere cambios en código** - solo cambiar DNS del dominio a Cloudflare
+
+---
+
+**Última actualización**: Febrero 2026
 **Versión**: 2.0.0 (Chat 5 - Correcciones y validaciones completas)

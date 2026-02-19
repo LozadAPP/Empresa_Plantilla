@@ -59,6 +59,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { StyledKPI, StyledSection } from '../components/styled';
 import VehicleForm from '../components/forms/VehicleForm';
+import EmptyState from '../components/common/EmptyState';
 
 const statusColors: Record<VehicleStatus, 'success' | 'info' | 'warning'> = {
   available: 'success',
@@ -696,15 +697,11 @@ const Inventory: React.FC = () => {
         {isMobile ? (
           <Box>
             {vehicles.length === 0 ? (
-              <Box sx={{ py: 8, textAlign: 'center' }}>
-                <CarIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary">
-                  No se encontraron vehículos
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Agrega un nuevo vehículo para empezar
-                </Typography>
-              </Box>
+              <EmptyState
+                icon={<CarIcon />}
+                title="No se encontraron vehículos"
+                subtitle="Agrega un nuevo vehículo para empezar"
+              />
             ) : (
               <Stack spacing={1.5}>
                 {vehicles.map((vehicle) => (
@@ -872,14 +869,12 @@ const Inventory: React.FC = () => {
               <TableBody>
                 {vehicles.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
-                      <CarIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                      <Typography variant="h6" color="text.secondary">
-                        No se encontraron vehículos
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Agrega un nuevo vehículo para empezar
-                      </Typography>
+                    <TableCell colSpan={9} align="center" sx={{ py: 0, border: 'none' }}>
+                      <EmptyState
+                        icon={<CarIcon />}
+                        title="No se encontraron vehículos"
+                        subtitle="Agrega un nuevo vehículo para empezar"
+                      />
                     </TableCell>
                   </TableRow>
                 ) : (

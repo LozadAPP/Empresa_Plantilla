@@ -32,8 +32,8 @@ export class RentalController {
         customer_id,
         vehicle_id,
         location_id,
-        start_date,
-        end_date,
+        startDate,
+        endDate,
         page = 1,
         limit = 20
       } = req.query;
@@ -45,10 +45,10 @@ export class RentalController {
       if (vehicle_id) where.vehicle_id = vehicle_id;
       if (location_id) where.location_id = location_id;
 
-      if (start_date || end_date) {
+      if (startDate || endDate) {
         where.start_date = {};
-        if (start_date) where.start_date.$gte = new Date(start_date as string);
-        if (end_date) where.start_date.$lte = new Date(end_date as string);
+        if (startDate) where.start_date[Op.gte] = new Date(startDate as string);
+        if (endDate) where.start_date[Op.lte] = new Date(endDate as string);
       }
 
       const offset = (Number(page) - 1) * Number(limit);

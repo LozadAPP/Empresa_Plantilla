@@ -135,6 +135,8 @@ export interface StyledKPIProps {
   color: string;
   /** Elemento adicional (ej: chip con tendencia) */
   extra?: React.ReactNode;
+  /** Índice para animación staggered (0, 1, 2...) */
+  index?: number;
 }
 
 export const StyledKPI: React.FC<StyledKPIProps> = ({
@@ -144,12 +146,22 @@ export const StyledKPI: React.FC<StyledKPIProps> = ({
   subtitle,
   color,
   extra,
+  index = 0,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
-    <KPIPaper elevation={0}>
+    <KPIPaper
+      elevation={0}
+      sx={{
+        '@keyframes kpiSlideIn': {
+          from: { opacity: 0, transform: 'translateY(12px)' },
+          to: { opacity: 1, transform: 'translateY(0)' },
+        },
+        animation: `kpiSlideIn 0.4s ease-out ${index * 0.08}s both`,
+      }}
+    >
       <IconContainer iconColor={color}>
         {icon}
       </IconContainer>

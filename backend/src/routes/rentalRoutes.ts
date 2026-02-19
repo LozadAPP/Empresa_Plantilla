@@ -370,10 +370,10 @@ const getAllValidation = [
   query('location_id')
     .optional()
     .isInt({ min: 1 }).withMessage('El ID de la ubicación debe ser un número válido'),
-  query('start_date')
+  query('startDate')
     .optional()
     .isISO8601().withMessage('La fecha de inicio debe ser una fecha válida'),
-  query('end_date')
+  query('endDate')
     .optional()
     .isISO8601().withMessage('La fecha de fin debe ser una fecha válida'),
   query('page')

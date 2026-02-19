@@ -51,6 +51,7 @@ import { VehicleCondition } from '../types/return';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { useThemeStyles } from '../hooks/useThemeStyles';
 import TableSkeleton from '../components/common/TableSkeleton';
+import EmptyState from '../components/common/EmptyState';
 import { exportToCSV, RETURNS_COLUMNS } from '../utils/exportCSV';
 import { formatDateTime, formatCurrency } from '../utils/formatters';
 
@@ -532,23 +533,11 @@ const Returns: React.FC = () => {
       {isMobile ? (
         <Box>
           {returns.length === 0 ? (
-            <Paper
-              sx={{
-                p: 4,
-                textAlign: 'center',
-                background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
-                borderRadius: 2,
-                border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-              }}
-            >
-              <ReturnsIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary">
-                No hay devoluciones registradas
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Las devoluciones aparecerán aquí cuando se completen rentas
-              </Typography>
-            </Paper>
+            <EmptyState
+              icon={<ReturnsIcon />}
+              title="No hay devoluciones registradas"
+              subtitle="Las devoluciones aparecerán aquí cuando se completen rentas"
+            />
           ) : (
             <Stack spacing={1.5}>
               {returns.map((returnRecord) => (
@@ -593,7 +582,15 @@ const Returns: React.FC = () => {
                             color="error"
                             size="small"
                             icon={<CancelIcon sx={{ fontSize: 14 }} />}
-                            sx={{ height: 24, '& .MuiChip-label': { px: 1, fontSize: '0.7rem' } }}
+                            sx={{
+                              height: 24,
+                              '& .MuiChip-label': { px: 1, fontSize: '0.7rem' },
+                              '@keyframes chipPulse': {
+                                '0%, 100%': { boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.3)' },
+                                '50%': { boxShadow: '0 0 0 4px rgba(239, 68, 68, 0)' },
+                              },
+                              animation: 'chipPulse 2s ease-in-out infinite',
+                            }}
                           />
                         )}
                         <IconButton
@@ -737,14 +734,12 @@ const Returns: React.FC = () => {
             <TableBody>
               {returns.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
-                    <ReturnsIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary">
-                      No hay devoluciones registradas
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Las devoluciones aparecerán aquí cuando se completen rentas
-                    </Typography>
+                  <TableCell colSpan={8} align="center" sx={{ py: 0 }}>
+                    <EmptyState
+                      icon={<ReturnsIcon />}
+                      title="No hay devoluciones registradas"
+                      subtitle="Las devoluciones aparecerán aquí cuando se completen rentas"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
@@ -795,6 +790,13 @@ const Returns: React.FC = () => {
                           color="error"
                           size="small"
                           icon={<CancelIcon sx={{ fontSize: 16 }} />}
+                          sx={{
+                            '@keyframes chipPulse': {
+                              '0%, 100%': { boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.3)' },
+                              '50%': { boxShadow: '0 0 0 4px rgba(239, 68, 68, 0)' },
+                            },
+                            animation: 'chipPulse 2s ease-in-out infinite',
+                          }}
                         />
                       )}
                     </TableCell>

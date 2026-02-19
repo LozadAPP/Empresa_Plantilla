@@ -59,6 +59,7 @@ import { fetchInvoices, resendInvoice } from '../store/slices/paymentSlice';
 import { InvoiceStatus } from '../types/invoice';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import TableSkeleton from '../components/common/TableSkeleton';
+import EmptyState from '../components/common/EmptyState';
 import { formatDate, formatCurrency } from '../utils/formatters';
 import { exportToCSV, formatCurrencyForCSV, formatDateForCSV } from '../utils/exportCSV';
 
@@ -208,7 +209,16 @@ const Invoices: React.FC = () => {
         color={config.color}
         size="small"
         icon={<IconComponent sx={{ fontSize: 16 }} />}
-        sx={{ fontWeight: 500 }}
+        sx={{
+          fontWeight: 500,
+          ...((status === 'overdue' || status === 'sent') && {
+            '@keyframes chipPulse': {
+              '0%, 100%': { boxShadow: `0 0 0 0 ${status === 'overdue' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)'}` },
+              '50%': { boxShadow: `0 0 0 4px ${status === 'overdue' ? 'rgba(239, 68, 68, 0)' : 'rgba(59, 130, 246, 0)'}` },
+            },
+            animation: 'chipPulse 2s ease-in-out infinite',
+          }),
+        }}
       />
     );
   }, [STATUS_CONFIGS]);
@@ -579,23 +589,11 @@ const Invoices: React.FC = () => {
       {isMobile ? (
         <Box>
           {invoices.length === 0 ? (
-            <Paper
-              sx={{
-                p: 4,
-                textAlign: 'center',
-                background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
-                borderRadius: 2,
-                border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-              }}
-            >
-              <InvoiceIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary">
-                No hay facturas registradas
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Crea una nueva factura para comenzar
-              </Typography>
-            </Paper>
+            <EmptyState
+              icon={<InvoiceIcon />}
+              title="No hay facturas registradas"
+              subtitle="Crea una nueva factura para comenzar"
+            />
           ) : (
             <Stack spacing={1.5}>
               {invoices.map((invoice) => (
@@ -795,14 +793,12 @@ const Invoices: React.FC = () => {
             <TableBody>
               {invoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
-                    <InvoiceIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary">
-                      No hay facturas registradas
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Crea una nueva factura para comenzar
-                    </Typography>
+                  <TableCell colSpan={8} align="center" sx={{ py: 0 }}>
+                    <EmptyState
+                      icon={<InvoiceIcon />}
+                      title="No hay facturas registradas"
+                      subtitle="Crea una nueva factura para comenzar"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

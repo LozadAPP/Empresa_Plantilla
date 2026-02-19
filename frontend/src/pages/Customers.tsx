@@ -54,6 +54,8 @@ import { useAuth } from '../hooks/useAuth';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import CustomerForm from '../components/forms/CustomerForm';
 import CustomerRentalsDialog from '../components/dialogs/CustomerRentalsDialog';
+import EmptyState from '../components/common/EmptyState';
+import { formatCurrency } from '../utils/formatters';
 
 const typeIcons: Record<CustomerType, React.ReactNode> = {
   individual: <PersonIcon fontSize="small" />,
@@ -353,9 +355,12 @@ const Customers: React.FC = () => {
         /* Vista de Cards para móvil */
         <Box>
           {customers.length === 0 ? (
-            <Paper sx={{ p: 4, textAlign: 'center' }}>
-              <PersonIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-              <Typography color="textSecondary">No se encontraron clientes</Typography>
+            <Paper>
+              <EmptyState
+                icon={<PersonIcon />}
+                title="No se encontraron clientes"
+                subtitle="Agrega un nuevo cliente para empezar"
+              />
             </Paper>
           ) : (
             <Stack spacing={1.5}>
@@ -406,7 +411,7 @@ const Customers: React.FC = () => {
                           Límite Crédito
                         </Typography>
                         <Typography variant="body2" fontWeight="600" sx={{ color: theme.palette.mode === 'dark' ? '#34d399' : '#10b981' }}>
-                          ${customer.credit_limit?.toLocaleString()}
+                          {formatCurrency(customer.credit_limit)}
                         </Typography>
                       </Box>
                       <Box>
@@ -495,7 +500,7 @@ const Customers: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    ${customer.credit_limit?.toLocaleString()}
+                    {formatCurrency(customer.credit_limit)}
                   </TableCell>
                   <TableCell>
                     <Chip
@@ -513,8 +518,12 @@ const Customers: React.FC = () => {
               ))}
               {customers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                    <Typography color="textSecondary">No se encontraron clientes</Typography>
+                  <TableCell colSpan={8} align="center" sx={{ py: 0, border: 'none' }}>
+                    <EmptyState
+                      icon={<PersonIcon />}
+                      title="No se encontraron clientes"
+                      subtitle="Agrega un nuevo cliente para empezar"
+                    />
                   </TableCell>
                 </TableRow>
               )}
@@ -601,7 +610,7 @@ const Customers: React.FC = () => {
               </Grid>
               <Grid item xs={12} md={4}>
                 <Typography variant="subtitle2" color="textSecondary">Límite de Crédito</Typography>
-                <Typography variant="body1" gutterBottom>${selectedCustomer.credit_limit?.toLocaleString()}</Typography>
+                <Typography variant="body1" gutterBottom>{formatCurrency(selectedCustomer.credit_limit)}</Typography>
               </Grid>
               <Grid item xs={12} md={4}>
                 <Typography variant="subtitle2" color="textSecondary">Términos de Pago</Typography>

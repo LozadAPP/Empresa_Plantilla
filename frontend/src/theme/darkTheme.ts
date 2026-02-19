@@ -75,6 +75,7 @@ const darkTheme = createTheme({
       main: colors.success,
       light: colors.successLight,
       dark: '#059669',
+      contrastText: '#ffffff',
     },
     error: {
       main: colors.error,
@@ -159,6 +160,13 @@ const darkTheme = createTheme({
           // Fondo Vision UI - color sólido para mejor rendimiento
           backgroundColor: colors.bgMain,
           minHeight: '100vh',
+        },
+        '@media (prefers-reduced-motion: reduce)': {
+          '*, *::before, *::after': {
+            animationDuration: '0.01ms !important',
+            animationIterationCount: '1 !important',
+            transitionDuration: '0.01ms !important',
+          },
         },
       },
     },
@@ -382,6 +390,7 @@ const darkTheme = createTheme({
       styleOverrides: {
         root: {
           borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+          transition: 'box-shadow 0.15s ease',
         },
         head: {
           backgroundColor: 'rgba(0, 117, 255, 0.08)',
@@ -392,10 +401,14 @@ const darkTheme = createTheme({
     MuiTableRow: {
       styleOverrides: {
         root: {
-          // OPTIMIZADO: transition específica
           transition: 'background-color 0.15s ease',
           '&:hover': {
             backgroundColor: 'rgba(0, 117, 255, 0.08)',
+          },
+          '&:not(.MuiTableRow-head):hover': {
+            '& .MuiTableCell-root:first-of-type': {
+              boxShadow: 'inset 3px 0 0 0 #0075ff',
+            },
           },
         },
       },

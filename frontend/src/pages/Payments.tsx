@@ -54,6 +54,7 @@ import paymentService from '../services/paymentService';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { useThemeStyles } from '../hooks/useThemeStyles';
 import TableSkeleton from '../components/common/TableSkeleton';
+import EmptyState from '../components/common/EmptyState';
 import { exportToCSV, PAYMENTS_COLUMNS } from '../utils/exportCSV';
 import { formatDateTime, formatCurrency } from '../utils/formatters';
 
@@ -198,7 +199,16 @@ const Payments: React.FC = () => {
         color={config.color}
         size="small"
         icon={<IconComponent sx={{ fontSize: 16 }} />}
-        sx={{ fontWeight: 500 }}
+        sx={{
+          fontWeight: 500,
+          ...(status === 'pending' && {
+            '@keyframes chipPulse': {
+              '0%, 100%': { boxShadow: '0 0 0 0 rgba(255, 181, 71, 0.3)' },
+              '50%': { boxShadow: '0 0 0 4px rgba(255, 181, 71, 0)' },
+            },
+            animation: 'chipPulse 2s ease-in-out infinite',
+          }),
+        }}
       />
     );
   }, [STATUS_CONFIGS]);
@@ -546,14 +556,12 @@ const Payments: React.FC = () => {
           <TableBody>
             {payments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
-                  <PaymentIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                  <Typography variant="h6" color="text.secondary">
-                    No hay pagos registrados
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Registra un nuevo pago para comenzar
-                  </Typography>
+                <TableCell colSpan={9} align="center" sx={{ py: 0 }}>
+                  <EmptyState
+                    icon={<PaymentIcon />}
+                    title="No hay pagos registrados"
+                    subtitle="Registra un nuevo pago para comenzar"
+                  />
                 </TableCell>
               </TableRow>
             ) : (

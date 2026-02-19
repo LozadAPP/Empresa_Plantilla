@@ -52,6 +52,7 @@ import {
   PersonOutline as OperatorIcon
 } from '@mui/icons-material';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
+import EmptyState from '../components/common/EmptyState';
 import { userService, User, Role } from '../services/userService';
 
 const Users: React.FC = () => {
@@ -120,7 +121,7 @@ const Users: React.FC = () => {
         setRoles(response.data);
       }
     } catch (error) {
-      // Error loading roles silently handled
+      console.error('[Users] Error loading roles:', error);
     }
   };
 
@@ -131,7 +132,7 @@ const Users: React.FC = () => {
         setStats(response.data);
       }
     } catch (error) {
-      // Error loading stats silently handled
+      console.error('[Users] Error loading stats:', error);
     }
   };
 
@@ -541,18 +542,11 @@ const Users: React.FC = () => {
         /* Vista de Cards para móvil */
         <Box>
           {filteredUsers.length === 0 ? (
-            <Paper sx={{
-              p: 4,
-              textAlign: 'center',
-              background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
-              borderRadius: 2,
-              border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-            }}>
-              <PersonIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-              <Typography variant="body1" color="text.secondary">
-                No se encontraron usuarios
-              </Typography>
-            </Paper>
+            <EmptyState
+              icon={<PersonIcon />}
+              title="No se encontraron usuarios"
+              subtitle="Crea un nuevo usuario para comenzar"
+            />
           ) : (
             <Stack spacing={1.5}>
               {filteredUsers.map((user) => {
@@ -615,7 +609,17 @@ const Users: React.FC = () => {
                           label={user.is_active ? 'Activo' : 'Inactivo'}
                           size="small"
                           color={user.is_active ? 'success' : 'default'}
-                          sx={{ height: 24, fontSize: '0.7rem' }}
+                          sx={{
+                            height: 24,
+                            fontSize: '0.7rem',
+                            ...(user.is_active && {
+                              '@keyframes chipPulse': {
+                                '0%, 100%': { boxShadow: '0 0 0 0 rgba(1, 181, 116, 0.3)' },
+                                '50%': { boxShadow: '0 0 0 4px rgba(1, 181, 116, 0)' },
+                              },
+                              animation: 'chipPulse 2s ease-in-out infinite',
+                            }),
+                          }}
                         />
                       </Box>
                     </CardContent>
@@ -646,10 +650,12 @@ const Users: React.FC = () => {
             <TableBody>
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No se encontraron usuarios
-                    </Typography>
+                  <TableCell colSpan={6} align="center" sx={{ py: 0 }}>
+                    <EmptyState
+                      icon={<PersonIcon />}
+                      title="No se encontraron usuarios"
+                      subtitle="Crea un nuevo usuario para comenzar"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
@@ -704,6 +710,15 @@ const Users: React.FC = () => {
                           icon={user.is_active ? <CheckIcon fontSize="small" /> : <BlockIcon fontSize="small" />}
                           size="small"
                           color={user.is_active ? 'success' : 'default'}
+                          sx={{
+                            ...(user.is_active && {
+                              '@keyframes chipPulse': {
+                                '0%, 100%': { boxShadow: '0 0 0 0 rgba(1, 181, 116, 0.3)' },
+                                '50%': { boxShadow: '0 0 0 4px rgba(1, 181, 116, 0)' },
+                              },
+                              animation: 'chipPulse 2s ease-in-out infinite',
+                            }),
+                          }}
                         />
                       </TableCell>
                       <TableCell align="right">

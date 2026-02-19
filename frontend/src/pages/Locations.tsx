@@ -49,6 +49,7 @@ import {
   Close as CloseIcon
 } from '@mui/icons-material';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
+import EmptyState from '../components/common/EmptyState';
 import { locationService, Location, LocationType } from '../services/locationService';
 
 const LOCATION_TYPES: { value: LocationType; label: string }[] = [
@@ -418,16 +419,11 @@ const Locations: React.FC = () => {
         // Mobile Cards View
         <Stack spacing={1.5}>
           {filteredLocations.length === 0 ? (
-            <Card sx={{
-              p: 4,
-              textAlign: 'center',
-              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
-              border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-            }}>
-              <Typography variant="body2" color="text.secondary">
-                No se encontraron sedes
-              </Typography>
-            </Card>
+            <EmptyState
+              icon={<LocationIcon />}
+              title="No se encontraron sedes"
+              subtitle="Crea una nueva sede para comenzar"
+            />
           ) : (
             filteredLocations.map((location) => (
               <Card
@@ -552,10 +548,12 @@ const Locations: React.FC = () => {
             <TableBody>
               {filteredLocations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No se encontraron sedes
-                    </Typography>
+                  <TableCell colSpan={7} align="center" sx={{ py: 0 }}>
+                    <EmptyState
+                      icon={<LocationIcon />}
+                      title="No se encontraron sedes"
+                      subtitle="Crea una nueva sede para comenzar"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

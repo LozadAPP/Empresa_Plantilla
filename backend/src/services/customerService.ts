@@ -314,7 +314,7 @@ class CustomerService {
       attributes: ['total_amount', 'status']
     });
 
-    const totalSpent = allRentals.reduce((sum, rental: any) => sum + (rental.total_amount || 0), 0);
+    const totalSpent = allRentals.reduce((sum, rental: any) => sum + (parseFloat(rental.total_amount) || 0), 0);
     const totalRentals = allRentals.length;
     const activeRentals = allRentals.filter((r: any) => r.status === 'active').length;
     const completedRentals = allRentals.filter((r: any) => r.status === 'completed').length;

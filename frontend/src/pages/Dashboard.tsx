@@ -601,6 +601,7 @@ const Dashboard: React.FC = () => {
           value={`${kpiData.fleetOccupancy}%`}
           subtitle={`Meta: ${kpiData.occupancyGoal}%`}
           color={getOccupancyColor(kpiData.fleetOccupancy, kpiData.occupancyGoal)}
+          index={0}
         />
 
         {/* KPI 2: Disponibles */}
@@ -610,6 +611,7 @@ const Dashboard: React.FC = () => {
           value={kpiData.availableVehicles}
           subtitle="unidades listas"
           color="#10b981"
+          index={1}
         />
 
         {/* KPI 3: En Renta */}
@@ -619,6 +621,7 @@ const Dashboard: React.FC = () => {
           value={kpiData.rentedVehicles}
           subtitle="unidades activas"
           color="#3b82f6"
+          index={2}
         />
 
         {/* KPI 4: Mantenimiento */}
@@ -628,6 +631,7 @@ const Dashboard: React.FC = () => {
           value={kpiData.maintenanceVehicles}
           subtitle="unidades en servicio"
           color="#f59e0b"
+          index={3}
         />
 
         {/* KPI 5: Ingresos del Periodo */}
@@ -646,6 +650,7 @@ const Dashboard: React.FC = () => {
               ? `Hoy: $${kpiData.todayIncome.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
               : 'desde pagos completados'
           }
+          index={4}
         />
 
         {/* KPI 6: Pagos Pendientes */}
@@ -655,6 +660,7 @@ const Dashboard: React.FC = () => {
           value={`$${kpiData.pendingPayments.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
           color="#f59e0b"
           subtitle="de rentas activas"
+          index={5}
         />
       </Box>
 

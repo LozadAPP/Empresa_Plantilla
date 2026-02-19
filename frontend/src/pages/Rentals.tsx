@@ -55,6 +55,7 @@ import { RentalStatus } from '../types/rental';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { useThemeStyles } from '../hooks/useThemeStyles';
 import TableSkeleton from '../components/common/TableSkeleton';
+import EmptyState from '../components/common/EmptyState';
 import { exportToCSV, RENTALS_COLUMNS } from '../utils/exportCSV';
 import { formatDate, formatCurrency } from '../utils/formatters';
 
@@ -173,7 +174,16 @@ const Rentals: React.FC = () => {
         color={config.color}
         size="small"
         icon={<IconComponent sx={{ fontSize: 16 }} />}
-        sx={{ fontWeight: 500 }}
+        sx={{
+          fontWeight: 500,
+          ...(status === 'active' && {
+            '@keyframes chipPulse': {
+              '0%, 100%': { boxShadow: '0 0 0 0 rgba(1, 181, 116, 0.3)' },
+              '50%': { boxShadow: '0 0 0 4px rgba(1, 181, 116, 0)' },
+            },
+            animation: 'chipPulse 2s ease-in-out infinite',
+          }),
+        }}
       />
     );
   }, [STATUS_CONFIGS]);
@@ -461,16 +471,15 @@ const Rentals: React.FC = () => {
         <Box>
           {rentals.length === 0 ? (
             <Paper sx={{
-              p: 4,
-              textAlign: 'center',
               background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
               borderRadius: 2,
               border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
             }}>
-              <RentalsIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-              <Typography variant="body1" color="text.secondary">
-                No hay rentas registradas
-              </Typography>
+              <EmptyState
+                icon={<RentalsIcon />}
+                title="No hay rentas registradas"
+                subtitle="Crea una nueva renta para empezar"
+              />
             </Paper>
           ) : (
             <Stack spacing={1.5}>
@@ -606,14 +615,12 @@ const Rentals: React.FC = () => {
             <TableBody>
               {rentals.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
-                    <RentalsIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary">
-                      No hay rentas registradas
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Crea una nueva renta para empezar
-                    </Typography>
+                  <TableCell colSpan={7} align="center" sx={{ py: 0, border: 'none' }}>
+                    <EmptyState
+                      icon={<RentalsIcon />}
+                      title="No hay rentas registradas"
+                      subtitle="Crea una nueva renta para empezar"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

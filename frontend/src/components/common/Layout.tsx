@@ -10,12 +10,13 @@ import {
   Divider,
   TextField,
   InputAdornment,
-  Switch,
   SwipeableDrawer,
+  Collapse,
   useMediaQuery,
   useTheme
 } from '@mui/material';
 import FPSCounter from './FPSCounter';
+import { AlertBadge } from '../alerts';
 import {
   Dashboard as DashboardIcon,
   DirectionsCar as VehiclesIcon,
@@ -27,7 +28,6 @@ import {
   Build as MaintenanceIcon,
   Assessment as ReportsIcon,
   AccountBalance as AccountingIcon,
-  Notifications as NotificationsIcon,
   NotificationImportant as AlertsIcon,
   Settings as SettingsIcon,
   AdminPanelSettings as AdminIcon,
@@ -39,7 +39,6 @@ import {
   Inventory2 as InventoryManagementIcon,
   Group as PeopleIcon,
   ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
   SpaceDashboard as DashboardInventoryIcon,
   Menu as MenuIcon,
   Close as CloseIcon
@@ -175,8 +174,8 @@ const Layout: React.FC = () => {
       // OPTIMIZADO: Color sólido en lugar de gradient fixed
       bgcolor: isDarkMode ? '#060b28' : '#f8fafc',
     }}>
-      {/* FPS Counter - Solo en desarrollo */}
-      {import.meta.env.DEV && <FPSCounter isDarkMode={isDarkMode} />}
+      {/* FPS Counter - Desactivado. Para reactivar, descomentar la línea siguiente */}
+      {/* {import.meta.env.DEV && <FPSCounter isDarkMode={isDarkMode} />} */}
 
       {/* Sidebar - OPTIMIZADO */}
       <Box
@@ -262,19 +261,31 @@ const Layout: React.FC = () => {
             return (
               <Box key={section.title}>
                 {/* Section Title */}
-                <Typography
-                  variant="overline"
-                  sx={{
-                    px: 2,
-                    mb: 1,
-                    fontSize: '0.6875rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.08em',
-                    color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : '#6b7280'
-                  }}
-                >
-                  {section.title}
-                </Typography>
+                <Box sx={{ px: 2, mb: 1.5 }}>
+                  <Typography
+                    variant="overline"
+                    sx={{
+                      fontSize: '0.6875rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.1em',
+                      color: isDarkMode ? 'rgba(255, 255, 255, 0.5)' : '#9ca3af',
+                      display: 'block',
+                      mb: 0.5,
+                    }}
+                  >
+                    {section.title}
+                  </Typography>
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 2,
+                      borderRadius: '1px',
+                      background: isDarkMode
+                        ? 'linear-gradient(90deg, #0075ff, rgba(33, 212, 253, 0.3))'
+                        : 'linear-gradient(90deg, #0075ff, rgba(0, 117, 255, 0.2))',
+                    }}
+                  />
+                </Box>
 
                 {/* Section Items */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -297,14 +308,15 @@ const Layout: React.FC = () => {
                           py: 1.25,
                           borderRadius: '12px',
                           cursor: 'pointer',
-                          // OPTIMIZADO: transition específica
-                          transition: 'background-color 0.15s ease, color 0.15s ease',
+                          transition: 'background-color 0.15s ease, color 0.15s ease, box-shadow 0.2s ease',
                           position: 'relative',
                           color: isMenuActive(item) ? '#fff' : (isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280'),
                           background: isMenuActive(item)
                             ? 'linear-gradient(90deg, #0075ff 0%, #21d4fd 100%)'
                             : 'transparent',
-                          // OPTIMIZADO: removidos glows
+                          boxShadow: isMenuActive(item)
+                            ? '0 2px 12px rgba(0, 117, 255, 0.25)'
+                            : 'none',
                           '&:hover': {
                             bgcolor: isMenuActive(item) ? '#0075ff' : (isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#f3f4f6'),
                             color: isMenuActive(item) ? '#fff' : (isDarkMode ? 'rgba(255, 255, 255, 0.95)' : '#111827'),
@@ -315,11 +327,12 @@ const Layout: React.FC = () => {
                             left: 0,
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            width: '3px',
+                            width: isMenuActive(item) ? '3px' : '0px',
                             height: isMenuActive(item) ? '20px' : '0px',
                             bgcolor: '#21d4fd',
-                            borderRadius: '0 2px 2px 0',
-                            transition: 'height 0.15s ease',
+                            borderRadius: '0 3px 3px 0',
+                            transition: 'height 0.2s ease, width 0.2s ease',
+                            boxShadow: isMenuActive(item) ? '0 0 6px rgba(33, 212, 253, 0.4)' : 'none',
                           }
                         }}
                       >
@@ -337,55 +350,61 @@ const Layout: React.FC = () => {
                           {item.label}
                         </Typography>
                         {item.subItems && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', fontSize: 18 }}>
-                            {expandedMenus.includes(item.label) ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            fontSize: 18,
+                            transition: 'transform 0.2s ease',
+                            transform: expandedMenus.includes(item.label) ? 'rotate(180deg)' : 'rotate(0deg)',
+                          }}>
+                            <ExpandMoreIcon fontSize="small" />
                           </Box>
                         )}
                       </Box>
 
-                      {/* SubItems - Solo si tiene y está expandido */}
-                      {item.subItems && expandedMenus.includes(item.label) && (
-                        <Box sx={{ pl: 2, mt: 0.5 }}>
-                          {item.subItems
-                            .filter(subItem => !subItem.roles || hasAnyRole(...subItem.roles))
-                            .map((subItem) => (
-                              <Box
-                                key={subItem.path}
-                                onClick={() => subItem.path && navigate(subItem.path)}
-                                sx={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 1.5,
-                                  px: 2,
-                                  py: 1,
-                                  borderRadius: '10px',
-                                  cursor: 'pointer',
-                                  // OPTIMIZADO: transition específica
-                                  transition: 'background-color 0.15s ease, color 0.15s ease',
-                                  color: isActive(subItem.path) ? '#21d4fd' : (isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280'),
-                                  bgcolor: isActive(subItem.path) ? (isDarkMode ? 'rgba(0, 117, 255, 0.15)' : '#eff6ff') : 'transparent',
-                                  // OPTIMIZADO: removido glow
-                                  '&:hover': {
-                                    bgcolor: isActive(subItem.path) ? (isDarkMode ? 'rgba(0, 117, 255, 0.2)' : '#dbeafe') : (isDarkMode ? 'rgba(0, 117, 255, 0.08)' : '#f9fafb'),
-                                    color: isActive(subItem.path) ? '#21d4fd' : (isDarkMode ? 'rgba(255, 255, 255, 0.9)' : '#6b7280')
-                                  }
-                                }}
-                              >
-                                <Box sx={{ display: 'flex', alignItems: 'center', fontSize: 18 }}>
-                                  {subItem.icon}
-                                </Box>
-                                <Typography
-                                  variant="body2"
+                      {/* SubItems - Animacion Collapse */}
+                      {item.subItems && (
+                        <Collapse in={expandedMenus.includes(item.label)} timeout={200} unmountOnExit>
+                          <Box sx={{ pl: 2, mt: 0.5 }}>
+                            {item.subItems
+                              .filter(subItem => !subItem.roles || hasAnyRole(...subItem.roles))
+                              .map((subItem) => (
+                                <Box
+                                  key={subItem.path}
+                                  onClick={() => subItem.path && navigate(subItem.path)}
                                   sx={{
-                                    fontWeight: isActive(subItem.path) ? 600 : 500,
-                                    fontSize: '0.8125rem'
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1.5,
+                                    px: 2,
+                                    py: 1,
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.15s ease, color 0.15s ease',
+                                    color: isActive(subItem.path) ? '#21d4fd' : (isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280'),
+                                    bgcolor: isActive(subItem.path) ? (isDarkMode ? 'rgba(0, 117, 255, 0.15)' : '#eff6ff') : 'transparent',
+                                    '&:hover': {
+                                      bgcolor: isActive(subItem.path) ? (isDarkMode ? 'rgba(0, 117, 255, 0.2)' : '#dbeafe') : (isDarkMode ? 'rgba(0, 117, 255, 0.08)' : '#f9fafb'),
+                                      color: isActive(subItem.path) ? '#21d4fd' : (isDarkMode ? 'rgba(255, 255, 255, 0.9)' : '#6b7280')
+                                    }
                                   }}
                                 >
-                                  {subItem.label}
-                                </Typography>
-                              </Box>
-                            ))}
-                        </Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', fontSize: 18 }}>
+                                    {subItem.icon}
+                                  </Box>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontWeight: isActive(subItem.path) ? 600 : 500,
+                                      fontSize: '0.8125rem'
+                                    }}
+                                  >
+                                    {subItem.label}
+                                  </Typography>
+                                </Box>
+                              ))}
+                          </Box>
+                        </Collapse>
                       )}
                     </Box>
                   ))}
@@ -422,18 +441,32 @@ const Layout: React.FC = () => {
               }
             }}
           >
-            <Avatar
-              sx={{
-                width: 36,
-                height: 36,
-                background: 'linear-gradient(135deg, #0075ff 0%, #21d4fd 100%)',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                // OPTIMIZADO: removido glow
-              }}
-            >
-              {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
-            </Avatar>
+            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+              <Avatar
+                sx={{
+                  width: 36,
+                  height: 36,
+                  background: 'linear-gradient(135deg, #0075ff 0%, #21d4fd 100%)',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                }}
+              >
+                {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
+              </Avatar>
+              {/* Online indicator */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  bgcolor: '#10b981',
+                  border: `2px solid ${isDarkMode ? 'rgba(6, 11, 40, 0.98)' : '#ffffff'}`,
+                }}
+              />
+            </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography
                 variant="body2"
@@ -448,15 +481,29 @@ const Layout: React.FC = () => {
               >
                 {user?.first_name} {user?.last_name}
               </Typography>
-              <Typography
-                variant="caption"
+              <Box
                 sx={{
-                  fontSize: '0.75rem',
-                  color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : '#6b7280'
+                  display: 'inline-flex',
+                  px: 1,
+                  py: 0.125,
+                  borderRadius: '6px',
+                  bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#eff6ff',
+                  border: isDarkMode ? '1px solid rgba(0, 117, 255, 0.2)' : '1px solid #dbeafe',
+                  mt: 0.25,
                 }}
               >
-                {user?.roles?.[0] || 'Usuario'}
-              </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    color: isDarkMode ? '#21d4fd' : '#0075ff',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {(user?.roles?.[0] || 'Usuario').replace(/_/g, ' ')}
+                </Typography>
+              </Box>
             </Box>
           </Box>
         </Box>
@@ -560,19 +607,31 @@ const Layout: React.FC = () => {
 
               return (
                 <Box key={`mobile-${section.title}`}>
-                  <Typography
-                    variant="overline"
-                    sx={{
-                      px: 1.5,
-                      mb: 0.5,
-                      fontSize: '0.625rem',
-                      fontWeight: 700,
-                      letterSpacing: '0.08em',
-                      color: isDarkMode ? 'rgba(255, 255, 255, 0.5)' : '#9ca3af'
-                    }}
-                  >
-                    {section.title}
-                  </Typography>
+                  <Box sx={{ px: 1.5, mb: 1 }}>
+                    <Typography
+                      variant="overline"
+                      sx={{
+                        fontSize: '0.625rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.1em',
+                        color: isDarkMode ? 'rgba(255, 255, 255, 0.5)' : '#9ca3af',
+                        display: 'block',
+                        mb: 0.5,
+                      }}
+                    >
+                      {section.title}
+                    </Typography>
+                    <Box
+                      sx={{
+                        width: 20,
+                        height: 1.5,
+                        borderRadius: '1px',
+                        background: isDarkMode
+                          ? 'linear-gradient(90deg, #0075ff, rgba(33, 212, 253, 0.3))'
+                          : 'linear-gradient(90deg, #0075ff, rgba(0, 117, 255, 0.2))',
+                      }}
+                    />
+                  </Box>
 
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                     {visibleItems.map((item) => (
@@ -617,44 +676,53 @@ const Layout: React.FC = () => {
                             {item.label}
                           </Typography>
                           {item.subItems && (
-                            expandedMenus.includes(item.label) ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />
+                            <Box sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              transition: 'transform 0.2s ease',
+                              transform: expandedMenus.includes(item.label) ? 'rotate(180deg)' : 'rotate(0deg)',
+                            }}>
+                              <ExpandMoreIcon fontSize="small" />
+                            </Box>
                           )}
                         </Box>
 
-                        {/* SubItems móvil */}
-                        {item.subItems && expandedMenus.includes(item.label) && (
-                          <Box sx={{ pl: 1.5, mt: 0.25 }}>
-                            {item.subItems
-                              .filter(subItem => !subItem.roles || hasAnyRole(...subItem.roles))
-                              .map((subItem) => (
-                                <Box
-                                  key={`mobile-${subItem.path}`}
-                                  onClick={() => subItem.path && handleMobileNavigation(subItem.path)}
-                                  sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 1.5,
-                                    px: 1.5,
-                                    py: 1,
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    transition: 'background-color 0.15s ease',
-                                    color: isActive(subItem.path) ? '#21d4fd' : (isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280'),
-                                    bgcolor: isActive(subItem.path) ? (isDarkMode ? 'rgba(0, 117, 255, 0.15)' : '#eff6ff') : 'transparent',
-                                    '&:hover': {
-                                      bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.08)' : '#f9fafb',
-                                    }
-                                  }}
-                                >
-                                  <Box sx={{ display: 'flex', alignItems: 'center', fontSize: 18 }}>
-                                    {subItem.icon}
+                        {/* SubItems móvil - Animacion Collapse */}
+                        {item.subItems && (
+                          <Collapse in={expandedMenus.includes(item.label)} timeout={200} unmountOnExit>
+                            <Box sx={{ pl: 1.5, mt: 0.25 }}>
+                              {item.subItems
+                                .filter(subItem => !subItem.roles || hasAnyRole(...subItem.roles))
+                                .map((subItem) => (
+                                  <Box
+                                    key={`mobile-${subItem.path}`}
+                                    onClick={() => subItem.path && handleMobileNavigation(subItem.path)}
+                                    sx={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 1.5,
+                                      px: 1.5,
+                                      py: 1,
+                                      borderRadius: '8px',
+                                      cursor: 'pointer',
+                                      transition: 'background-color 0.15s ease',
+                                      color: isActive(subItem.path) ? '#21d4fd' : (isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280'),
+                                      bgcolor: isActive(subItem.path) ? (isDarkMode ? 'rgba(0, 117, 255, 0.15)' : '#eff6ff') : 'transparent',
+                                      '&:hover': {
+                                        bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.08)' : '#f9fafb',
+                                      }
+                                    }}
+                                  >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', fontSize: 18 }}>
+                                      {subItem.icon}
+                                    </Box>
+                                    <Typography variant="body2" sx={{ fontWeight: isActive(subItem.path) ? 600 : 500, fontSize: '0.8125rem' }}>
+                                      {subItem.label}
+                                    </Typography>
                                   </Box>
-                                  <Typography variant="body2" sx={{ fontWeight: isActive(subItem.path) ? 600 : 500, fontSize: '0.8125rem' }}>
-                                    {subItem.label}
-                                  </Typography>
-                                </Box>
-                              ))}
-                          </Box>
+                                ))}
+                            </Box>
+                          </Collapse>
                         )}
                       </Box>
                     ))}
@@ -680,17 +748,31 @@ const Layout: React.FC = () => {
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.1)' : '#f3f4f6' }
               }}
             >
-              <Avatar
-                sx={{
-                  width: 36,
-                  height: 36,
-                  background: 'linear-gradient(135deg, #0075ff 0%, #21d4fd 100%)',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                }}
-              >
-                {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
-              </Avatar>
+              <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                <Avatar
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    background: 'linear-gradient(135deg, #0075ff 0%, #21d4fd 100%)',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
+                </Avatar>
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    bgcolor: '#10b981',
+                    border: `2px solid ${isDarkMode ? 'rgba(6, 11, 40, 0.98)' : '#ffffff'}`,
+                  }}
+                />
+              </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography
                   variant="body2"
@@ -705,9 +787,29 @@ const Layout: React.FC = () => {
                 >
                   {user?.first_name} {user?.last_name}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.75rem', color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
-                  {user?.roles?.[0] || 'Usuario'}
-                </Typography>
+                <Box
+                  sx={{
+                    display: 'inline-flex',
+                    px: 1,
+                    py: 0.125,
+                    borderRadius: '6px',
+                    bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#eff6ff',
+                    border: isDarkMode ? '1px solid rgba(0, 117, 255, 0.2)' : '1px solid #dbeafe',
+                    mt: 0.25,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: '0.65rem',
+                      fontWeight: 600,
+                      color: isDarkMode ? '#21d4fd' : '#0075ff',
+                      textTransform: 'capitalize',
+                    }}
+                  >
+                    {(user?.roles?.[0] || 'Usuario').replace(/_/g, ' ')}
+                  </Typography>
+                </Box>
               </Box>
             </Box>
           </Box>
@@ -765,16 +867,27 @@ const Layout: React.FC = () => {
                 display: { xs: 'none', sm: 'block' },
                 maxWidth: { sm: 200, md: 280 },
                 flex: { sm: 1, md: 'none' },
+                transition: 'max-width 0.3s ease',
+                '&:focus-within': {
+                  maxWidth: { sm: 240, md: 320 },
+                },
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '12px',
                   bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f9fafb',
                   height: '40px',
                   fontSize: '0.875rem',
+                  transition: 'box-shadow 0.2s ease',
                   '& fieldset': {
-                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#e5e7eb'
+                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#e5e7eb',
+                    transition: 'border-color 0.2s ease',
                   },
                   '&:hover fieldset': {
                     borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : '#d1d5db'
+                  },
+                  '&.Mui-focused': {
+                    boxShadow: isDarkMode
+                      ? '0 0 0 3px rgba(0, 117, 255, 0.15)'
+                      : '0 0 0 3px rgba(0, 117, 255, 0.08)',
                   },
                   '&.Mui-focused fieldset': {
                     borderColor: '#0075ff',
@@ -792,7 +905,11 @@ const Layout: React.FC = () => {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : '#9ca3af', fontSize: 20 }} />
+                    <SearchIcon sx={{
+                      color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : '#9ca3af',
+                      fontSize: 20,
+                      transition: 'color 0.2s ease',
+                    }} />
                   </InputAdornment>
                 )
               }}
@@ -816,76 +933,96 @@ const Layout: React.FC = () => {
 
           {/* Right: Controls - RESPONSIVE */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1, md: 2 } }}>
-            {/* Dark/Light Mode Toggle - Compacto en móvil */}
+            {/* Theme Toggle - Pill Premium (desktop) */}
             <Box
+              onClick={toggleTheme}
+              role="switch"
+              aria-checked={isDarkMode}
+              aria-label={`Cambiar a modo ${isDarkMode ? 'claro' : 'oscuro'}`}
+              tabIndex={0}
+              onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTheme(); } }}
               sx={{
-                display: 'flex',
+                width: 52,
+                height: 28,
+                borderRadius: '14px',
+                cursor: 'pointer',
+                position: 'relative',
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)'
+                  : 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                border: isDarkMode
+                  ? '1px solid rgba(33, 212, 253, 0.3)'
+                  : '1px solid rgba(245, 158, 11, 0.4)',
+                transition: 'background 0.4s ease, border-color 0.4s ease, box-shadow 0.3s ease',
+                display: { xs: 'none', sm: 'flex' },
                 alignItems: 'center',
-                gap: { xs: 0.5, sm: 1 },
-                px: { xs: 1, sm: 1.5 },
-                py: 0.5,
-                borderRadius: '10px',
-                bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f3f4f6'
-              }}
-            >
-              {/* Iconos solo visibles desde sm */}
-              <LightModeIcon sx={{ fontSize: 16, color: isDarkMode ? '#6b7280' : '#f59e0b', display: { xs: 'none', sm: 'block' } }} aria-hidden="true" />
-              <Switch
-                checked={isDarkMode}
-                onChange={toggleTheme}
-                size="small"
-                inputProps={{ 'aria-label': `Cambiar a modo ${isDarkMode ? 'claro' : 'oscuro'}` }}
-                sx={{
-                  width: 40,
-                  height: 20,
-                  padding: 0,
-                  '& .MuiSwitch-switchBase': {
-                    padding: '2px',
-                    '&.Mui-checked': {
-                      transform: 'translateX(20px)',
-                      color: '#fff',
-                      '& + .MuiSwitch-track': {
-                        bgcolor: '#0075ff',
-                        opacity: 1,
-                      }
-                    }
-                  },
-                  '& .MuiSwitch-thumb': {
-                    width: 16,
-                    height: 16
-                  },
-                  '& .MuiSwitch-track': {
-                    borderRadius: 10,
-                    bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : '#d1d5db',
-                    opacity: 1
-                  }
-                }}
-              />
-              <DarkModeIcon sx={{ fontSize: 16, color: isDarkMode ? '#21d4fd' : '#6b7280', display: { xs: 'none', sm: 'block' } }} aria-hidden="true" />
-            </Box>
-
-            {/* Divider - Oculto en móvil */}
-            <Box sx={{ width: '1px', height: '24px', bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb', display: { xs: 'none', sm: 'block' } }} />
-
-            {/* Notifications - Siempre visible */}
-            <IconButton
-              onClick={() => navigate('/alerts')}
-              aria-label="Alertas y notificaciones"
-              title="Alertas"
-              sx={{
-                color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
-                p: { xs: 0.75, sm: 1 },
-                transition: 'background-color 0.15s ease, color 0.15s ease',
+                p: '2px',
+                flexShrink: 0,
                 '&:hover': {
-                  bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#f3f4f6',
-                  color: isDarkMode ? '#21d4fd' : '#0075ff',
-                }
+                  borderColor: isDarkMode ? 'rgba(33, 212, 253, 0.5)' : 'rgba(245, 158, 11, 0.6)',
+                  boxShadow: isDarkMode
+                    ? '0 0 8px rgba(33, 212, 253, 0.2)'
+                    : '0 0 8px rgba(245, 158, 11, 0.2)',
+                },
+                '&:focus-visible': {
+                  outline: `2px solid ${isDarkMode ? '#21d4fd' : '#f59e0b'}`,
+                  outlineOffset: '2px',
+                },
               }}
             >
-              <NotificationsIcon sx={{ fontSize: { xs: 20, sm: 22 } }} />
+              <Box
+                sx={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  bgcolor: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transform: isDarkMode ? 'translateX(24px)' : 'translateX(0px)',
+                  transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: isDarkMode
+                    ? '0 1px 4px rgba(0,0,0,0.3)'
+                    : '0 1px 4px rgba(245, 158, 11, 0.3)',
+                }}
+              >
+                {isDarkMode ? (
+                  <DarkModeIcon sx={{ fontSize: 14, color: '#1e3a5f' }} />
+                ) : (
+                  <LightModeIcon sx={{ fontSize: 14, color: '#f59e0b' }} />
+                )}
+              </Box>
+            </Box>
+            {/* Theme Toggle - Mobile (icon only) */}
+            <IconButton
+              onClick={toggleTheme}
+              aria-label={`Cambiar a modo ${isDarkMode ? 'claro' : 'oscuro'}`}
+              sx={{
+                display: { xs: 'flex', sm: 'none' },
+                color: isDarkMode ? '#21d4fd' : '#f59e0b',
+                p: 0.75,
+              }}
+            >
+              {isDarkMode ? <DarkModeIcon sx={{ fontSize: 20 }} /> : <LightModeIcon sx={{ fontSize: 20 }} />}
             </IconButton>
 
-            {/* Email - Oculto en móvil pequeño */}
+            {/* Divider - Gradiente vertical */}
+            <Box
+              sx={{
+                width: '1px',
+                height: '24px',
+                background: isDarkMode
+                  ? 'linear-gradient(180deg, transparent, rgba(255,255,255,0.15), transparent)'
+                  : 'linear-gradient(180deg, transparent, #d1d5db, transparent)',
+                display: { xs: 'none', sm: 'block' },
+              }}
+              aria-hidden="true"
+            />
+
+            {/* Notifications - AlertBadge con conteo real */}
+            <AlertBadge />
+
+            {/* Email */}
             <IconButton
               aria-label="Mensajes"
               title="Mensajes"
@@ -893,6 +1030,8 @@ const Layout: React.FC = () => {
                 display: { xs: 'none', sm: 'flex' },
                 color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
                 p: 1,
+                bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+                borderRadius: '10px',
                 transition: 'background-color 0.15s ease, color 0.15s ease',
                 '&:hover': {
                   bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#f3f4f6',
@@ -903,10 +1042,20 @@ const Layout: React.FC = () => {
               <EmailIcon sx={{ fontSize: 22 }} />
             </IconButton>
 
-            {/* Divider - Oculto en móvil */}
-            <Box sx={{ width: '1px', height: '24px', bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb', display: { xs: 'none', sm: 'block' } }} aria-hidden="true" />
+            {/* Divider - Gradiente vertical */}
+            <Box
+              sx={{
+                width: '1px',
+                height: '24px',
+                background: isDarkMode
+                  ? 'linear-gradient(180deg, transparent, rgba(255,255,255,0.15), transparent)'
+                  : 'linear-gradient(180deg, transparent, #d1d5db, transparent)',
+                display: { xs: 'none', sm: 'block' },
+              }}
+              aria-hidden="true"
+            />
 
-            {/* Settings - Oculto en móvil (accesible desde drawer) */}
+            {/* Settings - Con rotacion al hover */}
             <IconButton
               onClick={() => navigate('/settings')}
               aria-label="Configuración"
@@ -915,10 +1064,18 @@ const Layout: React.FC = () => {
                 display: { xs: 'none', sm: 'flex' },
                 color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
                 p: 1,
+                bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+                borderRadius: '10px',
                 transition: 'background-color 0.15s ease, color 0.15s ease',
+                '& svg': {
+                  transition: 'transform 0.4s ease',
+                },
                 '&:hover': {
                   bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#f3f4f6',
                   color: isDarkMode ? '#21d4fd' : '#0075ff',
+                  '& svg': {
+                    transform: 'rotate(90deg)',
+                  },
                 }
               }}
             >

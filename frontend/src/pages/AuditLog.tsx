@@ -45,6 +45,7 @@ import {
   FilterList as FilterIcon
 } from '@mui/icons-material';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
+import EmptyState from '../components/common/EmptyState';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { auditService, AuditLogEntry, AuditStats } from '../services/auditService';
@@ -246,9 +247,9 @@ const AuditLog: React.FC = () => {
   const filteredLogs = logs.filter(log => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
-    return log.userName.toLowerCase().includes(searchLower) ||
-           log.entityType.toLowerCase().includes(searchLower) ||
-           log.action.toLowerCase().includes(searchLower);
+    return (log.userName || '').toLowerCase().includes(searchLower) ||
+           (log.entityType || '').toLowerCase().includes(searchLower) ||
+           (log.action || '').toLowerCase().includes(searchLower);
   });
 
   if (loading) {
@@ -486,14 +487,11 @@ const AuditLog: React.FC = () => {
         /* Vista de Cards para móvil */
         <Box>
           {filteredLogs.length === 0 ? (
-            <Paper sx={{
-              p: 4,
-              textAlign: 'center',
-              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff'
-            }}>
-              <HistoryIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-              <Typography color="text.secondary">No hay registros</Typography>
-            </Paper>
+            <EmptyState
+              icon={<HistoryIcon />}
+              title="No hay registros de auditoría"
+              subtitle="Los registros aparecerán aquí cuando se realicen acciones"
+            />
           ) : (
             <Stack spacing={1.5}>
               {filteredLogs.map((log) => (
@@ -605,10 +603,12 @@ const AuditLog: React.FC = () => {
             <TableBody>
               {filteredLogs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No se encontraron registros de auditoría
-                    </Typography>
+                  <TableCell colSpan={7} align="center" sx={{ py: 0 }}>
+                    <EmptyState
+                      icon={<HistoryIcon />}
+                      title="No hay registros de auditoría"
+                      subtitle="Los registros aparecerán aquí cuando se realicen acciones"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

@@ -28,6 +28,7 @@ const lightTheme = createTheme({
       main: '#10b981',
       light: '#34d399',
       dark: '#059669',
+      contrastText: '#ffffff',
     },
     error: {
       main: '#dc2626',
@@ -106,6 +107,17 @@ const lightTheme = createTheme({
     borderRadius: 16,
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        '@media (prefers-reduced-motion: reduce)': {
+          '*, *::before, *::after': {
+            animationDuration: '0.01ms !important',
+            animationIterationCount: '1 !important',
+            transitionDuration: '0.01ms !important',
+          },
+        },
+      },
+    },
     MuiButton: {
       styleOverrides: {
         root: {
@@ -125,7 +137,7 @@ const lightTheme = createTheme({
           borderWidth: '1.5px',
           '&:hover': {
             borderWidth: '1.5px',
-            backgroundColor: 'rgba(139, 92, 246, 0.04)',
+            backgroundColor: 'rgba(139, 92, 246, 0.06)',
           },
         },
       },
@@ -203,6 +215,28 @@ const lightTheme = createTheme({
           backgroundColor: '#f3f4f6',
           '&:hover': {
             backgroundColor: '#e5e7eb',
+          },
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          transition: 'box-shadow 0.15s ease',
+        },
+      },
+    },
+    MuiTableRow: {
+      styleOverrides: {
+        root: {
+          transition: 'background-color 0.15s ease',
+          '&:hover': {
+            backgroundColor: 'rgba(0, 117, 255, 0.04)',
+          },
+          '&:not(.MuiTableRow-head):hover': {
+            '& .MuiTableCell-root:first-of-type': {
+              boxShadow: 'inset 3px 0 0 0 #8b5cf6',
+            },
           },
         },
       },
