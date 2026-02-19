@@ -134,8 +134,10 @@ export interface StyledKPIProps {
   subtitle?: string;
   /** Color del icono y valor (hex color) */
   color: string;
-  /** Elemento adicional (ej: chip con tendencia) */
+  /** Elemento adicional debajo del subtitle (ej: barra de progreso) */
   extra?: React.ReactNode;
+  /** Acción en esquina superior derecha (ej: chip de moneda) */
+  action?: React.ReactNode;
   /** Índice para animación staggered (0, 1, 2...) */
   index?: number;
 }
@@ -147,6 +149,7 @@ export const StyledKPI: React.FC<StyledKPIProps> = ({
   subtitle,
   color,
   extra,
+  action,
   index = 0,
 }) => {
   const theme = useTheme();
@@ -156,6 +159,8 @@ export const StyledKPI: React.FC<StyledKPIProps> = ({
     <KPIPaper
       elevation={0}
       sx={{
+        position: 'relative',
+        height: '100%',
         '@keyframes kpiSlideIn': {
           from: { opacity: 0, transform: 'translateY(12px)' },
           to: { opacity: 1, transform: 'translateY(0)' },
@@ -163,6 +168,11 @@ export const StyledKPI: React.FC<StyledKPIProps> = ({
         animation: `kpiSlideIn 0.4s ease-out ${index * 0.08}s both`,
       }}
     >
+      {action && (
+        <Box sx={{ position: 'absolute', top: { xs: 8, sm: 10, md: 12 }, right: { xs: 8, sm: 10, md: 12 } }}>
+          {action}
+        </Box>
+      )}
       <IconContainer iconColor={color}>
         {icon}
       </IconContainer>
@@ -171,11 +181,9 @@ export const StyledKPI: React.FC<StyledKPIProps> = ({
           variant="body2"
           color="text.secondary"
           sx={{
-            // RESPONSIVE: Label escalable
             fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
             fontWeight: 500,
             mb: { xs: 0.25, sm: 0.5 },
-            // Truncar en móvil si es muy largo
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -187,12 +195,10 @@ export const StyledKPI: React.FC<StyledKPIProps> = ({
           variant="h3"
           sx={{
             fontWeight: 700,
-            // RESPONSIVE: Valor escalable
             fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' },
             lineHeight: 1.2,
             color: color,
             letterSpacing: '-0.02em',
-            // OPTIMIZADO: Text glow reducido
             textShadow: theme.palette.mode === 'dark'
               ? `0 0 8px ${color}30`
               : 'none',
@@ -205,9 +211,8 @@ export const StyledKPI: React.FC<StyledKPIProps> = ({
             variant="caption"
             color="text.secondary"
             sx={{
-              // RESPONSIVE: Subtitle escalable
               fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
-              display: { xs: isMobile ? 'none' : 'block', sm: 'block' }, // Ocultar en móvil muy pequeño
+              display: { xs: isMobile ? 'none' : 'block', sm: 'block' },
             }}
           >
             {subtitle}

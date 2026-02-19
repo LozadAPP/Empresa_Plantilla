@@ -617,6 +617,8 @@ const Dashboard: React.FC = () => {
         anchorEl={currencyMenuAnchor}
         open={Boolean(currencyMenuAnchor)}
         onClose={() => setCurrencyMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         PaperProps={{
           sx: {
             mt: 1,
@@ -724,7 +726,7 @@ const Dashboard: React.FC = () => {
           </Box>
         </Tooltip>
 
-        {/* KPI 6: Pagos Pendientes + Currency Switcher */}
+        {/* KPI 6: Pagos Pendientes + Currency Switcher (top-right) */}
         <Tooltip title={formatExactCurrency(kpiData.pendingPayments)} arrow placement="top">
           <Box sx={{ height: '100%' }}>
             <StyledKPI
@@ -734,15 +736,14 @@ const Dashboard: React.FC = () => {
               color="#f59e0b"
               subtitle="de rentas activas"
               index={5}
-              extra={
+              action={
                 <Chip
                   label={`${currencies[currency].symbol} ${currency} ▾`}
                   size="small"
-                  onClick={(e) => setCurrencyMenuAnchor(e.currentTarget)}
+                  onClick={(e) => { e.stopPropagation(); setCurrencyMenuAnchor(e.currentTarget); }}
                   sx={{
-                    mt: 0.5,
-                    height: 24,
-                    fontSize: '0.7rem',
+                    height: 22,
+                    fontSize: '0.65rem',
                     fontWeight: 700,
                     cursor: 'pointer',
                     bgcolor: 'rgba(245, 158, 11, 0.12)',
