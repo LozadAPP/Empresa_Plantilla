@@ -49,6 +49,7 @@ import {
   Close as CloseIcon,
   DirectionsCar as DirectionsCarIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { dashboardService } from '../services/dashboardService';
 import { inventoryService } from '../services/inventoryService';
@@ -88,6 +89,7 @@ ChartJS.register(
 const Dashboard: React.FC = () => {
   const { isDarkMode, text, chart, tooltip, background, border, purple, status } = useThemeStyles();
   const { enqueueSnackbar } = useSnackbar();
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -1220,6 +1222,45 @@ const Dashboard: React.FC = () => {
               )}
             </Box>
 
+            {/* Próximos 15 días */}
+            {maintenanceData?.upcoming && maintenanceData.upcoming.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" fontWeight={700} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: isDarkMode ? '#ffb547' : '#92400e' }}>
+                  <WarningIcon sx={{ fontSize: 18 }} />
+                  Próximos 15 días
+                </Typography>
+                {maintenanceData.upcoming.map((item: any) => (
+                  <Paper
+                    key={item.id}
+                    sx={{
+                      p: 2, mb: 2, borderLeft: 4, borderColor: '#f59e0b',
+                      background: isDarkMode ? 'rgba(245, 158, 11, 0.05)' : alpha('#f59e0b', 0.03),
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                      <Box>
+                        <Typography variant="body2" fontWeight={700}>{item.vehicleName}</Typography>
+                        <Typography variant="caption" color="text.secondary">{item.licensePlate}</Typography>
+                      </Box>
+                      <Chip
+                        label={`En ${item.daysUntil} días`}
+                        size="small"
+                        sx={{
+                          fontSize: '0.7rem', fontWeight: 600,
+                          bgcolor: isDarkMode ? 'rgba(255, 181, 71, 0.2)' : 'rgba(180, 83, 9, 0.12)',
+                          color: isDarkMode ? '#ffb547' : '#92400e',
+                          border: `1px solid ${isDarkMode ? 'rgba(255, 181, 71, 0.4)' : 'rgba(180, 83, 9, 0.3)'}`,
+                        }}
+                      />
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Programado: {new Date(item.scheduledDate).toLocaleDateString('es-ES')}
+                    </Typography>
+                  </Paper>
+                ))}
+              </Box>
+            )}
+
             {/* Fade overlay — desvanece el contenido cortado */}
             <Box
               sx={{
@@ -1273,7 +1314,29 @@ const Dashboard: React.FC = () => {
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: { xs: 2, sm: 3 } }}>
 
         {/* Recent Rentals - ACTUALIZADO con datos reales (Fase 2.3) */}
-        <StyledSection title="Últimas Rentas">
+        <StyledSection
+          title="Últimas Rentas"
+          action={
+            <Box
+              component="button"
+              onClick={() => navigate('/rentals')}
+              sx={{
+                py: 0.5, px: 1.5,
+                borderRadius: '8px',
+                border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'}`,
+                bgcolor: 'transparent',
+                color: isDarkMode ? '#a78bfa' : '#8b5cf6',
+                cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)',
+                },
+              }}
+            >
+              Ver rentas →
+            </Box>
+          }
+        >
           {isMobile ? (
             // Mobile Cards View
             <Stack spacing={1.5} sx={{ maxHeight: 280, overflowY: 'auto' }}>
@@ -1309,7 +1372,7 @@ const Dashboard: React.FC = () => {
             </Stack>
           ) : (
             // Desktop Table View
-            <TableContainer sx={{ maxHeight: 320, overflow: 'hidden', position: 'relative' }}>
+            <TableContainer sx={{ maxHeight: 320 }}>
               <Table size="small" sx={{ tableLayout: 'fixed' }}>
                 <TableHead>
                   <TableRow>
@@ -1356,21 +1419,6 @@ const Dashboard: React.FC = () => {
                   )}
                 </TableBody>
               </Table>
-              {/* Fade overlay */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  height: 50,
-                  background: isDarkMode
-                    ? 'linear-gradient(to bottom, transparent, rgba(6, 11, 40, 0.95))'
-                    : 'linear-gradient(to bottom, transparent, #ffffff)',
-                  pointerEvents: 'none',
-                  zIndex: 1,
-                }}
-              />
             </TableContainer>
           )}
         </StyledSection>
@@ -1419,20 +1467,20 @@ const Dashboard: React.FC = () => {
         {/* Critical Alerts - ACTUALIZADO con datos reales (Fase 2.3) */}
         <StyledSection
           title="Alertas Críticas"
-          action={<Chip label={alerts.filter((a: any) => a.severity === 'high' || a.severity === 'critical').length} color="error" size="small" />}
+          action={<Chip label={alerts.filter((a: any) => a.severity === 'warning' || a.severity === 'critical').length} color="error" size="small" />}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             {alerts.length > 0 ? (
               alerts.map((alert: any) => {
                 const alertColor =
                   alert.severity === 'critical' ? '#ef4444' :
-                  alert.severity === 'high' ? '#f59e0b' :
-                  alert.severity === 'medium' ? '#3b82f6' :
+                  alert.severity === 'warning' ? '#f59e0b' :
+                  alert.severity === 'info' ? '#3b82f6' :
                   '#6b7280';
 
                 const alertIcon =
                   alert.severity === 'critical' ? <ErrorIcon /> :
-                  alert.severity === 'high' ? <WarningIcon /> :
+                  alert.severity === 'warning' ? <WarningIcon /> :
                   <AssessmentIcon />;
 
                 return (
