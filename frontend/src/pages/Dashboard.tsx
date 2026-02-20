@@ -119,9 +119,6 @@ const Dashboard: React.FC = () => {
   const { currency, currencies, setCurrency, formatCompactCurrency, formatExactCurrency, formatChartValue } = useCurrency();
   const [currencyMenuAnchor, setCurrencyMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // Límite de tarjetas visibles antes de "Ver más"
-  const VISIBLE_CARDS = 3;
-
   // Filtrar items por categoría seleccionada
   const filteredInventoryItems = useMemo(() => {
     if (selectedCategory === 'all') return inventoryItems;
@@ -967,14 +964,14 @@ const Dashboard: React.FC = () => {
               <Box
                 sx={{
                   flex: 1,
-                  overflowY: 'hidden',
+                  overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 1.5,
                   position: 'relative',
                 }}
               >
-              {filteredInventoryItems.slice(0, VISIBLE_CARDS).map((item) => {
+              {filteredInventoryItems.map((item) => {
                 // Usar color por defecto si categoryColor no está definido
                 const itemColor = item.categoryColor || '#8b5cf6';
                 const itemIcon = item.categoryIcon || '🚗';
@@ -1089,8 +1086,8 @@ const Dashboard: React.FC = () => {
                 </Paper>
                 );
               })}
-              {/* Fade overlay cuando hay más items */}
-              {filteredInventoryItems.length > VISIBLE_CARDS && (
+              {/* Fade overlay — desvanece el contenido cortado */}
+              {filteredInventoryItems.length > 0 && (
                 <Box
                   sx={{
                     position: 'absolute',
@@ -1108,8 +1105,8 @@ const Dashboard: React.FC = () => {
               )}
               </Box>
 
-              {/* Botón Ver más para inventario — abre Dialog */}
-              {filteredInventoryItems.length > VISIBLE_CARDS && (
+              {/* Botón Ver todos — abre Dialog */}
+              {filteredInventoryItems.length > 0 && (
                 <Box
                   component="button"
                   onClick={() => setInventoryDialogOpen(true)}
@@ -1171,7 +1168,7 @@ const Dashboard: React.FC = () => {
             />
           }
         >
-          <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', maxHeight: 350, overflowY: 'hidden' }}>
             {/* Mantenimiento Vencido */}
             <Box sx={{ mb: 0 }}>
               <Typography variant="body2" fontWeight={700} color="error.main" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1179,7 +1176,7 @@ const Dashboard: React.FC = () => {
                 Mantenimiento Vencido
               </Typography>
               {maintenanceData?.overdue && maintenanceData.overdue.length > 0 ? (
-                maintenanceData.overdue.slice(0, VISIBLE_CARDS).map((item: any) => (
+                maintenanceData.overdue.map((item: any) => (
                   <Paper
                     key={item.id}
                     sx={{
@@ -1223,22 +1220,22 @@ const Dashboard: React.FC = () => {
               )}
             </Box>
 
-            {/* Fade overlay para overdue colapsado */}
-            {maintenanceData?.overdue?.length > VISIBLE_CARDS && (
-              <Box
-                sx={{
-                  height: 60,
-                  mt: -6,
-                  mb: 1,
-                  background: isDarkMode
-                    ? 'linear-gradient(to bottom, transparent, rgba(6, 11, 40, 0.95))'
-                    : 'linear-gradient(to bottom, transparent, #ffffff)',
-                  position: 'relative',
-                  zIndex: 1,
-                  pointerEvents: 'none',
-                }}
-              />
-            )}
+            {/* Fade overlay — desvanece el contenido cortado */}
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 80,
+                background: isDarkMode
+                  ? 'linear-gradient(to bottom, transparent, rgba(6, 11, 40, 0.95))'
+                  : 'linear-gradient(to bottom, transparent, #ffffff)',
+                pointerEvents: 'none',
+                zIndex: 1,
+              }}
+            />
+          </Box>
 
             {/* Botón Ver información — abre Dialog */}
             <Box
@@ -1269,7 +1266,6 @@ const Dashboard: React.FC = () => {
             >
               {`Ver información (${(maintenanceData?.overdue?.length || 0) + (maintenanceData?.upcoming?.length || 0)})`}
             </Box>
-          </Box>
         </StyledSection>
       </Box>
 
@@ -1313,37 +1309,38 @@ const Dashboard: React.FC = () => {
             </Stack>
           ) : (
             // Desktop Table View
-            <TableContainer sx={{ maxHeight: 280 }}>
-              <Table size="small">
+            <TableContainer sx={{ maxHeight: 320, overflow: 'hidden', position: 'relative' }}>
+              <Table size="small" sx={{ tableLayout: 'fixed' }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell><strong>Código</strong></TableCell>
-                    <TableCell><strong>Cliente</strong></TableCell>
-                    <TableCell><strong>Estado</strong></TableCell>
+                    <TableCell sx={{ width: '25%', whiteSpace: 'nowrap' }}><strong>Código</strong></TableCell>
+                    <TableCell sx={{ width: '45%' }}><strong>Cliente</strong></TableCell>
+                    <TableCell sx={{ width: '30%' }}><strong>Estado</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {recentRentals.length > 0 ? (
                     recentRentals.map((rental) => (
                       <TableRow key={rental.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="600">
+                        <TableCell sx={{ whiteSpace: 'nowrap', py: 1.5 }}>
+                          <Typography variant="body2" fontWeight="600" fontSize="0.8rem">
                             RNT-{rental.id}
                           </Typography>
                         </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
+                        <TableCell sx={{ py: 1.5 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {rental.customerName}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                             {rental.vehicleName}
                           </Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ py: 1.5 }}>
                           <Chip
                             label={rental.status === 'active' ? 'Activa' : 'Completada'}
                             size="small"
                             color={rental.status === 'active' ? 'success' : 'default'}
+                            sx={{ fontSize: '0.7rem', height: 24 }}
                           />
                         </TableCell>
                       </TableRow>
@@ -1359,6 +1356,21 @@ const Dashboard: React.FC = () => {
                   )}
                 </TableBody>
               </Table>
+              {/* Fade overlay */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 50,
+                  background: isDarkMode
+                    ? 'linear-gradient(to bottom, transparent, rgba(6, 11, 40, 0.95))'
+                    : 'linear-gradient(to bottom, transparent, #ffffff)',
+                  pointerEvents: 'none',
+                  zIndex: 1,
+                }}
+              />
             </TableContainer>
           )}
         </StyledSection>
