@@ -27,12 +27,15 @@ const VehicleDetail = lazy(() => import('./pages/VehicleDetail'));
 const Customers = lazy(() => import('./pages/Customers'));
 const CustomerDetail = lazy(() => import('./pages/CustomerDetail'));
 
-// Lazy loaded pages - Calendario + Cotizaciones + Catálogo (Ventas)
+// Lazy loaded pages - Calendario + Cotizaciones + Catálogo + Prospectos (Ventas)
 const Calendar = lazy(() => import('./pages/Calendar'));
 const Catalog = lazy(() => import('./pages/Catalog'));
 const Quotes = lazy(() => import('./pages/Quotes'));
 const QuoteForm = lazy(() => import('./pages/QuoteForm'));
 const QuoteDetail = lazy(() => import('./pages/QuoteDetail'));
+const Leads = lazy(() => import('./pages/Leads'));
+const LeadForm = lazy(() => import('./pages/LeadForm'));
+const LeadDetail = lazy(() => import('./pages/LeadDetail'));
 
 // Lazy loaded pages - Gastos y Proveedores (Finanzas)
 const Expenses = lazy(() => import('./pages/Expenses'));
@@ -148,6 +151,12 @@ const App: React.FC = () => {
             <Route path="/quotes/new" element={<QuoteForm />} />
             <Route path="/quotes/:id" element={<QuoteDetail />} />
             <Route path="/quotes/:id/edit" element={<QuoteForm />} />
+
+            {/* CRM: Prospectos */}
+            <Route path="/leads" element={<Leads />} />
+            <Route path="/leads/new" element={<LeadForm />} />
+            <Route path="/leads/:id" element={<LeadDetail />} />
+            <Route path="/leads/:id/edit" element={<LeadForm />} />
 
             {/* CHAT 2: Flujo Operacional */}
             <Route path="/rentals" element={<Rentals />} />

@@ -172,6 +172,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     socket.on('expense:created', handleEvent('expense:created'));
     socket.on('expense:approved', handleEvent('expense:approved'));
     socket.on('supplier:created', handleEvent('supplier:created'));
+    socket.on('lead:created', handleEvent('lead:created'));
+    socket.on('lead:status_changed', handleEvent('lead:status_changed'));
+    socket.on('lead:converted', handleEvent('lead:converted'));
 
     // Alert events also refresh the unread count
     socket.on('alert', (payload: any) => {

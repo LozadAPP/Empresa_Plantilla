@@ -171,5 +171,6 @@ router.get('/recent-rentals', dashboardController.getRecentRentals);
 router.get('/critical-alerts', dashboardController.getCriticalAlerts);
 router.get('/performance-data', dashboardController.getPerformanceData);
 router.get('/maintenance-schedule', dashboardController.getMaintenanceSchedule);
+router.get('/crm-summary', dashboardController.getCRMSummary);
 
 export default router;

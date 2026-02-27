@@ -27,6 +27,7 @@ import {
   RequestQuote as QuoteIcon,
   Shield as VehicleAlertIcon,
   AssignmentReturn as ReturnIcon,
+  PersonSearch as LeadFollowUpIcon,
   Person as PersonIcon,
   CalendarToday as DateIcon,
   AttachMoney as MoneyIcon,
@@ -44,6 +45,7 @@ const TYPE_ICONS: Record<CalendarEventType, React.ReactElement> = {
   quote: <QuoteIcon />,
   vehicle_alert: <VehicleAlertIcon />,
   return: <ReturnIcon />,
+  lead_follow_up: <LeadFollowUpIcon />,
 };
 
 // ── Status labels (Spanish) ──────────────────────────

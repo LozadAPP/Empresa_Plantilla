@@ -1,5 +1,5 @@
 /**
- * Tipos para el módulo de Facturas (CHAT 2)
+ * Tipos para el módulo de Facturas (CHAT 2) + CFDI 4.0 (Sprint 3)
  */
 
 export enum InvoiceStatus {
@@ -8,6 +8,24 @@ export enum InvoiceStatus {
   PAID = 'paid',
   OVERDUE = 'overdue',
   CANCELLED = 'cancelled'
+}
+
+export type CfdiStatus = 'pending_stamp' | 'stamped' | 'cancelled' | 'error';
+
+export interface InvoiceLineItem {
+  id: number;
+  invoiceId: number;
+  description: string;
+  quantity: number;
+  unitCode: string;
+  unitPrice: number;
+  discount: number;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  satProductCode: string;
+  sortOrder: number;
 }
 
 export interface Invoice {
@@ -27,6 +45,23 @@ export interface Invoice {
   notes?: string;
   pdf_url?: string;
   created_by?: number;
+  // CFDI fields
+  uuid?: string;
+  serie?: string;
+  folio?: number;
+  cfdi_version?: string;
+  cfdi_status?: CfdiStatus;
+  uso_cfdi?: string;
+  payment_form_code?: string;
+  payment_method_code?: string;
+  currency_code?: string;
+  exchange_rate?: number;
+  stamp_date?: Date | string;
+  cancel_date?: Date | string;
+  cancel_reason?: string;
+  xml_url?: string;
+  qr_data?: string;
+  lineItems?: InvoiceLineItem[];
   created_at?: Date | string;
   updated_at?: Date | string;
   // Relaciones
@@ -37,6 +72,9 @@ export interface Invoice {
     email: string;
     phone?: string;
     address?: string;
+    rfc?: string;
+    regimen_fiscal?: string;
+    zip_code?: string;
   };
   rental?: {
     id: number;
@@ -64,6 +102,24 @@ export interface CreateInvoiceDTO {
   customer_id: number;
   due_days?: number;
   notes?: string;
+  // CFDI fields
+  uso_cfdi?: string;
+  payment_form_code?: string;
+  payment_method_code?: string;
+  currency_code?: string;
+  exchange_rate?: number;
+  line_items?: Array<{
+    description: string;
+    quantity: number;
+    unit_code?: string;
+    unit_price: number;
+    discount?: number;
+    subtotal: number;
+    tax_rate?: number;
+    tax_amount: number;
+    total: number;
+    sat_product_code?: string;
+  }>;
 }
 
 export interface InvoiceFilters {
@@ -71,6 +127,7 @@ export interface InvoiceFilters {
   rental_id?: number;
   location_id?: number;
   status?: InvoiceStatus;
+  cfdi_status?: CfdiStatus;
   search?: string;
   startDate?: string;
   endDate?: string;

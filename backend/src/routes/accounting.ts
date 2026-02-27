@@ -10,8 +10,10 @@ import {
   createTransaction,
   approveTransaction,
   cancelTransaction,
+  migrateToDoubleEntry,
   getBalanceSheet,
   getIncomeStatement,
+  getTrialBalance,
 } from '../controllers/accountingController';
 
 const router = Router();
@@ -490,6 +492,13 @@ router.post('/transactions/:id/approve', getTransactionByIdValidation, approveTr
 router.post('/transactions/:id/cancel', cancelTransactionValidation, cancelTransaction);
 
 // ====================================
+// MIGRATION ROUTES (one-time, admin only)
+// ====================================
+
+// POST /api/accounting/migrate-double-entry - Migrate existing transactions to double-entry
+router.post('/migrate-double-entry', migrateToDoubleEntry);
+
+// ====================================
 // REPORTS ROUTES
 // ====================================
 
@@ -498,5 +507,13 @@ router.get('/reports/balance-sheet', getBalanceSheet);
 
 // GET /api/accounting/reports/income-statement - Get income statement
 router.get('/reports/income-statement', getIncomeStatementValidation, getIncomeStatement);
+
+// GET /api/accounting/reports/trial-balance - Get trial balance
+const getTrialBalanceValidation = [
+  query('asOfDate')
+    .optional()
+    .isISO8601().withMessage('La fecha debe ser una fecha válida'),
+];
+router.get('/reports/trial-balance', getTrialBalanceValidation, getTrialBalance);
 
 export default router;

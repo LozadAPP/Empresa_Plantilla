@@ -6,6 +6,7 @@ import Payment from '../models/Payment';
 import Return from '../models/Return';
 import Quote from '../models/Quote';
 import Expense from '../models/Expense';
+import Lead from '../models/Lead';
 import logger from '../config/logger';
 
 /**
@@ -264,6 +265,60 @@ export class WebSocketService {
       timestamp: new Date()
     });
     logger.debug(`[WEBSOCKET] Notificacion enviada: SUPPLIER_CREATED - ${supplier.supplierCode}`);
+  }
+
+  /**
+   * Notificar prospecto creado
+   */
+  static notifyLeadCreated(lead: Lead) {
+    if (!this.io) return;
+    this.io.emit('lead:created', {
+      type: 'LEAD_CREATED',
+      data: {
+        id: lead.id,
+        lead_code: lead.leadCode,
+        name: lead.name,
+        source: lead.source,
+      },
+      timestamp: new Date()
+    });
+    logger.debug(`[WEBSOCKET] Notificacion enviada: LEAD_CREATED - ${lead.leadCode}`);
+  }
+
+  /**
+   * Notificar cambio de status de prospecto
+   */
+  static notifyLeadStatusChanged(lead: Lead, newStatus: string) {
+    if (!this.io) return;
+    this.io.emit('lead:status_changed', {
+      type: 'LEAD_STATUS_CHANGED',
+      data: {
+        id: lead.id,
+        lead_code: lead.leadCode,
+        name: lead.name,
+        status: newStatus,
+      },
+      timestamp: new Date()
+    });
+    logger.debug(`[WEBSOCKET] Notificacion enviada: LEAD_STATUS_CHANGED - ${lead.leadCode} -> ${newStatus}`);
+  }
+
+  /**
+   * Notificar prospecto convertido a cliente
+   */
+  static notifyLeadConverted(lead: Lead, customerId: number) {
+    if (!this.io) return;
+    this.io.emit('lead:converted', {
+      type: 'LEAD_CONVERTED',
+      data: {
+        id: lead.id,
+        lead_code: lead.leadCode,
+        name: lead.name,
+        customer_id: customerId,
+      },
+      timestamp: new Date()
+    });
+    logger.debug(`[WEBSOCKET] Notificacion enviada: LEAD_CONVERTED - ${lead.leadCode} -> Cliente #${customerId}`);
   }
 
   /**

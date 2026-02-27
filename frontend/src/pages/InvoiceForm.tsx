@@ -28,8 +28,10 @@ import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { useThemeStyles } from '../hooks/useThemeStyles';
 import rentalService from '../services/rentalService';
 import invoiceService from '../services/invoiceService';
+import cfdiService from '../services/cfdiService';
 import { Rental } from '../types/rental';
 import { CreateInvoiceDTO } from '../types/invoice';
+import { SATCatalogs } from '../types/cfdi';
 import { getErrorMessage } from '../utils/formatters';
 import { useCurrency } from '../contexts/CurrencyContext';
 
@@ -44,17 +46,32 @@ const InvoiceForm: React.FC = () => {
   const [loadingRentals, setLoadingRentals] = useState(true);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
+  const [catalogs, setCatalogs] = useState<SATCatalogs | null>(null);
 
   const [formData, setFormData] = useState<CreateInvoiceDTO>({
     rental_id: 0,
     customer_id: 0,
     due_days: 7,
-    notes: ''
+    notes: '',
+    uso_cfdi: 'G03',
+    payment_form_code: '99',
+    payment_method_code: 'PUE',
+    currency_code: 'MXN',
   });
 
   useEffect(() => {
     loadRentals();
+    loadCatalogs();
   }, []);
+
+  const loadCatalogs = async () => {
+    try {
+      const response = await cfdiService.getCatalogs();
+      if (response.success) setCatalogs(response.data);
+    } catch {
+      // Non-blocking: catalogs are optional for form display
+    }
+  };
 
   const loadRentals = async () => {
     setLoadingRentals(true);
@@ -220,6 +237,67 @@ const InvoiceForm: React.FC = () => {
                     value={customerPhone}
                     InputProps={{ readOnly: true }}
                   />
+                </Grid>
+              </>
+            )}
+
+            {/* Datos Fiscales CFDI */}
+            {selectedRental && catalogs && (
+              <>
+                <Grid item xs={12}>
+                  <Divider sx={{ borderColor: themeStyles.border.subtle }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: themeStyles.text.secondary, px: 1 }}
+                    >
+                      Datos Fiscales (CFDI)
+                    </Typography>
+                  </Divider>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Uso CFDI</InputLabel>
+                    <Select
+                      value={formData.uso_cfdi || 'G03'}
+                      label="Uso CFDI"
+                      onChange={(e) => setFormData(prev => ({ ...prev, uso_cfdi: e.target.value }))}
+                    >
+                      {Object.entries(catalogs.usoCfdi).map(([code, label]) => (
+                        <MenuItem key={code} value={code}>{code} - {label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Forma de Pago</InputLabel>
+                    <Select
+                      value={formData.payment_form_code || '99'}
+                      label="Forma de Pago"
+                      onChange={(e) => setFormData(prev => ({ ...prev, payment_form_code: e.target.value }))}
+                    >
+                      {Object.entries(catalogs.formaPago).map(([code, label]) => (
+                        <MenuItem key={code} value={code}>{code} - {label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Método de Pago</InputLabel>
+                    <Select
+                      value={formData.payment_method_code || 'PUE'}
+                      label="Método de Pago"
+                      onChange={(e) => setFormData(prev => ({ ...prev, payment_method_code: e.target.value }))}
+                    >
+                      {Object.entries(catalogs.metodoPago).map(([code, label]) => (
+                        <MenuItem key={code} value={code}>{code} - {label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
               </>
             )}

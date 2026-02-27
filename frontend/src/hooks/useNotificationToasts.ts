@@ -93,6 +93,35 @@ export const useNotificationToasts = () => {
         break;
       }
 
+      case 'lead:created': {
+        message = `Nuevo prospecto ${data?.lead_code || ''} creado`;
+        variant = 'success';
+        break;
+      }
+
+      case 'lead:status_changed': {
+        const leadStatusLabels: Record<string, string> = {
+          contacted: 'contactado',
+          qualified: 'calificado',
+          proposal: 'en propuesta',
+          negotiation: 'en negociación',
+          won: 'ganado',
+          lost: 'perdido',
+        };
+        const leadLabel = leadStatusLabels[data?.status] || data?.status || '';
+        message = `Prospecto ${data?.lead_code || ''} ${leadLabel}`;
+        variant = data?.status === 'won' ? 'success'
+          : data?.status === 'lost' ? 'warning'
+          : 'info';
+        break;
+      }
+
+      case 'lead:converted': {
+        message = `Prospecto ${data?.lead_code || ''} convertido a cliente`;
+        variant = 'success';
+        break;
+      }
+
       case 'alert': {
         message = data?.title || 'Nueva alerta del sistema';
         const alertType = data?.type;

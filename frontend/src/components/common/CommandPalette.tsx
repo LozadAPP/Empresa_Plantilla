@@ -26,6 +26,7 @@ import {
   Storefront as CatalogIcon,
   Description as DocumentsIcon,
   RequestQuote as QuotesIcon,
+  PersonSearch as LeadsIcon,
   Add as AddIcon,
   DarkMode as ThemeIcon,
   Keyboard as ShortcutsIcon,
@@ -61,6 +62,7 @@ const CommandPalette: React.FC<Props> = ({ open, onClose, onOpenShortcuts }) => 
     { label: 'Dashboard', icon: <DashboardIcon sx={{ fontSize: 18 }} />, action: () => go('/dashboard') },
     { label: 'Calendario', icon: <CalendarIcon sx={{ fontSize: 18 }} />, action: () => go('/calendar') },
     { label: 'Catálogo', icon: <CatalogIcon sx={{ fontSize: 18 }} />, action: () => go('/catalog') },
+    { label: 'Prospectos', icon: <LeadsIcon sx={{ fontSize: 18 }} />, action: () => go('/leads'), roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor'] },
     { label: 'Cotizaciones', icon: <QuotesIcon sx={{ fontSize: 18 }} />, action: () => go('/quotes'), roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor'] },
     { label: 'Clientes', icon: <CustomersIcon sx={{ fontSize: 18 }} />, action: () => go('/customers'), roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor', 'jefe_finanzas', 'jefe_admin', 'cajero'] },
     { label: 'Rentas', icon: <RentalsIcon sx={{ fontSize: 18 }} />, action: () => go('/rentals'), roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor', 'jefe_inventarios', 'encargado_inventario', 'jefe_finanzas', 'jefe_admin'] },
@@ -83,6 +85,7 @@ const CommandPalette: React.FC<Props> = ({ open, onClose, onOpenShortcuts }) => 
   const actionCommands: CommandDef[] = [
     { label: 'Nueva Renta', icon: <AddIcon sx={{ fontSize: 18 }} />, action: () => go('/rentals/new'), roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor'] },
     { label: 'Nueva Cotización', icon: <AddIcon sx={{ fontSize: 18 }} />, action: () => go('/quotes/new'), roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor'] },
+    { label: 'Nuevo Prospecto', icon: <AddIcon sx={{ fontSize: 18 }} />, action: () => go('/leads/new'), roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor'] },
     { label: 'Nuevo Gasto', icon: <AddIcon sx={{ fontSize: 18 }} />, action: () => go('/expenses/new'), roles: ['admin', 'director_general', 'jefe_finanzas', 'jefe_admin', 'contador'] },
   ];
 

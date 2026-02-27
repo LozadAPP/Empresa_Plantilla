@@ -6,10 +6,12 @@ import { rentalService } from './rentalService';
 import { maintenanceService } from './maintenanceService';
 import { quoteService } from './quoteService';
 import { vehicleService } from './vehicleService';
+import leadService from './leadService';
 import { CalendarEvent, CalendarFilters, CALENDAR_COLORS } from '../types/calendar';
 import { Rental, RentalStatus } from '../types/rental';
 import { MaintenanceOrder } from '../types/maintenance';
 import { Quote } from '../types/quote';
+import { Lead } from '../types/lead';
 import { Vehicle } from '../types';
 import { format, addDays, subDays } from 'date-fns';
 
@@ -226,6 +228,40 @@ function transformReturns(rentals: Rental[]): CalendarEvent[] {
     });
 }
 
+// ── Transformer: Lead Follow-ups ─────────────────────────
+
+function transformLeadFollowUps(leads: Lead[]): CalendarEvent[] {
+  return leads
+    .filter((l) => l.nextFollowUp && l.status !== 'won' && l.status !== 'lost')
+    .map((l) => {
+      const color =
+        CALENDAR_COLORS.leadFollowUp[l.status as keyof typeof CALENDAR_COLORS.leadFollowUp] ||
+        CALENDAR_COLORS.leadFollowUp.new;
+
+      return {
+        id: `lead-fu-${l.id}`,
+        title: `📞 Seguimiento · ${l.name}${l.company ? ` (${l.company})` : ''}`,
+        start: String(l.nextFollowUp).split('T')[0],
+        allDay: true,
+        color,
+        textColor: '#ffffff',
+        borderColor: color,
+        type: 'lead_follow_up' as const,
+        entityId: l.id,
+        entityPath: `/leads/${l.id}`,
+        metadata: {
+          leadCode: l.leadCode,
+          name: l.name,
+          company: l.company,
+          status: l.status,
+          priority: l.priority,
+          estimatedValue: l.estimatedValue,
+          nextFollowUp: l.nextFollowUp,
+        },
+      };
+    });
+}
+
 // ── Main Service ──────────────────────────────────────────
 
 export const calendarService = {
@@ -288,6 +324,18 @@ export const calendarService = {
           .then((res) => {
             const vehicles = res.data || [];
             return transformVehicleAlerts(vehicles, rangeStart, rangeEnd);
+          }),
+      });
+    }
+
+    if (filters.leadFollowUp) {
+      promises.push({
+        key: 'leadFollowUps',
+        promise: leadService
+          .getAll({ limit: 500 })
+          .then((res) => {
+            const leads: Lead[] = res.data?.leads || [];
+            return transformLeadFollowUps(leads);
           }),
       });
     }

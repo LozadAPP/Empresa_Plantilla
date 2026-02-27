@@ -372,6 +372,28 @@ const CustomerDetail: React.FC = () => {
         <Grid item xs={12} md={6}>
           <Paper sx={paperSx}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ReceiptIcon sx={{ fontSize: 20, color: '#f59e0b' }} /> Datos Fiscales (CFDI)
+            </Typography>
+            <InfoRow label="RFC" value={customer.rfc} />
+            <InfoRow label="Régimen Fiscal" value={customer.regimen_fiscal} />
+            <InfoRow label="Email CFDI" value={
+              customer.cfdi_email ? (
+                <Typography component="a" href={`mailto:${customer.cfdi_email}`} variant="body2"
+                  sx={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 600, '&:hover': { textDecoration: 'underline' } }}>
+                  {customer.cfdi_email}
+                </Typography>
+              ) : 'N/A'
+            } />
+            <InfoRow label="Código Postal" value={customer.zip_code} />
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {/* ========== COMMERCIAL INFO ========== */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={paperSx}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
               <MoneyIcon sx={{ fontSize: 20, color: '#10b981' }} /> Información Comercial
             </Typography>
             <InfoRow label="Tipo de Cliente" value={

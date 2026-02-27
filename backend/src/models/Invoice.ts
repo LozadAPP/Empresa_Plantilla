@@ -9,6 +9,8 @@ export enum InvoiceStatus {
   CANCELLED = 'cancelled'
 }
 
+export type CfdiStatus = 'pending_stamp' | 'stamped' | 'cancelled' | 'error';
+
 interface InvoiceAttributes {
   id: number;
   invoice_code: string;
@@ -26,6 +28,22 @@ interface InvoiceAttributes {
   notes?: string;
   pdf_url?: string;
   created_by?: number;
+  // CFDI fields
+  uuid?: string;
+  serie?: string;
+  folio?: number;
+  cfdi_version?: string;
+  cfdi_status?: CfdiStatus;
+  uso_cfdi?: string;
+  payment_form_code?: string;
+  payment_method_code?: string;
+  currency_code?: string;
+  exchange_rate?: number;
+  stamp_date?: Date;
+  cancel_date?: Date;
+  cancel_reason?: string;
+  xml_url?: string;
+  qr_data?: string;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -49,6 +67,22 @@ class Invoice extends Model<InvoiceAttributes, InvoiceCreationAttributes> implem
   public notes?: string;
   public pdf_url?: string;
   public created_by?: number;
+  // CFDI fields
+  public uuid?: string;
+  public serie?: string;
+  public folio?: number;
+  public cfdi_version?: string;
+  public cfdi_status?: CfdiStatus;
+  public uso_cfdi?: string;
+  public payment_form_code?: string;
+  public payment_method_code?: string;
+  public currency_code?: string;
+  public exchange_rate?: number;
+  public stamp_date?: Date;
+  public cancel_date?: Date;
+  public cancel_reason?: string;
+  public xml_url?: string;
+  public qr_data?: string;
   public created_at!: Date;
   public updated_at!: Date;
 }
@@ -133,6 +167,73 @@ Invoice.init(
       type: DataTypes.INTEGER,
       allowNull: true
     },
+    // CFDI fields
+    uuid: {
+      type: DataTypes.STRING(36),
+      allowNull: true
+    },
+    serie: {
+      type: DataTypes.STRING(25),
+      allowNull: true,
+      defaultValue: 'A'
+    },
+    folio: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    cfdi_version: {
+      type: DataTypes.STRING(5),
+      allowNull: true,
+      defaultValue: '4.0'
+    },
+    cfdi_status: {
+      type: DataTypes.STRING(20),
+      allowNull: true
+    },
+    uso_cfdi: {
+      type: DataTypes.STRING(5),
+      allowNull: true,
+      defaultValue: 'G03'
+    },
+    payment_form_code: {
+      type: DataTypes.STRING(5),
+      allowNull: true
+    },
+    payment_method_code: {
+      type: DataTypes.STRING(5),
+      allowNull: true,
+      defaultValue: 'PUE'
+    },
+    currency_code: {
+      type: DataTypes.STRING(3),
+      allowNull: true,
+      defaultValue: 'MXN'
+    },
+    exchange_rate: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: true,
+      defaultValue: 1
+    },
+    stamp_date: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    cancel_date: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    cancel_reason: {
+      type: DataTypes.STRING(5),
+      allowNull: true
+    },
+    xml_url: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    qr_data: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
@@ -151,7 +252,9 @@ Invoice.init(
       { fields: ['customer_id'] },
       { fields: ['status'] },
       { fields: ['due_date'] },
-      { fields: ['issue_date'] }
+      { fields: ['issue_date'] },
+      { fields: ['cfdi_status'] },
+      { fields: ['serie', 'folio'] }
     ]
   }
 );

@@ -53,13 +53,14 @@ import {
   FileDownload as DownloadIcon,
   Edit as EditIcon,
   Warning as WarningIcon,
-  CalendarToday as CalendarIcon
+  CalendarToday as CalendarIcon,
+  Balance as BalanceIcon
 } from '@mui/icons-material';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useLocation as useLocationContext } from '../contexts/LocationContext';
 import accountingService from '../services/accountingService';
-import { Account, Transaction } from '../types/accounting';
+import { Account, Transaction, TrialBalance } from '../types/accounting';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -83,6 +84,7 @@ const Accounting: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [accountTypeFilter, setAccountTypeFilter] = useState<string>('all');
   const [balanceData, setBalanceData] = useState<any>(null);
+  const [trialBalance, setTrialBalance] = useState<TrialBalance | null>(null);
 
   // Date filters for transactions
   const [startDate, setStartDate] = useState('');
@@ -115,15 +117,17 @@ const Accounting: React.FC = () => {
       if (endDate) filters.endDate = endDate;
       if (selectedLocationId) filters.locationId = selectedLocationId;
 
-      const [accountsRes, transactionsRes, balanceRes] = await Promise.all([
+      const [accountsRes, transactionsRes, balanceRes, trialRes] = await Promise.all([
         accountingService.getAccounts(),
         accountingService.getTransactions(filters),
-        accountingService.getBalanceSheet()
+        accountingService.getBalanceSheet(),
+        accountingService.getTrialBalance()
       ]);
 
       setAccounts(accountsRes.data);
       setTransactions(transactionsRes.data);
       setBalanceData(balanceRes.data);
+      setTrialBalance(trialRes.data);
     } catch (error: any) {
       const message = error?.response?.data?.message || 'Error al cargar los datos contables';
       enqueueSnackbar(message, { variant: 'error' });
@@ -585,6 +589,7 @@ const Accounting: React.FC = () => {
         >
           <Tab label="Catálogo de Cuentas" />
           <Tab label="Transacciones" />
+          <Tab label="Balanza de Comprobación" icon={<BalanceIcon />} iconPosition="start" />
         </Tabs>
       </Card>
 
@@ -933,6 +938,132 @@ const Accounting: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+        )}
+      </TabPanel>
+
+      {/* Trial Balance Tab */}
+      <TabPanel value={tabValue} index={2}>
+        {trialBalance ? (
+          <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" fontWeight={600}>
+                Balanza de Comprobación
+              </Typography>
+              <Chip
+                icon={trialBalance.isBalanced ? <CheckCircleIcon /> : <WarningIcon />}
+                label={trialBalance.isBalanced ? 'Balanceada' : 'Desbalanceada'}
+                sx={{
+                  bgcolor: alpha(trialBalance.isBalanced ? '#10b981' : '#ef4444', 0.1),
+                  color: trialBalance.isBalanced ? '#10b981' : '#ef4444',
+                  fontWeight: 600,
+                  '& .MuiChip-icon': { color: trialBalance.isBalanced ? '#10b981' : '#ef4444' }
+                }}
+              />
+            </Box>
+
+            {!trialBalance.isBalanced && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                Los débitos totales no cuadran con los créditos. Diferencia: {formatCurrency(Math.abs(trialBalance.totalDebit - trialBalance.totalCredit))}
+              </Alert>
+            )}
+
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : alpha('#8b5cf6', 0.1) }}>
+                    <TableCell sx={{ fontWeight: 700 }}>Código</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Cuenta</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }} align="right">Debe</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }} align="right">Haber</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {trialBalance.rows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
+                        <BalanceIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          No hay movimientos contables registrados
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <>
+                      {trialBalance.rows.map((row) => {
+                        const typeConfig = getAccountTypeConfig(row.accountType);
+                        return (
+                          <TableRow key={row.accountId} hover>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight={600}>{row.accountCode}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2">{row.accountName}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={typeConfig.label}
+                                size="small"
+                                sx={{
+                                  bgcolor: alpha(typeConfig.color, 0.1),
+                                  color: typeConfig.color,
+                                  border: 'none',
+                                  fontWeight: 600,
+                                  height: 24,
+                                  fontSize: '0.7rem'
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" fontWeight={row.debit > 0 ? 600 : 400}>
+                                {row.debit > 0 ? formatCurrency(row.debit) : '-'}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" fontWeight={row.credit > 0 ? 600 : 400}>
+                                {row.credit > 0 ? formatCurrency(row.credit) : '-'}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {/* Totals row */}
+                      <TableRow sx={{
+                        bgcolor: trialBalance.isBalanced
+                          ? alpha('#10b981', isDarkMode ? 0.15 : 0.08)
+                          : alpha('#ef4444', isDarkMode ? 0.15 : 0.08),
+                        '& td': { borderTop: '2px solid', borderColor: trialBalance.isBalanced ? '#10b981' : '#ef4444' }
+                      }}>
+                        <TableCell colSpan={3}>
+                          <Typography variant="body2" fontWeight={700}>
+                            TOTALES
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight={700} sx={{ color: trialBalance.isBalanced ? '#10b981' : '#ef4444' }}>
+                            {formatCurrency(trialBalance.totalDebit)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight={700} sx={{ color: trialBalance.isBalanced ? '#10b981' : '#ef4444' }}>
+                            {formatCurrency(trialBalance.totalCredit)}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    </>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+              Al {format(new Date(trialBalance.asOfDate), "d 'de' MMMM yyyy", { locale: es })}
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
         )}
       </TabPanel>
 

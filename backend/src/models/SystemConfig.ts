@@ -6,7 +6,7 @@ interface SystemConfigAttributes {
   configKey: string;
   configValue: string;
   configType: 'string' | 'number' | 'boolean' | 'json';
-  category: 'general' | 'pricing' | 'email' | 'notifications' | 'security' | 'business';
+  category: 'general' | 'pricing' | 'email' | 'notifications' | 'security' | 'business' | 'fiscal';
   description?: string;
   isEditable: boolean;
   updatedBy?: number;
@@ -21,7 +21,7 @@ class SystemConfig extends Model<SystemConfigAttributes, SystemConfigCreationAtt
   public configKey!: string;
   public configValue!: string;
   public configType!: 'string' | 'number' | 'boolean' | 'json';
-  public category!: 'general' | 'pricing' | 'email' | 'notifications' | 'security' | 'business';
+  public category!: 'general' | 'pricing' | 'email' | 'notifications' | 'security' | 'business' | 'fiscal';
   public description?: string;
   public isEditable!: boolean;
   public updatedBy?: number;
@@ -52,7 +52,7 @@ SystemConfig.init(
       defaultValue: 'string',
     },
     category: {
-      type: DataTypes.ENUM('general', 'pricing', 'email', 'notifications', 'security', 'business'),
+      type: DataTypes.ENUM('general', 'pricing', 'email', 'notifications', 'security', 'business', 'fiscal'),
       allowNull: false,
       defaultValue: 'general',
     },

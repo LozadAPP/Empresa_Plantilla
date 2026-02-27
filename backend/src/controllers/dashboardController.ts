@@ -1,7 +1,8 @@
 import { Response } from 'express';
-import { Op } from 'sequelize';
+import { Op, fn, col } from 'sequelize';
 import dashboardService from '../services/dashboardService';
 import Alert from '../models/Alert';
+import Lead, { LeadStatus } from '../models/Lead';
 import { AuthRequest } from '../types';
 import logger from '../config/logger';
 
@@ -271,6 +272,82 @@ class DashboardController {
       res.status(500).json({
         success: false,
         message: 'Error al obtener calendario de mantenimiento'
+      });
+    }
+  }
+  /**
+   * GET /dashboard/crm-summary
+   * Get CRM pipeline summary for dashboard widget
+   */
+  async getCRMSummary(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const now = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      // Pipeline counts by status
+      const pipelineCounts = await Lead.findAll({
+        attributes: ['status', [fn('COUNT', col('id')), 'count']],
+        group: ['status'],
+        raw: true,
+      });
+
+      const pipeline: Record<string, number> = {};
+      for (const row of pipelineCounts as any[]) {
+        pipeline[row.status] = parseInt(row.count);
+      }
+
+      // Total value of active pipeline (not won/lost)
+      const activeStatuses = [
+        LeadStatus.NEW,
+        LeadStatus.CONTACTED,
+        LeadStatus.QUALIFIED,
+        LeadStatus.PROPOSAL,
+        LeadStatus.NEGOTIATION,
+      ];
+      const valueResult = await Lead.sum('estimatedValue', {
+        where: { status: { [Op.in]: activeStatuses } },
+      });
+      const totalPipelineValue = valueResult || 0;
+
+      // Conversion rate (won / (won + lost))
+      const wonCount = pipeline[LeadStatus.WON] || 0;
+      const lostCount = pipeline[LeadStatus.LOST] || 0;
+      const conversionRate = (wonCount + lostCount) > 0
+        ? Math.round((wonCount / (wonCount + lostCount)) * 100)
+        : 0;
+
+      // Follow-ups due today or overdue
+      const followUpsDue = await Lead.count({
+        where: {
+          nextFollowUp: { [Op.lte]: now },
+          status: { [Op.notIn]: [LeadStatus.WON, LeadStatus.LOST] },
+        },
+      });
+
+      // Conversions in last 30 days
+      const recentConversions = await Lead.count({
+        where: {
+          status: LeadStatus.WON,
+          convertedAt: { [Op.gte]: thirtyDaysAgo },
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          pipeline,
+          totalPipelineValue,
+          conversionRate,
+          followUpsDue,
+          recentConversions,
+        },
+      });
+    } catch (error: any) {
+      logger.error('Get CRM summary error', { error });
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener resumen CRM',
       });
     }
   }

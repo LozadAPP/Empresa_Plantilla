@@ -92,4 +92,13 @@ export class CodeGenerator {
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     return `DOC-${year}-${random}`;
   }
+
+  /**
+   * Genera codigo de prospecto: LID-2026-0001
+   */
+  static async generateLeadCode(): Promise<string> {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `LID-${year}-${random}`;
+  }
 }

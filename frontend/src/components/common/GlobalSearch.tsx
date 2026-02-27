@@ -17,6 +17,7 @@ import {
   RequestQuote as QuoteIcon,
   Receipt as InvoiceIcon,
   Business as SupplierIcon,
+  PersonSearch as LeadIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useTheme as useCustomTheme } from '../../contexts/ThemeContext';
@@ -26,10 +27,11 @@ import { rentalService } from '../../services/rentalService';
 import { quoteService } from '../../services/quoteService';
 import { invoiceService } from '../../services/invoiceService';
 import { supplierService } from '../../services/supplierService';
+import leadService from '../../services/leadService';
 
 interface SearchResult {
   id: string;
-  type: 'customer' | 'vehicle' | 'rental' | 'quote' | 'invoice' | 'supplier';
+  type: 'customer' | 'vehicle' | 'rental' | 'quote' | 'invoice' | 'supplier' | 'lead';
   label: string;
   sublabel: string;
   path: string;
@@ -42,6 +44,7 @@ const TYPE_CONFIG: Record<SearchResult['type'], { icon: React.ElementType; label
   quote: { icon: QuoteIcon, label: 'Cotizaciones', color: '#f59e0b' },
   invoice: { icon: InvoiceIcon, label: 'Facturas', color: '#ef4444' },
   supplier: { icon: SupplierIcon, label: 'Proveedores', color: '#06b6d4' },
+  lead: { icon: LeadIcon, label: 'Prospectos', color: '#ec4899' },
 };
 
 const GlobalSearch: React.FC = () => {
@@ -72,6 +75,7 @@ const GlobalSearch: React.FC = () => {
         quoteService.getAll({ search: term, limit: 3 }),
         invoiceService.getAll({ search: term, limit: 3 }),
         supplierService.getAll({ search: term, limit: 3 }),
+        leadService.getAll({ search: term, limit: 3 }),
       ]);
 
       const mapped: SearchResult[] = [];
@@ -156,6 +160,20 @@ const GlobalSearch: React.FC = () => {
             label: s.name,
             sublabel: s.rfc || s.supplier_type || '',
             path: `/suppliers/${s.id}`,
+          });
+        }
+      }
+
+      // Leads: { success, data: { leads: Lead[] } }
+      if (results[6].status === 'fulfilled' && results[6].value.success) {
+        const leads = results[6].value.data?.leads || [];
+        for (const l of leads) {
+          mapped.push({
+            id: `lead-${l.id}`,
+            type: 'lead',
+            label: `${l.leadCode} — ${l.name}`,
+            sublabel: l.company || l.email || l.source || '',
+            path: `/leads/${l.id}`,
           });
         }
       }

@@ -3,7 +3,7 @@
  * Unifica eventos de 5 entidades: Rentas, Mantenimiento, Cotizaciones, Alertas Vehículos, Devoluciones
  */
 
-export type CalendarEventType = 'rental' | 'maintenance' | 'quote' | 'vehicle_alert' | 'return';
+export type CalendarEventType = 'rental' | 'maintenance' | 'quote' | 'vehicle_alert' | 'return' | 'lead_follow_up';
 
 export interface CalendarEvent {
   id: string;
@@ -26,6 +26,7 @@ export interface CalendarFilters {
   quote: boolean;
   vehicleAlert: boolean;
   return: boolean;
+  leadFollowUp: boolean;
 }
 
 export const DEFAULT_CALENDAR_FILTERS: CalendarFilters = {
@@ -34,6 +35,7 @@ export const DEFAULT_CALENDAR_FILTERS: CalendarFilters = {
   quote: true,
   vehicleAlert: true,
   return: true,
+  leadFollowUp: true,
 };
 
 export const CALENDAR_COLORS = {
@@ -71,6 +73,13 @@ export const CALENDAR_COLORS = {
     due: '#06b6d4',
     overdue: '#ef4444',
   },
+  leadFollowUp: {
+    new: '#ec4899',
+    contacted: '#8b5cf6',
+    qualified: '#10b981',
+    proposal: '#f59e0b',
+    negotiation: '#f97316',
+  },
 } as const;
 
 export const CALENDAR_TYPE_LABELS: Record<CalendarEventType, string> = {
@@ -79,4 +88,5 @@ export const CALENDAR_TYPE_LABELS: Record<CalendarEventType, string> = {
   quote: 'Cotizaciones',
   vehicle_alert: 'Vehículos',
   return: 'Devoluciones',
+  lead_follow_up: 'Seguimientos CRM',
 };

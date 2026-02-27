@@ -6,6 +6,7 @@ import Vehicle from '../models/Vehicle';
 import VehicleType from '../models/VehicleType';
 import Customer from '../models/Customer';
 import Quote, { QuoteStatus } from '../models/Quote';
+import Lead, { LeadStatus } from '../models/Lead';
 import logger from '../config/logger';
 
 /**
@@ -528,6 +529,59 @@ class AlertService {
   }
 
   /**
+   * 8. Verifica prospectos (leads) con seguimiento vencido
+   */
+  async checkStaleLeads(): Promise<number> {
+    const now = new Date();
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    const staleLeads = await Lead.findAll({
+      where: {
+        nextFollowUp: { [Op.lt]: now },
+        status: {
+          [Op.notIn]: [LeadStatus.WON, LeadStatus.LOST],
+        },
+      },
+    });
+
+    let created = 0;
+    const existingIds = await this.getExistingAlertEntityIds(
+      'custom', 'lead', staleLeads.map(l => l.id.toString())
+    );
+
+    for (const lead of staleLeads) {
+      if (existingIds.has(lead.id.toString())) continue;
+
+      const followUpDate = new Date(lead.nextFollowUp!);
+      const daysOverdue = Math.floor(
+        (now.getTime() - followUpDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      const severity = followUpDate < threeDaysAgo ? 'critical' : 'warning';
+
+      await this.createAlert({
+        alertType: 'custom',
+        severity: severity as 'warning' | 'critical',
+        title: 'Seguimiento de Prospecto Vencido',
+        message: `El prospecto ${lead.leadCode} (${lead.name}) tiene un seguimiento vencido desde hace ${daysOverdue} día(s). Fecha programada: ${followUpDate.toLocaleDateString()}.`,
+        entityType: 'lead',
+        entityId: lead.id.toString(),
+        metadata: {
+          leadCode: lead.leadCode,
+          leadName: lead.name,
+          status: lead.status,
+          nextFollowUp: lead.nextFollowUp,
+          daysOverdue,
+        },
+      });
+      created++;
+    }
+
+    return created;
+  }
+
+  /**
    * Ejecuta todas las verificaciones de alertas
    */
   async runAllChecks(): Promise<{
@@ -538,6 +592,7 @@ class AlertService {
     expiringInsurance: number;
     lowInventory: number;
     expiringQuotes: number;
+    staleLeads: number;
     total: number;
   }> {
     logger.info('[AlertService] Iniciando verificación de alertas...');
@@ -550,6 +605,7 @@ class AlertService {
       expiringInsurance,
       lowInventory,
       expiringQuotes,
+      staleLeads,
     ] = await Promise.all([
       this.checkExpiringRentals(),
       this.checkOverdueRentals(),
@@ -558,6 +614,7 @@ class AlertService {
       this.checkExpiringInsurance(),
       this.checkLowInventory(),
       this.checkExpiringQuotes(),
+      this.checkStaleLeads(),
     ]);
 
     const total =
@@ -567,7 +624,8 @@ class AlertService {
       maintenanceDue +
       expiringInsurance +
       lowInventory +
-      expiringQuotes;
+      expiringQuotes +
+      staleLeads;
 
     logger.info('[AlertService] Verificación completa', {
       expiringRentals,
@@ -577,6 +635,7 @@ class AlertService {
       expiringInsurance,
       lowInventory,
       expiringQuotes,
+      staleLeads,
       total,
     });
 
@@ -588,6 +647,7 @@ class AlertService {
       expiringInsurance,
       lowInventory,
       expiringQuotes,
+      staleLeads,
       total,
     };
   }

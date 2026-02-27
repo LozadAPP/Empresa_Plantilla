@@ -77,8 +77,19 @@ const INVOICES_COLUMNS = [
   { key: 'total_amount', label: 'Total', formatter: formatCurrencyForCSV },
   { key: 'paid_amount', label: 'Pagado', formatter: formatCurrencyForCSV },
   { key: 'balance', label: 'Saldo', formatter: formatCurrencyForCSV },
-  { key: 'status', label: 'Estado' }
+  { key: 'status', label: 'Estado' },
+  { key: 'cfdi_status', label: 'CFDI' },
+  { key: 'uuid', label: 'UUID' },
+  { key: 'serie', label: 'Serie' },
+  { key: 'folio', label: 'Folio' }
 ];
+
+const CFDI_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  pending_stamp: { label: 'Pendiente', color: '#f59e0b' },
+  stamped: { label: 'Timbrada', color: '#22c55e' },
+  cancelled: { label: 'Cancelado', color: '#ef4444' },
+  error: { label: 'Error', color: '#ef4444' },
+};
 
 const Invoices: React.FC = () => {
   const navigate = useNavigate();
@@ -111,6 +122,7 @@ const Invoices: React.FC = () => {
 
   const [filters, setFilters] = useState({
     status: '' as InvoiceStatus | '',
+    cfdi_status: '' as string,
     startDate: defaultDates.startDate,
     endDate: defaultDates.endDate,
     page: 1,
@@ -135,6 +147,7 @@ const Invoices: React.FC = () => {
       ...filters,
       search: debouncedSearch || undefined,
       status: filters.status || undefined,
+      cfdi_status: (filters.cfdi_status || undefined) as any,
       startDate: filters.startDate || undefined,
       endDate: filters.endDate || undefined,
       location_id: selectedLocationId || undefined
@@ -494,6 +507,20 @@ const Invoices: React.FC = () => {
             <MenuItem value="cancelled">Cancelada</MenuItem>
           </Select>
         </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 140 }, width: { xs: '100%', md: 'auto' } }}>
+          <InputLabel>CFDI</InputLabel>
+          <Select
+            value={filters.cfdi_status}
+            label="CFDI"
+            onChange={(e) => handleFilterChange('cfdi_status', e.target.value)}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="pending_stamp">Pendiente</MenuItem>
+            <MenuItem value="stamped">Timbrada</MenuItem>
+            <MenuItem value="cancelled">Cancelado</MenuItem>
+          </Select>
+        </FormControl>
       </Box>
 
       {/* Filters Row 2: Dates and Export */}
@@ -791,13 +818,14 @@ const Invoices: React.FC = () => {
                 <TableCell><strong>Total</strong></TableCell>
                 <TableCell><strong>Saldo</strong></TableCell>
                 <TableCell><strong>Estado</strong></TableCell>
+                <TableCell><strong>CFDI</strong></TableCell>
                 <TableCell align="right"><strong>Acciones</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {invoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 0 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 0 }}>
                     <EmptyState
                       icon={<InvoiceIcon />}
                       title="No hay facturas registradas"
@@ -852,6 +880,24 @@ const Invoices: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       {getStatusChip(invoice.status)}
+                    </TableCell>
+                    <TableCell>
+                      {invoice.cfdi_status ? (
+                        <Chip
+                          label={CFDI_STATUS_LABELS[invoice.cfdi_status]?.label || invoice.cfdi_status}
+                          size="small"
+                          sx={{
+                            fontSize: '0.7rem',
+                            height: 22,
+                            fontWeight: 600,
+                            color: CFDI_STATUS_LABELS[invoice.cfdi_status]?.color || '#666',
+                            bgcolor: `${CFDI_STATUS_LABELS[invoice.cfdi_status]?.color || '#666'}15`,
+                            border: `1px solid ${CFDI_STATUS_LABELS[invoice.cfdi_status]?.color || '#666'}30`,
+                          }}
+                        />
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">—</Typography>
+                      )}
                     </TableCell>
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>

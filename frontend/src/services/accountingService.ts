@@ -5,6 +5,7 @@ import {
   CreateTransactionDto,
   BalanceSheet,
   IncomeStatement,
+  TrialBalance,
 } from '../types/accounting';
 
 const BASE_URL = '/accounting';
@@ -92,6 +93,14 @@ export const accountingService = {
   getIncomeStatement: async (params?: { startDate?: string; endDate?: string }) => {
     const response = await api.get<{ success: boolean; data: IncomeStatement }>(
       `${BASE_URL}/reports/income-statement`,
+      { params }
+    );
+    return response.data;
+  },
+
+  getTrialBalance: async (params?: { asOfDate?: string }) => {
+    const response = await api.get<{ success: boolean; data: TrialBalance }>(
+      `${BASE_URL}/reports/trial-balance`,
       { params }
     );
     return response.data;

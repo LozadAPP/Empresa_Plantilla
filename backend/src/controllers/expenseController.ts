@@ -10,6 +10,10 @@ import User from '../models/User';
 import Supplier from '../models/Supplier';
 import { CodeGenerator } from '../services/codeGenerator';
 import { WebSocketService } from '../services/websocketService';
+import TransactionLine from '../models/TransactionLine';
+import { recalculateMultipleAccounts } from '../services/balanceService';
+
+const BANK_ACCOUNT_ID = 4; // 1120 - Bancos
 import logger from '../config/logger';
 import { AuthRequest } from '../types';
 
@@ -150,6 +154,12 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
 
       // Update transaction referenceId with expense id
       await transaction.update({ referenceId: expense.id.toString() }, { transaction: t });
+
+      // Create double-entry lines: Debit expense account, Credit bank
+      await TransactionLine.bulkCreate([
+        { transactionId: transaction.id, accountId: resolvedAccountId, debit: totalAmount, credit: 0, description },
+        { transactionId: transaction.id, accountId: BANK_ACCOUNT_ID, debit: 0, credit: totalAmount, description: `Pago de gasto: ${description}` },
+      ], { transaction: t });
 
       await t.commit();
 
@@ -353,7 +363,7 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
         notes: notes !== undefined ? notes : expense.notes,
       }, { transaction: t });
 
-      // Sync linked transaction
+      // Sync linked transaction and its double-entry lines
       if (expense.transactionId) {
         await Transaction.update({
           accountId: resolvedAccountId,
@@ -363,6 +373,17 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
           transactionDate: expense_date || expense.expenseDate,
           locationId: location_id !== undefined ? location_id : expense.locationId,
         }, { where: { id: expense.transactionId }, transaction: t });
+
+        // Recreate transaction lines with updated amounts/account
+        await TransactionLine.destroy({
+          where: { transactionId: expense.transactionId },
+          transaction: t,
+        });
+        const lineDesc = description || expense.description;
+        await TransactionLine.bulkCreate([
+          { transactionId: expense.transactionId, accountId: resolvedAccountId, debit: totalAmount, credit: 0, description: lineDesc },
+          { transactionId: expense.transactionId, accountId: BANK_ACCOUNT_ID, debit: 0, credit: totalAmount, description: `Pago de gasto: ${lineDesc}` },
+        ], { transaction: t });
       }
 
       await t.commit();
@@ -482,10 +503,14 @@ export const approveExpense = async (req: AuthRequest, res: Response) => {
         }, { transaction: t });
       }
 
-      // Update account balance (expense accounts SUM when spending)
-      if (account) {
-        const newBalance = Number(account.balance) + Number(expense.totalAmount);
-        await account.update({ balance: newBalance }, { transaction: t });
+      // Recalculate affected account balances from GL lines
+      if (linkedTransaction) {
+        const lines = await TransactionLine.findAll({
+          where: { transactionId: linkedTransaction.id },
+          transaction: t,
+        });
+        const affectedAccountIds = lines.map(l => l.accountId);
+        await recalculateMultipleAccounts(affectedAccountIds, t);
       }
 
       await t.commit();

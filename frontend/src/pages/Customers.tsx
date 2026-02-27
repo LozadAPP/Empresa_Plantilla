@@ -641,6 +641,34 @@ const Customers: React.FC = () => {
                   {selectedCustomer.address || '-'}, {selectedCustomer.city}, {selectedCustomer.country}
                 </Typography>
               </Grid>
+              {/* Datos Fiscales */}
+              {(selectedCustomer.rfc || selectedCustomer.regimen_fiscal || selectedCustomer.cfdi_email || selectedCustomer.zip_code) && (
+                <>
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 1 }} />
+                    <Typography variant="subtitle2" color="primary" fontWeight={600} sx={{ mt: 1 }}>
+                      Datos Fiscales (CFDI)
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="textSecondary">RFC</Typography>
+                    <Typography variant="body1" gutterBottom>{selectedCustomer.rfc || '-'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="textSecondary">Régimen Fiscal</Typography>
+                    <Typography variant="body1" gutterBottom>{selectedCustomer.regimen_fiscal || '-'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="textSecondary">Email CFDI</Typography>
+                    <Typography variant="body1" gutterBottom>{selectedCustomer.cfdi_email || '-'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="textSecondary">Código Postal</Typography>
+                    <Typography variant="body1" gutterBottom>{selectedCustomer.zip_code || '-'}</Typography>
+                  </Grid>
+                </>
+              )}
+
               <Grid item xs={12} md={4}>
                 <Typography variant="subtitle2" color="textSecondary">Límite de Crédito</Typography>
                 <Typography variant="body1" gutterBottom>{formatCurrency(selectedCustomer.credit_limit)}</Typography>

@@ -48,7 +48,11 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     credit_limit: 0,
     payment_terms: 30,
     discount_percentage: 0,
-    notes: ''
+    notes: '',
+    rfc: '',
+    regimen_fiscal: '',
+    cfdi_email: '',
+    zip_code: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -69,7 +73,11 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
         credit_limit: initialData.credit_limit,
         payment_terms: initialData.payment_terms,
         discount_percentage: initialData.discount_percentage,
-        notes: initialData.notes || ''
+        notes: initialData.notes || '',
+        rfc: initialData.rfc || '',
+        regimen_fiscal: initialData.regimen_fiscal || '',
+        cfdi_email: initialData.cfdi_email || '',
+        zip_code: initialData.zip_code || ''
       });
     }
   }, [editMode, initialData, open]);
@@ -158,7 +166,11 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
         credit_limit: 0,
         payment_terms: 30,
         discount_percentage: 0,
-        notes: ''
+        notes: '',
+        rfc: '',
+        regimen_fiscal: '',
+        cfdi_email: '',
+        zip_code: ''
       });
     }
     setErrors({});
@@ -323,6 +335,68 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 placeholder="Ej: México"
                 data-testid="customer-country-input"
                 inputProps={{ 'data-testid': 'customer-country-field' }}
+              />
+            </Grid>
+
+            {/* Datos Fiscales (CFDI) */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom sx={{ mt: 2 }}>
+                Datos Fiscales (CFDI)
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="RFC"
+                value={formData.rfc || ''}
+                onChange={(e) => handleChange('rfc', e.target.value.toUpperCase())}
+                placeholder={formData.customer_type === 'individual' ? 'ABCD850101ABC' : 'ABC850101XYZ'}
+                helperText={formData.customer_type === 'individual' ? '13 caracteres (persona física)' : '12 caracteres (persona moral)'}
+                inputProps={{ maxLength: 13 }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Régimen Fiscal</InputLabel>
+                <Select
+                  value={formData.regimen_fiscal || ''}
+                  label="Régimen Fiscal"
+                  onChange={(e) => handleChange('regimen_fiscal', e.target.value)}
+                >
+                  <MenuItem value="">Sin especificar</MenuItem>
+                  <MenuItem value="601">601 - General de Ley PM</MenuItem>
+                  <MenuItem value="603">603 - PM Fines no Lucrativos</MenuItem>
+                  <MenuItem value="612">612 - PF Actividades Empresariales</MenuItem>
+                  <MenuItem value="616">616 - Sin obligaciones fiscales</MenuItem>
+                  <MenuItem value="625">625 - Plataformas Tecnológicas</MenuItem>
+                  <MenuItem value="626">626 - RESICO</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Email CFDI"
+                type="email"
+                value={formData.cfdi_email || ''}
+                onChange={(e) => handleChange('cfdi_email', e.target.value)}
+                placeholder="facturacion@ejemplo.com"
+                helperText="Email para recepción de facturas electrónicas"
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Código Postal"
+                value={formData.zip_code || ''}
+                onChange={(e) => handleChange('zip_code', e.target.value.replace(/\D/g, ''))}
+                placeholder="76000"
+                helperText="C.P. del domicilio fiscal (5 dígitos)"
+                inputProps={{ maxLength: 5 }}
               />
             </Grid>
 

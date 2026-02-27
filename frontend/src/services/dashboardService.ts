@@ -112,6 +112,17 @@ export const dashboardService = {
   }>> {
     const response = await api.get('/dashboard/maintenance-schedule');
     return response.data;
+  },
+
+  async getCRMSummary(): Promise<ApiResponse<{
+    pipeline: Record<string, number>;
+    totalPipelineValue: number;
+    conversionRate: number;
+    followUpsDue: number;
+    recentConversions: number;
+  }>> {
+    const response = await api.get('/dashboard/crm-summary');
+    return response.data;
   }
 };
 

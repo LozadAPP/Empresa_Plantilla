@@ -20,6 +20,8 @@ import quoteRoutes from './quoteRoutes';
 import expenseRoutes from './expenseRoutes';
 import supplierRoutes from './supplierRoutes';
 import documentRoutes from './documentRoutes';
+import leadRoutes from './leadRoutes';
+import cfdiRoutes from './cfdiRoutes';
 
 const router = Router();
 
@@ -52,8 +54,14 @@ router.use('/extra-services', extraServiceRoutes);
 router.use('/expenses', expenseRoutes);
 router.use('/suppliers', supplierRoutes);
 
+// API Routes - CRM (Prospectos)
+router.use('/leads', leadRoutes);
+
 // API Routes - DOCUMENTOS
 router.use('/documents', documentRoutes);
+
+// API Routes - CFDI (Facturación Electrónica)
+router.use('/cfdi', cfdiRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

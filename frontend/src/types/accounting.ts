@@ -1,4 +1,5 @@
 // Accounting Types
+
 export interface Account {
   id: number;
   accountCode: string;
@@ -14,6 +15,16 @@ export interface Account {
   // Relations
   parentAccount?: Account;
   subAccounts?: Account[];
+}
+
+export interface TransactionLine {
+  id?: number;
+  transactionId?: number;
+  accountId: number;
+  debit: number;
+  credit: number;
+  description?: string;
+  account?: Account;
 }
 
 export interface Transaction {
@@ -38,6 +49,7 @@ export interface Transaction {
   updatedAt: Date;
 
   // Relations
+  lines?: TransactionLine[];
   account?: Account;
   location?: {
     id: number;
@@ -68,6 +80,12 @@ export interface CreateTransactionDto {
   transactionDate?: string | Date;
   locationId?: number;
   notes?: string;
+  lines?: Array<{
+    accountId: number;
+    debit: number;
+    credit: number;
+    description?: string;
+  }>;
 }
 
 export interface BalanceSheet {
@@ -82,6 +100,7 @@ export interface BalanceSheet {
   equity: {
     accounts: Account[];
     total: number;
+    netIncome?: number;
   };
   balanceCheck: boolean;
 }
@@ -96,4 +115,22 @@ export interface IncomeStatement {
     total: number;
   };
   netIncome: number;
+}
+
+// Trial Balance types
+export interface TrialBalanceRow {
+  accountId: number;
+  accountCode: string;
+  accountName: string;
+  accountType: string;
+  debit: number;
+  credit: number;
+}
+
+export interface TrialBalance {
+  rows: TrialBalanceRow[];
+  totalDebit: number;
+  totalCredit: number;
+  isBalanced: boolean;
+  asOfDate: string;
 }

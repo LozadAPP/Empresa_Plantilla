@@ -17,6 +17,8 @@ import { PDFService } from '../services/pdfService';
 import { EmailService } from '../services/emailService';
 import logger from '../config/logger';
 import { DocumentRegistrationService } from '../services/documentRegistrationService';
+import InvoiceLineItem from '../models/InvoiceLineItem';
+import cfdiService from '../services/cfdiService';
 
 /**
  * Controlador de Pagos y Facturas
@@ -390,6 +392,7 @@ export class PaymentController {
         rental_id,
         location_id,
         status,
+        cfdi_status,
         search,
         startDate,
         endDate,
@@ -402,6 +405,7 @@ export class PaymentController {
       if (customer_id) where.customer_id = customer_id;
       if (rental_id) where.rental_id = rental_id;
       if (status) where.status = status;
+      if (cfdi_status) where.cfdi_status = cfdi_status;
       if (startDate || endDate) {
         const dateFilter: any = {};
         if (startDate) dateFilter[Op.gte] = new Date(startDate as string);
@@ -474,7 +478,8 @@ export class PaymentController {
         include: [
           { model: Customer, as: 'customer' },
           { model: Rental, as: 'rental' },
-          { model: Payment, as: 'payments' }
+          { model: Payment, as: 'payments' },
+          { model: InvoiceLineItem, as: 'lineItems', order: [['sort_order', 'ASC']] }
         ]
       });
 
@@ -509,7 +514,14 @@ export class PaymentController {
         rental_id,
         customer_id,
         due_days = 7,
-        notes
+        notes,
+        // CFDI fields (optional)
+        uso_cfdi,
+        payment_form_code,
+        payment_method_code,
+        currency_code,
+        exchange_rate,
+        line_items,
       } = req.body;
 
       // Validaciones
@@ -560,8 +572,38 @@ export class PaymentController {
         balance: rental.total_amount,
         status: InvoiceStatus.SENT,
         notes,
-        created_by: req.user?.id
+        created_by: req.user?.id,
+        // CFDI fields
+        uso_cfdi: uso_cfdi || 'G03',
+        payment_form_code,
+        payment_method_code: payment_method_code || 'PUE',
+        currency_code: currency_code || 'MXN',
+        exchange_rate: exchange_rate || 1,
+        cfdi_status: 'pending_stamp' as any,
       });
+
+      // Generar líneas de detalle
+      if (line_items && Array.isArray(line_items) && line_items.length > 0) {
+        // Líneas manuales del frontend
+        const lineData = line_items.map((item: any, idx: number) => ({
+          invoiceId: invoice.id,
+          description: item.description,
+          quantity: item.quantity,
+          unitCode: item.unit_code || 'E48',
+          unitPrice: item.unit_price,
+          discount: item.discount || 0,
+          subtotal: item.subtotal,
+          taxRate: item.tax_rate || 16,
+          taxAmount: item.tax_amount,
+          total: item.total,
+          satProductCode: item.sat_product_code || '78111802',
+          sortOrder: idx,
+        }));
+        await InvoiceLineItem.bulkCreate(lineData);
+      } else {
+        // Auto-generar desde la renta
+        await cfdiService.generateLineItemsFromRental(invoice.id, rental_id);
+      }
 
       // Generar PDF de factura
       const pdfUrl = await PDFService.generateInvoice(invoice);
@@ -570,10 +612,18 @@ export class PaymentController {
       // Enviar factura por email
       await EmailService.sendInvoice(customer, invoice, pdfUrl);
 
+      // Reload with line items
+      const created = await Invoice.findByPk(invoice.id, {
+        include: [
+          { model: Customer, as: 'customer' },
+          { model: InvoiceLineItem, as: 'lineItems' },
+        ],
+      });
+
       res.status(201).json({
         success: true,
         message: 'Factura creada y enviada exitosamente',
-        data: invoice
+        data: created
       });
 
     } catch (error) {

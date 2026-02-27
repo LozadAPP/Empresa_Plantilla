@@ -47,7 +47,8 @@ import {
   CalendarMonth as CalendarIcon,
   Storefront as CatalogIcon,
   Description as DocumentsIcon,
-  LocationOn as LocationOnIcon
+  LocationOn as LocationOnIcon,
+  PersonSearch as LeadsIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme as useCustomTheme } from '../../contexts/ThemeContext';
@@ -84,6 +85,7 @@ const navSections: NavSection[] = [
     items: [
       { icon: <CalendarIcon />, label: 'Calendario', path: '/calendar' },
       { icon: <CatalogIcon />, label: 'Catálogo', path: '/catalog' },
+      { icon: <LeadsIcon />, label: 'Prospectos', path: '/leads', roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor'] },
       { icon: <QuotesIcon />, label: 'Cotizaciones', path: '/quotes', roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor'] },
       { icon: <CustomersIcon />, label: 'Clientes', path: '/customers', roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor', 'jefe_finanzas', 'jefe_admin', 'cajero'] },
       { icon: <RentalsIcon />, label: 'Rentas', path: '/rentals', roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor', 'jefe_inventarios', 'encargado_inventario', 'jefe_finanzas', 'jefe_admin'] },

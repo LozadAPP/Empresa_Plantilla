@@ -185,6 +185,11 @@ export interface Customer {
   city?: string;
   country?: string;
   tax_id?: string;
+  // Fiscal fields (CFDI)
+  rfc?: string;
+  regimen_fiscal?: string;
+  cfdi_email?: string;
+  zip_code?: string;
   customer_type: CustomerType;
   credit_limit: number;
   payment_terms: number;
@@ -326,6 +331,11 @@ export interface CustomerFormData {
   city?: string;
   country?: string;
   tax_id?: string;
+  // Fiscal fields (CFDI)
+  rfc?: string;
+  regimen_fiscal?: string;
+  cfdi_email?: string;
+  zip_code?: string;
   customer_type?: CustomerType;
   credit_limit?: number;
   payment_terms?: number;

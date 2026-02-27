@@ -1,14 +1,17 @@
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
+import QRCode from 'qrcode';
 import Rental from '../models/Rental';
 import Customer from '../models/Customer';
 import Vehicle from '../models/Vehicle';
 import Location from '../models/Location';
 import Invoice from '../models/Invoice';
+import InvoiceLineItem from '../models/InvoiceLineItem';
 import Quote from '../models/Quote';
 import VehicleType from '../models/VehicleType';
 import SystemConfig from '../models/SystemConfig';
+import { SAT_FORMA_PAGO, SAT_METODO_PAGO, SAT_USO_CFDI, SAT_REGIMEN_FISCAL } from '../constants/satCatalogs';
 
 /**
  * Servicio para generar PDFs (Contratos, Facturas y Cotizaciones)
@@ -152,7 +155,8 @@ export class PDFService {
   }
 
   /**
-   * Genera una factura en PDF
+   * Genera una factura en PDF con soporte CFDI 4.0
+   * Incluye: datos fiscales emisor/receptor, tabla de líneas, QR, UUID
    */
   static async generateInvoice(invoice: Invoice): Promise<string> {
     this.initialize();
@@ -165,108 +169,259 @@ export class PDFService {
       throw new Error('Datos incompletos para generar factura');
     }
 
+    // Cargar líneas de detalle
+    const lineItems = await InvoiceLineItem.findAll({
+      where: { invoiceId: invoice.id },
+      order: [['sort_order', 'ASC']],
+    });
+
     const fileName = `invoice-${invoice.invoice_code}.pdf`;
     const filePath = path.join(this.STORAGE_PATH, fileName);
 
     // Leer datos de empresa desde system_configs
     const companyConfigs = await SystemConfig.findAll({
-      where: { configKey: ['company_name', 'company_rfc', 'company_address'] }
+      where: { category: 'fiscal' }
     });
     const configMap = Object.fromEntries(companyConfigs.map(c => [c.configKey, c.configValue]));
 
+    // Also load company_name from general config
+    const nameConfig = await SystemConfig.findOne({ where: { configKey: 'company_name' } });
+    const companyName = configMap.company_razon_social || nameConfig?.configValue || 'MOVICAR';
+
+    // Generate QR code buffer if qr_data exists
+    let qrBuffer: Buffer | null = null;
+    if (invoice.qr_data) {
+      try {
+        qrBuffer = await QRCode.toBuffer(invoice.qr_data, { width: 120, margin: 1 });
+      } catch {
+        // QR generation failed, continue without it
+      }
+    }
+
+    const hasCfdi = !!invoice.uuid;
+    const fmt = (n: any) => `$${Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
     return new Promise((resolve, reject) => {
       try {
-        const doc = new PDFDocument({ margin: 50 });
+        const doc = new PDFDocument({ margin: 40, size: 'LETTER' });
         const stream = fs.createWriteStream(filePath);
-
         doc.pipe(stream);
 
-        // Encabezado
-        doc.fontSize(24).text('FACTURA', { align: 'center' });
-        doc.moveDown();
-        doc.fontSize(12).text(`Factura No: ${invoice.invoice_code}`, { align: 'center' });
-        doc.moveDown(2);
+        const pageWidth = doc.page.width - 80; // 40 margin each side
 
-        // Información de la empresa
-        doc.fontSize(14).text(configMap.company_name || 'MOVICAR', { underline: true });
-        doc.fontSize(10);
-        doc.text(`RFC: ${configMap.company_rfc || ''}`);
-        doc.text(`Dirección: ${configMap.company_address || ''}`);
+        // ═══ HEADER ═══
+        // Left: Company info
+        doc.fontSize(16).text(companyName, 40, 40, { width: 300 });
+        doc.fontSize(8);
+        if (configMap.company_rfc) doc.text(`RFC: ${configMap.company_rfc}`, 40, doc.y);
+        if (configMap.company_regimen_fiscal) doc.text(`Régimen: ${SAT_REGIMEN_FISCAL[configMap.company_regimen_fiscal] || configMap.company_regimen_fiscal}`, 40, doc.y);
+        if (configMap.company_zip_code) doc.text(`C.P.: ${configMap.company_zip_code}`, 40, doc.y);
+        if (configMap.company_address) doc.text(configMap.company_address, 40, doc.y);
+
+        // Right: Invoice info
+        const rightX = 380;
+        doc.fontSize(18).text('FACTURA', rightX, 40, { width: 190, align: 'right' });
+        doc.fontSize(9);
+        doc.text(`No: ${invoice.invoice_code}`, rightX, doc.y, { width: 190, align: 'right' });
+        if (hasCfdi && invoice.serie && invoice.folio) {
+          doc.text(`Serie: ${invoice.serie} Folio: ${invoice.folio}`, rightX, doc.y, { width: 190, align: 'right' });
+        }
+        if (hasCfdi && invoice.uuid) {
+          doc.fontSize(7).text(`UUID: ${invoice.uuid}`, rightX, doc.y, { width: 190, align: 'right' });
+          doc.fontSize(9);
+        }
+        doc.text(`Fecha emisión: ${new Date(invoice.issue_date).toLocaleDateString('es-MX')}`, rightX, doc.y, { width: 190, align: 'right' });
+        doc.text(`Vencimiento: ${new Date(invoice.due_date).toLocaleDateString('es-MX')}`, rightX, doc.y, { width: 190, align: 'right' });
+        if (hasCfdi && invoice.stamp_date) {
+          doc.text(`Timbrado: ${new Date(invoice.stamp_date).toLocaleDateString('es-MX')}`, rightX, doc.y, { width: 190, align: 'right' });
+        }
+
+        // Status badge
+        const statusColors: Record<string, string> = { stamped: '#22c55e', cancelled: '#ef4444', pending_stamp: '#f59e0b' };
+        const statusLabels: Record<string, string> = { stamped: 'TIMBRADA', cancelled: 'CANCELADA', pending_stamp: 'PENDIENTE' };
+        if (invoice.cfdi_status && statusColors[invoice.cfdi_status]) {
+          doc.rect(rightX + 100, doc.y + 2, 90, 14).fill(statusColors[invoice.cfdi_status]);
+          doc.fillColor('#ffffff').fontSize(8).text(statusLabels[invoice.cfdi_status] || '', rightX + 100, doc.y + 5, { width: 90, align: 'center' });
+          doc.fillColor('#000000');
+        }
+
+        doc.moveDown(1);
+        const separatorY = Math.max(doc.y, 140);
+
+        // Separator line
+        doc.moveTo(40, separatorY).lineTo(572, separatorY).lineWidth(0.5).stroke('#cccccc');
+
+        // ═══ RECEPTOR (Client Info) ═══
+        let clientY = separatorY + 8;
+        doc.fontSize(10).fillColor('#6b21a8').text('RECEPTOR', 40, clientY);
+        doc.fillColor('#000000').fontSize(9);
+        clientY = doc.y + 2;
+        doc.text(customer.name, 40, clientY);
+        if (customer.rfc) doc.text(`RFC: ${customer.rfc}`, 40, doc.y);
+        if (customer.regimen_fiscal) doc.text(`Régimen: ${SAT_REGIMEN_FISCAL[customer.regimen_fiscal] || customer.regimen_fiscal}`, 40, doc.y);
+        if (customer.zip_code) doc.text(`C.P.: ${customer.zip_code}`, 40, doc.y);
+        if (customer.email) doc.text(`Email: ${customer.email}`, 40, doc.y);
+        if (customer.address) doc.text(customer.address, 40, doc.y);
+
+        // Right: CFDI fiscal fields
+        if (hasCfdi) {
+          doc.fontSize(10).fillColor('#6b21a8').text('DATOS CFDI', rightX, separatorY + 8);
+          doc.fillColor('#000000').fontSize(9);
+          if (invoice.uso_cfdi) doc.text(`Uso CFDI: ${invoice.uso_cfdi} - ${SAT_USO_CFDI[invoice.uso_cfdi] || ''}`, rightX, doc.y + 2);
+          if (invoice.payment_form_code) doc.text(`Forma Pago: ${invoice.payment_form_code} - ${SAT_FORMA_PAGO[invoice.payment_form_code] || ''}`, rightX, doc.y);
+          if (invoice.payment_method_code) doc.text(`Método Pago: ${invoice.payment_method_code} - ${SAT_METODO_PAGO[invoice.payment_method_code] || ''}`, rightX, doc.y);
+          if (invoice.currency_code) doc.text(`Moneda: ${invoice.currency_code}`, rightX, doc.y);
+        }
+
+        doc.moveDown(1);
+        doc.text(`Renta asociada: ${rental.rental_code}`, 40, doc.y);
         doc.moveDown(1);
 
-        // Información del cliente
-        doc.fontSize(12).text('FACTURAR A:', { underline: true });
-        doc.fontSize(10);
-        doc.text(`${customer.name}`);
-        doc.text(`${customer.email}`);
-        if (customer.address) doc.text(`${customer.address}`);
-        doc.moveDown(1.5);
+        // ═══ TABLE: Line Items or Simple ═══
+        if (lineItems.length > 0) {
+          // Full line items table
+          const colX = { clave: 40, desc: 105, cant: 300, unit: 345, precio: 385, desc2: 440, importe: 490 };
+          const tableHeaderY = doc.y;
 
-        // Detalles de la factura
-        doc.fontSize(10);
-        doc.text(`Fecha de emisión: ${new Date(invoice.issue_date).toLocaleDateString()}`);
-        doc.text(`Fecha de vencimiento: ${new Date(invoice.due_date).toLocaleDateString()}`);
-        doc.text(`Relacionado a renta: ${rental.rental_code}`);
-        doc.moveDown(1.5);
+          // Table header background
+          doc.rect(40, tableHeaderY - 2, pageWidth, 14).fill('#f3f4f6');
+          doc.fillColor('#000000').fontSize(7);
+          doc.text('Clave', colX.clave, tableHeaderY, { width: 60 });
+          doc.text('Descripción', colX.desc, tableHeaderY, { width: 190 });
+          doc.text('Cant.', colX.cant, tableHeaderY, { width: 40, align: 'right' });
+          doc.text('Unidad', colX.unit, tableHeaderY, { width: 35 });
+          doc.text('P. Unit.', colX.precio, tableHeaderY, { width: 50, align: 'right' });
+          doc.text('Desc.', colX.desc2, tableHeaderY, { width: 45, align: 'right' });
+          doc.text('Importe', colX.importe, tableHeaderY, { width: 72, align: 'right' });
 
-        // Tabla de conceptos
-        const tableTop = doc.y;
-        doc.fontSize(10);
+          let rowY = tableHeaderY + 16;
 
-        // Headers
-        doc.text('Concepto', 50, tableTop);
-        doc.text('Monto', 400, tableTop, { width: 90, align: 'right' });
-        doc.moveDown(0.3);
+          for (const item of lineItems) {
+            if (rowY > 680) {
+              doc.addPage();
+              rowY = 40;
+            }
 
-        // Line
-        doc.moveTo(50, doc.y).lineTo(500, doc.y).stroke();
-        doc.moveDown(0.3);
+            // Alternate row background
+            const rowIdx = lineItems.indexOf(item);
+            if (rowIdx % 2 === 1) {
+              doc.rect(40, rowY - 2, pageWidth, 13).fill('#fafafa');
+              doc.fillColor('#000000');
+            }
 
-        // Items
-        doc.text(`Renta de vehículo (${rental.days} días)`, 50, doc.y);
-        doc.text(`$${invoice.subtotal}`, 400, doc.y, { width: 90, align: 'right' });
-        doc.moveDown(0.8);
+            doc.fontSize(7);
+            doc.text(item.satProductCode, colX.clave, rowY, { width: 60 });
+            doc.text(item.description, colX.desc, rowY, { width: 190 });
+            doc.text(Number(item.quantity).toFixed(2), colX.cant, rowY, { width: 40, align: 'right' });
+            doc.text(item.unitCode, colX.unit, rowY, { width: 35 });
+            doc.text(fmt(item.unitPrice), colX.precio, rowY, { width: 50, align: 'right' });
+            doc.text(fmt(item.discount), colX.desc2, rowY, { width: 45, align: 'right' });
+            doc.text(fmt(item.subtotal), colX.importe, rowY, { width: 72, align: 'right' });
+            rowY += 14;
+          }
 
-        if (invoice.discount_amount && invoice.discount_amount > 0) {
-          doc.text('Descuento', 50, doc.y);
-          doc.text(`-$${invoice.discount_amount}`, 400, doc.y, { width: 90, align: 'right' });
+          // Separator
+          doc.moveTo(40, rowY).lineTo(572, rowY).lineWidth(0.5).stroke('#cccccc');
+          rowY += 8;
+
+          // Totals
+          const totalsX = 420;
+          doc.fontSize(9);
+          doc.text('Subtotal:', totalsX, rowY, { width: 70, align: 'right' });
+          doc.text(fmt(invoice.subtotal), 495, rowY, { width: 67, align: 'right' });
+          rowY += 14;
+
+          if (invoice.discount_amount && Number(invoice.discount_amount) > 0) {
+            doc.text('Descuento:', totalsX, rowY, { width: 70, align: 'right' });
+            doc.text(`-${fmt(invoice.discount_amount)}`, 495, rowY, { width: 67, align: 'right' });
+            rowY += 14;
+          }
+
+          doc.text('IVA (16%):', totalsX, rowY, { width: 70, align: 'right' });
+          doc.text(fmt(invoice.tax_amount), 495, rowY, { width: 67, align: 'right' });
+          rowY += 16;
+
+          doc.fontSize(12);
+          doc.text('TOTAL:', totalsX, rowY, { width: 70, align: 'right' });
+          doc.text(fmt(invoice.total_amount), 495, rowY, { width: 67, align: 'right' });
+          rowY += 18;
+
+          // Paid / Balance
+          doc.fontSize(9);
+          doc.text('Pagado:', totalsX, rowY, { width: 70, align: 'right' });
+          doc.text(fmt(invoice.paid_amount || 0), 495, rowY, { width: 67, align: 'right' });
+          rowY += 14;
+          doc.fontSize(10);
+          doc.text('SALDO:', totalsX, rowY, { width: 70, align: 'right' });
+          doc.text(fmt(invoice.balance), 495, rowY, { width: 67, align: 'right' });
+
+          doc.y = rowY + 20;
+        } else {
+          // Legacy: no line items — simple table
+          const tableTop = doc.y;
+          doc.fontSize(10);
+          doc.text('Concepto', 50, tableTop);
+          doc.text('Monto', 400, tableTop, { width: 90, align: 'right' });
+          doc.moveDown(0.3);
+          doc.moveTo(50, doc.y).lineTo(500, doc.y).stroke();
+          doc.moveDown(0.3);
+
+          doc.text(`Renta de vehículo (${rental.days} días)`, 50, doc.y);
+          doc.text(fmt(invoice.subtotal), 400, doc.y, { width: 90, align: 'right' });
           doc.moveDown(0.8);
-        }
 
-        doc.text('IVA', 50, doc.y);
-        doc.text(`$${invoice.tax_amount}`, 400, doc.y, { width: 90, align: 'right' });
-        doc.moveDown(0.8);
+          if (invoice.discount_amount && Number(invoice.discount_amount) > 0) {
+            doc.text('Descuento', 50, doc.y);
+            doc.text(`-${fmt(invoice.discount_amount)}`, 400, doc.y, { width: 90, align: 'right' });
+            doc.moveDown(0.8);
+          }
 
-        // Line
-        doc.moveTo(50, doc.y).lineTo(500, doc.y).stroke();
-        doc.moveDown(0.5);
+          doc.text('IVA', 50, doc.y);
+          doc.text(fmt(invoice.tax_amount), 400, doc.y, { width: 90, align: 'right' });
+          doc.moveDown(0.8);
+          doc.moveTo(50, doc.y).lineTo(500, doc.y).stroke();
+          doc.moveDown(0.5);
 
-        // Total
-        doc.fontSize(12).text('TOTAL', 50, doc.y);
-        doc.text(`$${invoice.total_amount}`, 400, doc.y, { width: 90, align: 'right' });
-        doc.moveDown(1);
-
-        // Pagado/Pendiente
-        const paidAmount = invoice.paid_amount || 0;
-        doc.fontSize(10).text('Pagado', 50, doc.y);
-        doc.text(`$${paidAmount}`, 400, doc.y, { width: 90, align: 'right' });
-        doc.moveDown(0.5);
-
-        doc.fontSize(12).text('SALDO', 50, doc.y, { underline: true });
-        doc.text(`$${invoice.balance}`, 400, doc.y, { width: 90, align: 'right' });
-        doc.moveDown(2);
-
-        // Notas
-        if (invoice.notes) {
-          doc.fontSize(10).text('Notas:', { underline: true });
-          doc.fontSize(9).text(invoice.notes);
+          doc.fontSize(12).text('TOTAL', 50, doc.y);
+          doc.text(fmt(invoice.total_amount), 400, doc.y, { width: 90, align: 'right' });
           doc.moveDown(1);
+
+          doc.fontSize(10).text('Pagado', 50, doc.y);
+          doc.text(fmt(invoice.paid_amount || 0), 400, doc.y, { width: 90, align: 'right' });
+          doc.moveDown(0.5);
+
+          doc.fontSize(12).text('SALDO', 50, doc.y, { underline: true });
+          doc.text(fmt(invoice.balance), 400, doc.y, { width: 90, align: 'right' });
+          doc.moveDown(2);
         }
 
-        // Footer
-        doc.fontSize(8).text(
-          `Documento generado el ${new Date().toLocaleString()}`,
-          { align: 'center' }
+        // ═══ QR CODE + CADENA ORIGINAL (if CFDI stamped) ═══
+        if (qrBuffer && hasCfdi) {
+          const qrY = Math.min(doc.y + 10, 640);
+          doc.image(qrBuffer, 40, qrY, { width: 100 });
+
+          doc.fontSize(7).fillColor('#666666');
+          doc.text('Cadena original del complemento de certificación digital del SAT:', 150, qrY, { width: 400 });
+          doc.text('||1.1|' + (invoice.uuid || '') + '|SIMULADO||', 150, doc.y, { width: 400 });
+          doc.moveDown(0.5);
+          doc.text('Este documento es una representación impresa de un CFDI 4.0', 150, doc.y, { width: 400 });
+          if (invoice.cfdi_status !== 'stamped') {
+            doc.fillColor('#ef4444').text('MODO SIMULADO — Sin timbrado real ante el SAT', 150, doc.y, { width: 400 });
+          }
+          doc.fillColor('#000000');
+        }
+
+        // ═══ NOTES ═══
+        if (invoice.notes) {
+          doc.moveDown(1);
+          doc.fontSize(9).text('Notas:', 40, doc.y, { underline: true });
+          doc.fontSize(8).text(invoice.notes, 40, doc.y);
+        }
+
+        // ═══ FOOTER ═══
+        doc.fontSize(7).fillColor('#999999').text(
+          `Documento generado el ${new Date().toLocaleString('es-MX')} | MOVICAR`,
+          40, 740, { align: 'center', width: pageWidth }
         );
 
         doc.end();

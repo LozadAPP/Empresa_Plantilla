@@ -18,7 +18,11 @@ import {
   TableHead,
   TableRow,
   Divider,
-  CircularProgress
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -34,13 +38,20 @@ import {
   Schedule as SentIcon,
   Description as DraftIcon,
   Cancel as CancelledIcon,
-  Send as SendIcon
+  Send as SendIcon,
+  Verified as StampIcon,
+  Code as XmlIcon,
+  Block as CancelCfdiIcon,
+  QrCode2 as QrIcon,
+  ListAlt as LineItemsIcon
 } from '@mui/icons-material';
+import { QRCodeSVG } from 'qrcode.react';
 import { useSnackbar } from 'notistack';
 import { invoiceService } from '../services/invoiceService';
+import cfdiService from '../services/cfdiService';
 import { AppDispatch, RootState } from '../store';
 import { fetchInvoiceById } from '../store/slices/paymentSlice';
-import { InvoiceStatus } from '../types/invoice';
+import { InvoiceStatus, CfdiStatus } from '../types/invoice';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { formatDate } from '../utils/formatters';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -55,6 +66,56 @@ const InvoiceDetail: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const { selectedInvoice: invoice, loading } = useSelector((state: RootState) => state.payments);
   const [resending, setResending] = useState(false);
+  const [stamping, setStamping] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState('02');
+
+  const handleStampCfdi = async () => {
+    if (!invoice) return;
+    setStamping(true);
+    try {
+      const result = await cfdiService.stampInvoice(invoice.id);
+      enqueueSnackbar(result.message || 'CFDI timbrado exitosamente', { variant: 'success' });
+      dispatch(fetchInvoiceById(invoice.id));
+    } catch (error: any) {
+      enqueueSnackbar(error?.response?.data?.message || 'Error al timbrar CFDI', { variant: 'error' });
+    } finally {
+      setStamping(false);
+    }
+  };
+
+  const handleCancelCfdi = async () => {
+    if (!invoice) return;
+    setCancelling(true);
+    try {
+      const result = await cfdiService.cancelCfdi(invoice.id, cancelReason);
+      enqueueSnackbar(result.message || 'CFDI cancelado', { variant: 'success' });
+      setShowCancelDialog(false);
+      dispatch(fetchInvoiceById(invoice.id));
+    } catch (error: any) {
+      enqueueSnackbar(error?.response?.data?.message || 'Error al cancelar CFDI', { variant: 'error' });
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleDownloadXML = async () => {
+    if (!invoice) return;
+    try {
+      await cfdiService.downloadXML(invoice.id);
+      enqueueSnackbar('XML descargado', { variant: 'success' });
+    } catch {
+      enqueueSnackbar('Error al descargar XML', { variant: 'error' });
+    }
+  };
+
+  const CFDI_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
+    pending_stamp: { label: 'Pendiente de Timbrado', color: '#f59e0b', bgColor: 'rgba(245, 158, 11, 0.1)' },
+    stamped: { label: 'Timbrada', color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.1)' },
+    cancelled: { label: 'CFDI Cancelado', color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.1)' },
+    error: { label: 'Error', color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.1)' },
+  };
 
   const handleResendEmail = async () => {
     if (!invoice) return;
@@ -200,8 +261,76 @@ const InvoiceDetail: React.FC = () => {
               Registrar Pago
             </Button>
           )}
+          {/* CFDI Actions */}
+          {invoice.cfdi_status !== 'stamped' && invoice.cfdi_status !== 'cancelled' && (
+            <Button
+              variant="contained"
+              startIcon={stamping ? <CircularProgress size={18} color="inherit" /> : <StampIcon />}
+              onClick={handleStampCfdi}
+              disabled={stamping}
+              sx={{ bgcolor: '#f59e0b', '&:hover': { bgcolor: '#d97706' } }}
+            >
+              {stamping ? 'Timbrando...' : 'Timbrar CFDI'}
+            </Button>
+          )}
+          {invoice.cfdi_status === 'stamped' && (
+            <>
+              <Button
+                variant="outlined"
+                startIcon={<XmlIcon />}
+                onClick={handleDownloadXML}
+                sx={{ borderColor: '#6366f1', color: '#6366f1', '&:hover': { borderColor: '#4f46e5', bgcolor: 'rgba(99,102,241,0.08)' } }}
+              >
+                XML
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<CancelCfdiIcon />}
+                onClick={() => setShowCancelDialog(true)}
+                sx={{ borderColor: '#ef4444', color: '#ef4444', '&:hover': { borderColor: '#dc2626', bgcolor: 'rgba(239,68,68,0.08)' } }}
+              >
+                Cancelar CFDI
+              </Button>
+            </>
+          )}
         </Box>
       </Box>
+
+      {/* Cancel CFDI Dialog */}
+      {showCancelDialog && (
+        <Paper sx={{
+          p: 3, mb: 3,
+          background: isDarkMode ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.04)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: 2,
+        }}>
+          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: '#ef4444' }}>
+            Cancelar CFDI
+          </Typography>
+          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+            <InputLabel>Motivo de Cancelación</InputLabel>
+            <Select value={cancelReason} label="Motivo de Cancelación" onChange={(e) => setCancelReason(e.target.value)}>
+              <MenuItem value="01">01 - Comprobante con errores (con relación)</MenuItem>
+              <MenuItem value="02">02 - Comprobante con errores (sin relación)</MenuItem>
+              <MenuItem value="03">03 - No se llevó a cabo la operación</MenuItem>
+              <MenuItem value="04">04 - Operación nominativa en factura global</MenuItem>
+            </Select>
+          </FormControl>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Button onClick={() => setShowCancelDialog(false)} sx={{ color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
+              No, volver
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleCancelCfdi}
+              disabled={cancelling}
+              sx={{ bgcolor: '#ef4444', '&:hover': { bgcolor: '#dc2626' } }}
+            >
+              {cancelling ? 'Cancelando...' : 'Confirmar Cancelación'}
+            </Button>
+          </Box>
+        </Paper>
+      )}
 
       {/* Status and Dates Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -366,6 +495,144 @@ const InvoiceDetail: React.FC = () => {
               </Button>
             </Grid>
           </Grid>
+        </Paper>
+      )}
+
+      {/* CFDI Status Card */}
+      {invoice.cfdi_status && (
+        <Paper
+          sx={{
+            p: 3,
+            mb: 3,
+            background: isDarkMode ? CFDI_STATUS_CONFIG[invoice.cfdi_status]?.bgColor || 'rgba(255,255,255,0.05)' : CFDI_STATUS_CONFIG[invoice.cfdi_status]?.bgColor || '#fff',
+            borderRadius: 2,
+            border: `1px solid ${CFDI_STATUS_CONFIG[invoice.cfdi_status]?.color || '#8b5cf6'}40`
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <QrIcon sx={{ color: CFDI_STATUS_CONFIG[invoice.cfdi_status]?.color || '#8b5cf6' }} />
+            <Typography variant="h6" fontWeight="600">
+              CFDI 4.0
+            </Typography>
+            <Chip
+              label={CFDI_STATUS_CONFIG[invoice.cfdi_status]?.label || invoice.cfdi_status}
+              size="small"
+              sx={{
+                fontWeight: 600,
+                bgcolor: CFDI_STATUS_CONFIG[invoice.cfdi_status]?.bgColor,
+                color: CFDI_STATUS_CONFIG[invoice.cfdi_status]?.color,
+                border: `1px solid ${CFDI_STATUS_CONFIG[invoice.cfdi_status]?.color}40`,
+              }}
+            />
+          </Box>
+          <Grid container spacing={2}>
+            {invoice.uuid && (
+              <Grid item xs={12}>
+                <Typography variant="body2" color="text.secondary">UUID</Typography>
+                <Typography fontWeight="500" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                  {invoice.uuid}
+                </Typography>
+              </Grid>
+            )}
+            {invoice.serie && (
+              <Grid item xs={6} sm={3}>
+                <Typography variant="body2" color="text.secondary">Serie / Folio</Typography>
+                <Typography fontWeight="500">{invoice.serie} {invoice.folio}</Typography>
+              </Grid>
+            )}
+            {invoice.stamp_date && (
+              <Grid item xs={6} sm={3}>
+                <Typography variant="body2" color="text.secondary">Fecha Timbrado</Typography>
+                <Typography fontWeight="500">{formatDate(invoice.stamp_date)}</Typography>
+              </Grid>
+            )}
+            {invoice.uso_cfdi && (
+              <Grid item xs={6} sm={3}>
+                <Typography variant="body2" color="text.secondary">Uso CFDI</Typography>
+                <Typography fontWeight="500">{invoice.uso_cfdi}</Typography>
+              </Grid>
+            )}
+            {invoice.payment_method_code && (
+              <Grid item xs={6} sm={3}>
+                <Typography variant="body2" color="text.secondary">Método Pago</Typography>
+                <Typography fontWeight="500">{invoice.payment_method_code}</Typography>
+              </Grid>
+            )}
+            {invoice.currency_code && (
+              <Grid item xs={6} sm={3}>
+                <Typography variant="body2" color="text.secondary">Moneda</Typography>
+                <Typography fontWeight="500">{invoice.currency_code}</Typography>
+              </Grid>
+            )}
+            {invoice.cancel_date && (
+              <Grid item xs={6} sm={3}>
+                <Typography variant="body2" color="text.secondary">Cancelado</Typography>
+                <Typography fontWeight="500" color="error">{formatDate(invoice.cancel_date)}</Typography>
+              </Grid>
+            )}
+          </Grid>
+
+          {/* QR Code */}
+          {invoice.qr_data && invoice.cfdi_status === 'stamped' && (
+            <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <QRCodeSVG value={invoice.qr_data} size={100} />
+              <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 300 }}>
+                Escanea para verificar en el portal del SAT. Modo simulado — sin validación real.
+              </Typography>
+            </Box>
+          )}
+        </Paper>
+      )}
+
+      {/* Line Items */}
+      {invoice.lineItems && invoice.lineItems.length > 0 && (
+        <Paper
+          sx={{
+            p: 3,
+            mb: 3,
+            background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff',
+            borderRadius: 2,
+            border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <LineItemsIcon sx={{ color: '#6366f1' }} />
+            <Typography variant="h6" fontWeight="600">
+              Conceptos ({invoice.lineItems.length})
+            </Typography>
+          </Box>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell><strong>Clave SAT</strong></TableCell>
+                  <TableCell><strong>Descripción</strong></TableCell>
+                  <TableCell align="right"><strong>Cant.</strong></TableCell>
+                  <TableCell><strong>Unidad</strong></TableCell>
+                  <TableCell align="right"><strong>P. Unitario</strong></TableCell>
+                  <TableCell align="right"><strong>Desc.</strong></TableCell>
+                  <TableCell align="right"><strong>Importe</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {invoice.lineItems.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>{item.satProductCode}</Typography>
+                    </TableCell>
+                    <TableCell>{item.description}</TableCell>
+                    <TableCell align="right">{Number(item.quantity).toFixed(2)}</TableCell>
+                    <TableCell>{item.unitCode}</TableCell>
+                    <TableCell align="right">{formatCurrency(item.unitPrice)}</TableCell>
+                    <TableCell align="right">{formatCurrency(item.discount)}</TableCell>
+                    <TableCell align="right">
+                      <Typography fontWeight="500">{formatCurrency(item.subtotal)}</Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Paper>
       )}
 

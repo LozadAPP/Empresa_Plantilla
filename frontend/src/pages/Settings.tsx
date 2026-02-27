@@ -22,7 +22,11 @@ import {
   Chip,
   alpha,
   useMediaQuery,
-  useTheme
+  useTheme,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -36,14 +40,17 @@ import {
   People as PeopleIcon,
   Extension as ExtensionIcon,
   ToggleOn as ToggleOnIcon,
-  ToggleOff as ToggleOffIcon
+  ToggleOff as ToggleOffIcon,
+  Receipt as FiscalIcon
 } from '@mui/icons-material';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import configService from '../services/configService';
 import { userService } from '../services/userService';
 import extraServiceService from '../services/extraServiceService';
+import cfdiService from '../services/cfdiService';
 import { SystemConfig, PriceConfig } from '../types/config';
 import { ExtraService } from '../types/extraService';
+import { CompanyFiscalConfig } from '../types/cfdi';
 import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import TabPanel from '../components/common/TabPanel';
@@ -66,6 +73,9 @@ const Settings: React.FC = () => {
   const [error, setError] = useState('');
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
   const [loadingExtraServices, setLoadingExtraServices] = useState(false);
+  const [fiscalConfig, setFiscalConfig] = useState<CompanyFiscalConfig | null>(null);
+  const [loadingFiscal, setLoadingFiscal] = useState(false);
+  const [savingFiscal, setSavingFiscal] = useState(false);
 
   useEffect(() => {
     loadConfigs();
@@ -80,6 +90,9 @@ const Settings: React.FC = () => {
     }
     if (tabValue === 5) {
       loadExtraServices();
+    }
+    if (tabValue === 6) {
+      loadFiscalConfig();
     }
   }, [tabValue]);
 
@@ -143,6 +156,38 @@ const Settings: React.FC = () => {
       enqueueSnackbar(message, { variant: 'error' });
     } finally {
       setLoadingExtraServices(false);
+    }
+  };
+
+  const loadFiscalConfig = async () => {
+    if (fiscalConfig) return;
+    setLoadingFiscal(true);
+    try {
+      const response = await cfdiService.getFiscalConfig();
+      if (response.success) {
+        setFiscalConfig(response.data);
+      }
+    } catch {
+      enqueueSnackbar('Error al cargar configuración fiscal', { variant: 'error' });
+    } finally {
+      setLoadingFiscal(false);
+    }
+  };
+
+  const handleFiscalChange = (field: keyof CompanyFiscalConfig, value: string) => {
+    setFiscalConfig(prev => prev ? { ...prev, [field]: value } : prev);
+  };
+
+  const handleSaveFiscal = async () => {
+    if (!fiscalConfig) return;
+    setSavingFiscal(true);
+    try {
+      await cfdiService.updateFiscalConfig(fiscalConfig);
+      enqueueSnackbar('Configuración fiscal guardada', { variant: 'success' });
+    } catch {
+      enqueueSnackbar('Error al guardar configuración fiscal', { variant: 'error' });
+    } finally {
+      setSavingFiscal(false);
     }
   };
 
@@ -373,6 +418,7 @@ const Settings: React.FC = () => {
           <Tab icon={<MoneyIcon />} iconPosition="start" label={isMobile ? "" : "Precios"} />
           <Tab icon={<PeopleIcon />} iconPosition="start" label={isMobile ? "" : "Usuarios"} />
           <Tab icon={<ExtensionIcon />} iconPosition="start" label={isMobile ? "" : "Servicios"} />
+          <Tab icon={<FiscalIcon />} iconPosition="start" label={isMobile ? "" : "Fiscal"} />
         </Tabs>
       </Card>
 
@@ -803,6 +849,164 @@ const Settings: React.FC = () => {
                 </ListItemSecondaryAction>
               </ListItem>
             </List>
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* Fiscal Settings */}
+      <TabPanel value={tabValue} index={6}>
+        <Card>
+          <CardContent sx={{ p: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Box>
+                <Typography variant="h6" fontWeight={600} gutterBottom>
+                  Datos Fiscales de la Empresa
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Configura los datos fiscales para la emisión de CFDI
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                startIcon={savingFiscal ? <CircularProgress size={20} /> : <SaveIcon />}
+                onClick={handleSaveFiscal}
+                disabled={savingFiscal || !fiscalConfig}
+                sx={{
+                  bgcolor: theme.palette.primary.main,
+                  color: '#fff',
+                  '&:hover': { bgcolor: theme.palette.primary.dark }
+                }}
+              >
+                {savingFiscal ? 'Guardando...' : 'Guardar Fiscal'}
+              </Button>
+            </Box>
+            <Divider sx={{ mb: 3 }} />
+
+            {loadingFiscal ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : !fiscalConfig ? (
+              <Alert severity="info">
+                No se pudo cargar la configuración fiscal. Verifica que el backend esté corriendo.
+              </Alert>
+            ) : (
+              <Grid container spacing={3}>
+                {/* Datos del Emisor */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
+                    Datos del Emisor
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="RFC de la Empresa"
+                    value={fiscalConfig.company_rfc || ''}
+                    onChange={(e) => handleFiscalChange('company_rfc', e.target.value.toUpperCase())}
+                    helperText="RFC del emisor (12 caracteres)"
+                    inputProps={{ maxLength: 13 }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Razón Social"
+                    value={fiscalConfig.company_razon_social || ''}
+                    onChange={(e) => handleFiscalChange('company_razon_social', e.target.value)}
+                    helperText="Nombre fiscal de la empresa"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth>
+                    <InputLabel>Régimen Fiscal</InputLabel>
+                    <Select
+                      value={fiscalConfig.company_regimen_fiscal || ''}
+                      label="Régimen Fiscal"
+                      onChange={(e) => handleFiscalChange('company_regimen_fiscal', e.target.value)}
+                    >
+                      <MenuItem value="">Sin especificar</MenuItem>
+                      <MenuItem value="601">601 - General de Ley PM</MenuItem>
+                      <MenuItem value="603">603 - PM Fines no Lucrativos</MenuItem>
+                      <MenuItem value="612">612 - PF Actividades Empresariales</MenuItem>
+                      <MenuItem value="616">616 - Sin obligaciones fiscales</MenuItem>
+                      <MenuItem value="625">625 - Plataformas Tecnológicas</MenuItem>
+                      <MenuItem value="626">626 - RESICO</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Código Postal"
+                    value={fiscalConfig.company_zip_code || ''}
+                    onChange={(e) => handleFiscalChange('company_zip_code', e.target.value.replace(/\D/g, ''))}
+                    helperText="C.P. del domicilio fiscal"
+                    inputProps={{ maxLength: 5 }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Dirección Fiscal"
+                    value={fiscalConfig.company_address || ''}
+                    onChange={(e) => handleFiscalChange('company_address', e.target.value)}
+                  />
+                </Grid>
+
+                {/* PAC Configuration */}
+                <Grid item xs={12} sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
+                    Proveedor de Timbrado (PAC)
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Proveedor PAC"
+                    value={fiscalConfig.cfdi_pac_provider || 'simulado'}
+                    onChange={(e) => handleFiscalChange('cfdi_pac_provider', e.target.value)}
+                    helperText="Proveedor actual de timbrado"
+                    InputProps={{
+                      endAdornment: fiscalConfig.cfdi_pac_provider === 'simulado' ? (
+                        <Chip label="Modo Simulado" size="small" color="warning" />
+                      ) : undefined
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Usuario PAC"
+                    value={fiscalConfig.cfdi_pac_user || ''}
+                    onChange={(e) => handleFiscalChange('cfdi_pac_user', e.target.value)}
+                    helperText="Usuario de autenticación con el PAC"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="Contraseña PAC"
+                    value={fiscalConfig.cfdi_pac_password || ''}
+                    onChange={(e) => handleFiscalChange('cfdi_pac_password', e.target.value)}
+                    helperText="Contraseña de autenticación con el PAC"
+                  />
+                </Grid>
+
+                {/* Certificates */}
+                <Grid item xs={12} sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
+                    Certificados de Sello Digital (CSD)
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Alert severity="info">
+                    Los certificados CSD se configuran a nivel de servidor. Contacta al administrador del sistema para instalar o actualizar los certificados.
+                  </Alert>
+                </Grid>
+              </Grid>
+            )}
           </CardContent>
         </Card>
       </TabPanel>

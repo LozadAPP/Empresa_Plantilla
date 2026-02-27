@@ -127,7 +127,20 @@ class AlertScheduler {
     this.tasks.push(expiringQuotesTask);
     logger.info('Verificación de cotizaciones programada (10:00 AM)');
 
-    // 9. Limpieza de alertas antiguas - Diariamente a las 3:00 AM
+    // 9. Prospectos con seguimiento vencido - Diariamente a las 8:30 AM
+    const staleLeadsTask = cron.schedule('30 8 * * *', async () => {
+      logger.info('Verificando prospectos con seguimiento vencido...');
+      try {
+        const count = await alertService.checkStaleLeads();
+        logger.info(`${count} alerta(s) de prospectos vencidos creada(s)`);
+      } catch (error) {
+        logger.error('Error verificando prospectos vencidos', { error });
+      }
+    });
+    this.tasks.push(staleLeadsTask);
+    logger.info('Verificación de prospectos programada (8:30 AM)');
+
+    // 10. Limpieza de alertas antiguas - Diariamente a las 3:00 AM
     const cleanupTask = cron.schedule('0 3 * * *', async () => {
       logger.info('Ejecutando limpieza de alertas antiguas...');
       try {

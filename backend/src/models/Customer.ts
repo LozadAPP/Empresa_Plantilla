@@ -11,6 +11,11 @@ interface CustomerAttributes {
   city?: string;
   country?: string;
   tax_id?: string;
+  // Fiscal fields (CFDI)
+  rfc?: string;
+  regimen_fiscal?: string;
+  cfdi_email?: string;
+  zip_code?: string;
   customer_type: 'individual' | 'corporate' | 'government';
   credit_limit: number;
   payment_terms: number; // Days to pay (Net 30, Net 60, etc.)
@@ -34,6 +39,11 @@ class Customer extends Model<CustomerAttributes, CustomerCreationAttributes> imp
   public city?: string;
   public country?: string;
   public tax_id?: string;
+  // Fiscal fields (CFDI)
+  public rfc?: string;
+  public regimen_fiscal?: string;
+  public cfdi_email?: string;
+  public zip_code?: string;
   public customer_type!: 'individual' | 'corporate' | 'government';
   public credit_limit!: number;
   public payment_terms!: number;
@@ -86,6 +96,23 @@ Customer.init(
     },
     tax_id: {
       type: DataTypes.STRING(50),
+      allowNull: true
+    },
+    rfc: {
+      type: DataTypes.STRING(13),
+      allowNull: true
+    },
+    regimen_fiscal: {
+      type: DataTypes.STRING(5),
+      allowNull: true
+    },
+    cfdi_email: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      validate: { isEmail: true }
+    },
+    zip_code: {
+      type: DataTypes.STRING(5),
       allowNull: true
     },
     customer_type: {

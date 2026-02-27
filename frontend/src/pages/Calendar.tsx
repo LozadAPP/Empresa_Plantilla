@@ -28,6 +28,7 @@ import {
   RequestQuote as QuoteIcon,
   Shield as VehicleAlertIcon,
   AssignmentReturn as ReturnIcon,
+  PersonSearch as LeadFollowUpIcon,
 } from '@mui/icons-material';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -63,6 +64,7 @@ const FILTER_CHIPS: {
   { key: 'quote', label: 'Cotizaciones', icon: <QuoteIcon fontSize="small" />, color: CALENDAR_COLORS.quote.sent },
   { key: 'vehicleAlert', label: 'Alertas Vehículos', icon: <VehicleAlertIcon fontSize="small" />, color: CALENDAR_COLORS.vehicleAlert.insurance },
   { key: 'return', label: 'Devoluciones', icon: <ReturnIcon fontSize="small" />, color: CALENDAR_COLORS.return.due },
+  { key: 'leadFollowUp', label: 'Seguimientos CRM', icon: <LeadFollowUpIcon fontSize="small" />, color: CALENDAR_COLORS.leadFollowUp.new },
 ];
 
 // ── View config ──────────────────────────────────────

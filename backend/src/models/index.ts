@@ -37,6 +37,13 @@ import Expense from './Expense';
 import Supplier from './Supplier';
 // Document Model
 import Document from './Document';
+// Lead / CRM Models
+import Lead from './Lead';
+import LeadActivity from './LeadActivity';
+// Accounting Double-Entry
+import TransactionLine from './TransactionLine';
+// Invoice Line Items (CFDI)
+import InvoiceLineItem from './InvoiceLineItem';
 
 // ============================================
 // ASSOCIATIONS / RELATIONSHIPS
@@ -122,6 +129,10 @@ Customer.hasMany(Invoice, { foreignKey: 'customer_id', as: 'invoices' });
 Invoice.belongsTo(User, { foreignKey: 'created_by', as: 'creator', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
 User.hasMany(Invoice, { foreignKey: 'created_by', as: 'createdInvoices' });
 
+// InvoiceLineItem - Invoice (Many-to-One) — CFDI line items
+InvoiceLineItem.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Invoice.hasMany(InvoiceLineItem, { foreignKey: 'invoice_id', as: 'lineItems', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+
 // Income - Rental (Many-to-One)
 Income.belongsTo(Rental, { foreignKey: 'rental_id', as: 'rental' });
 Rental.hasMany(Income, { foreignKey: 'rental_id', as: 'incomes' });
@@ -173,6 +184,14 @@ User.hasMany(Transaction, { foreignKey: 'approved_by', as: 'approvedTransactions
 // Account - Account (Self-referencing for hierarchy)
 Account.belongsTo(Account, { foreignKey: 'parent_account_id', as: 'parentAccount' });
 Account.hasMany(Account, { foreignKey: 'parent_account_id', as: 'subAccounts' });
+
+// TransactionLine - Transaction (Many-to-One) — Double-entry line items
+TransactionLine.belongsTo(Transaction, { foreignKey: 'transaction_id', as: 'transaction', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Transaction.hasMany(TransactionLine, { foreignKey: 'transaction_id', as: 'lines', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+
+// TransactionLine - Account (Many-to-One)
+TransactionLine.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+Account.hasMany(TransactionLine, { foreignKey: 'account_id', as: 'transactionLines' });
 
 // Alert - User (Many-to-One) - assigned to
 Alert.belongsTo(User, { foreignKey: 'assigned_to', as: 'assignee', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
@@ -319,6 +338,30 @@ MaintenanceOrder.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier'
 Supplier.hasMany(MaintenanceOrder, { foreignKey: 'supplier_id', as: 'maintenanceOrders' });
 
 // ============================================
+// LEAD / CRM ASSOCIATIONS
+// ============================================
+
+// Lead - User (Many-to-One) - assigned to
+Lead.belongsTo(User, { foreignKey: 'assigned_to', as: 'assignee', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+User.hasMany(Lead, { foreignKey: 'assigned_to', as: 'assignedLeads' });
+
+// Lead - User (Many-to-One) - created by
+Lead.belongsTo(User, { foreignKey: 'created_by', as: 'creator', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+User.hasMany(Lead, { foreignKey: 'created_by', as: 'createdLeads' });
+
+// Lead - Customer (Many-to-One) - converted customer
+Lead.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+Customer.hasMany(Lead, { foreignKey: 'customer_id', as: 'leads' });
+
+// Lead - LeadActivity (One-to-Many)
+Lead.hasMany(LeadActivity, { foreignKey: 'lead_id', as: 'activities', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+LeadActivity.belongsTo(Lead, { foreignKey: 'lead_id', as: 'lead', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+
+// LeadActivity - User (Many-to-One) - created by
+LeadActivity.belongsTo(User, { foreignKey: 'created_by', as: 'creator', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+User.hasMany(LeadActivity, { foreignKey: 'created_by', as: 'createdLeadActivities' });
+
+// ============================================
 // DOCUMENT ASSOCIATIONS
 // ============================================
 
@@ -376,7 +419,11 @@ export {
   Quote,
   Expense,
   Supplier,
-  Document
+  Document,
+  Lead,
+  LeadActivity,
+  TransactionLine,
+  InvoiceLineItem
 };
 
 export default {
@@ -411,5 +458,9 @@ export default {
   Quote,
   Expense,
   Supplier,
-  Document
+  Document,
+  Lead,
+  LeadActivity,
+  TransactionLine,
+  InvoiceLineItem
 };

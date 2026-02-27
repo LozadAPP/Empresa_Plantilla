@@ -48,9 +48,11 @@ import {
   Refresh as RefreshIcon,
   Close as CloseIcon,
   DirectionsCar as DirectionsCarIcon,
+  PersonSearch as CRMIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
+import { useAuth } from '../hooks/useAuth';
 import { dashboardService } from '../services/dashboardService';
 import { inventoryService } from '../services/inventoryService';
 import { DashboardData, InventoryItem, ItemCategory } from '../types';
@@ -91,6 +93,7 @@ const Dashboard: React.FC = () => {
   const { isDarkMode, text, chart, tooltip, background, border, purple, status } = useThemeStyles();
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
+  const { hasAnyRole } = useAuth();
   const { selectedLocationId } = useLocationContext();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -119,6 +122,7 @@ const Dashboard: React.FC = () => {
   const [performanceData, setPerformanceData] = useState<any[]>([]);
   const [maintenanceData, setMaintenanceData] = useState<any>(null);
   const [vehiclesByLocation, setVehiclesByLocation] = useState<any[]>([]);
+  const [crmSummary, setCrmSummary] = useState<any>(null);
 
   // Moneda global desde CurrencyContext (persistida en localStorage)
   const { currency, currencies, setCurrency, formatCompactCurrency, formatExactCurrency, formatChartValue } = useCurrency();
@@ -506,6 +510,8 @@ const Dashboard: React.FC = () => {
       const { start, end } = getDateRange(periodTab);
       const selectedPeriod = getPeriodParam(periodTab);
 
+      const isCRMUser = hasAnyRole('admin', 'director_general', 'jefe_ventas', 'vendedor');
+
       const [
         mainResponse,
         rentalsResponse,
@@ -515,7 +521,8 @@ const Dashboard: React.FC = () => {
         maintenanceResponse,
         vehiclesByLocationResponse,
         categoriesData,
-        itemsData
+        itemsData,
+        crmResponse
       ] = await Promise.all([
         dashboardService.getMain({ location_id: selectedLocationId || undefined, start_date: start.toISOString(), end_date: end.toISOString() }),
         dashboardService.getRecentRentals(5).catch(() => ({ data: [] })),
@@ -525,7 +532,8 @@ const Dashboard: React.FC = () => {
         dashboardService.getMaintenanceSchedule().catch(() => ({ data: { overdue: [], upcoming: [] } })),
         dashboardService.getVehiclesByLocation().catch(() => ({ data: [] })),
         inventoryService.getAllCategories().catch(() => ({ data: [] })),
-        inventoryService.getAllItems().catch(() => ({ data: [] }))
+        inventoryService.getAllItems().catch(() => ({ data: [] })),
+        isCRMUser ? dashboardService.getCRMSummary().catch(() => ({ data: null })) : Promise.resolve({ data: null }),
       ]);
 
       setData(mainResponse.data || null);
@@ -537,6 +545,7 @@ const Dashboard: React.FC = () => {
       setVehiclesByLocation(vehiclesByLocationResponse.data || []);
       setCategories(categoriesData.data?.length > 0 ? categoriesData.data : []);
       setInventoryItems(itemsData.data?.length > 0 ? itemsData.data : []);
+      if (isCRMUser) setCrmSummary(crmResponse.data || null);
 
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || 'Error al cargar el dashboard';
@@ -1684,6 +1693,114 @@ const Dashboard: React.FC = () => {
               <Bar data={vehiclesByLocationChartData} options={vehiclesByLocationOptions} />
             </Box>
           </StyledSection>
+        </Box>
+      )}
+
+      {/* Pipeline de Ventas (CRM) — Solo visible para roles de ventas */}
+      {crmSummary && (
+        <Box sx={{ mt: { xs: 2, sm: 3 } }}>
+          <Paper sx={{
+            p: { xs: 2, sm: 3 },
+            background: isDarkMode ? 'rgba(236, 72, 153, 0.06)' : alpha('#ec4899', 0.04),
+            borderRadius: '16px',
+            border: `1px solid ${isDarkMode ? 'rgba(236, 72, 153, 0.2)' : '#fce7f3'}`,
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{
+                  width: 36, height: 36, borderRadius: '10px',
+                  bgcolor: alpha('#ec4899', 0.15),
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <CRMIcon sx={{ color: '#ec4899', fontSize: 20 }} />
+                </Box>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ color: text.primary }}>
+                  Pipeline de Ventas
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                onClick={() => navigate('/leads')}
+                sx={{ textTransform: 'none', fontWeight: 600, color: '#ec4899' }}
+              >
+                Ver Prospectos
+              </Button>
+            </Box>
+
+            {/* KPI row */}
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+              gap: { xs: 1.5, sm: 2 },
+              mb: 2.5,
+            }}>
+              <Box sx={{
+                p: 1.5, borderRadius: '12px',
+                bgcolor: isDarkMode ? 'rgba(236, 72, 153, 0.08)' : alpha('#ec4899', 0.06),
+              }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>Valor Pipeline</Typography>
+                <Typography variant="h6" fontWeight={700} sx={{ color: '#ec4899' }}>
+                  ${(crmSummary.totalPipelineValue || 0).toLocaleString('es-MX')}
+                </Typography>
+              </Box>
+              <Box sx={{
+                p: 1.5, borderRadius: '12px',
+                bgcolor: isDarkMode ? 'rgba(16, 185, 129, 0.08)' : alpha('#10b981', 0.06),
+              }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>Tasa Conversión</Typography>
+                <Typography variant="h6" fontWeight={700} sx={{ color: '#10b981' }}>
+                  {crmSummary.conversionRate || 0}%
+                </Typography>
+              </Box>
+              <Box sx={{
+                p: 1.5, borderRadius: '12px',
+                bgcolor: isDarkMode ? 'rgba(245, 158, 11, 0.08)' : alpha('#f59e0b', 0.06),
+              }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>Seguimientos Hoy</Typography>
+                <Typography variant="h6" fontWeight={700} sx={{ color: '#f59e0b' }}>
+                  {crmSummary.followUpsDue || 0}
+                </Typography>
+              </Box>
+              <Box sx={{
+                p: 1.5, borderRadius: '12px',
+                bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.08)' : alpha('#8b5cf6', 0.06),
+              }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>Conversiones (30d)</Typography>
+                <Typography variant="h6" fontWeight={700} sx={{ color: '#8b5cf6' }}>
+                  {crmSummary.recentConversions || 0}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Pipeline status bar */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {[
+                { key: 'new', label: 'Nuevo', color: '#3b82f6' },
+                { key: 'contacted', label: 'Contactado', color: '#8b5cf6' },
+                { key: 'qualified', label: 'Calificado', color: '#10b981' },
+                { key: 'proposal', label: 'Propuesta', color: '#f59e0b' },
+                { key: 'negotiation', label: 'Negociación', color: '#f97316' },
+                { key: 'won', label: 'Ganado', color: '#10b981' },
+                { key: 'lost', label: 'Perdido', color: '#ef4444' },
+              ].map(({ key, label, color }) => {
+                const count = crmSummary.pipeline?.[key] || 0;
+                return (
+                  <Chip
+                    key={key}
+                    label={`${label}: ${count}`}
+                    size="small"
+                    sx={{
+                      bgcolor: alpha(color, isDarkMode ? 0.15 : 0.1),
+                      color,
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                      border: `1px solid ${alpha(color, 0.3)}`,
+                    }}
+                  />
+                );
+              })}
+            </Box>
+          </Paper>
         </Box>
       )}
 

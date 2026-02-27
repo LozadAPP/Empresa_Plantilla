@@ -207,6 +207,24 @@ export const SUPPLIERS_COLUMNS: ExportColumn[] = [
   { key: 'is_active', label: 'Activo', formatter: (value: any) => value ? 'Sí' : 'No' },
 ];
 
+export const LEADS_COLUMNS: ExportColumn[] = [
+  { key: 'leadCode', label: 'Codigo' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'company', label: 'Empresa' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Telefono' },
+  { key: 'source', label: 'Fuente' },
+  { key: 'status', label: 'Estado' },
+  { key: 'priority', label: 'Prioridad' },
+  { key: 'estimatedValue', label: 'Valor Estimado', formatter: formatCurrencyForCSV },
+  { key: 'assignee.first_name', label: 'Asignado A', formatter: (_val: any, row: any) => {
+    const a = row.assignee;
+    return a ? `${a.first_name} ${a.last_name}` : '';
+  }},
+  { key: 'nextFollowUp', label: 'Proximo Seguimiento', formatter: formatDateForCSV },
+  { key: 'createdAt', label: 'Fecha Creacion', formatter: formatDateForCSV },
+];
+
 export const QUOTES_COLUMNS: ExportColumn[] = [
   { key: 'quote_code', label: 'Código' },
   { key: 'customer.name', label: 'Cliente' },

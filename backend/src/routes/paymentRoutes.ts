@@ -3,6 +3,7 @@ import { body, param, query } from 'express-validator';
 import { PaymentController } from '../controllers/paymentController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { requireRole } from '../middleware/roleMiddleware';
+import { stampInvoice, cancelCfdi, downloadXML, validateCfdi } from '../controllers/cfdiController';
 
 const router = Router();
 
@@ -449,3 +450,16 @@ invoiceRouter.get('/:id/pdf', requireRole(...invoiceReadRoles), getInvoiceByIdVa
 
 // POST /api/v1/invoices/:id/send - Reenviar factura por email
 invoiceRouter.post('/:id/send', requireRole(...invoiceWriteRoles), resendInvoiceValidation, PaymentController.resendInvoice);
+
+// ========== CFDI ROUTES (dentro del invoiceRouter) ==========
+// POST /api/invoices/:id/cfdi/stamp - Timbrar CFDI
+invoiceRouter.post('/:id/cfdi/stamp', requireRole(...invoiceWriteRoles), stampInvoice);
+
+// POST /api/invoices/:id/cfdi/cancel - Cancelar CFDI
+invoiceRouter.post('/:id/cfdi/cancel', requireRole(...invoiceWriteRoles), cancelCfdi);
+
+// GET /api/invoices/:id/cfdi/xml - Descargar XML
+invoiceRouter.get('/:id/cfdi/xml', requireRole(...invoiceReadRoles), downloadXML);
+
+// POST /api/invoices/:id/cfdi/validate - Validar para CFDI
+invoiceRouter.post('/:id/cfdi/validate', requireRole(...invoiceReadRoles), validateCfdi);
