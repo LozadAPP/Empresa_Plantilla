@@ -8,6 +8,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { setupSwagger } from './config/swagger';
 import { csrfProtection, securityHeaders } from './middleware/csrfProtection';
 import { getAllowedOrigins, getCorsOptions } from './config/cors';
+import { generalLimiter } from './middleware/rateLimiter';
 
 const app: Application = express();
 
@@ -47,6 +48,9 @@ app.set('trust proxy', 1);
 
 // Swagger API Documentation
 setupSwagger(app);
+
+// Global rate limiting
+app.use('/api/v1', generalLimiter);
 
 // API routes
 app.use('/api/v1', routes);

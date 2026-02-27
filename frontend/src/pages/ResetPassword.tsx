@@ -53,7 +53,6 @@ const ResetPassword: React.FC = () => {
           setTokenError(result.message);
         }
       } catch (err: any) {
-        console.error('Token verification error:', err);
         setTokenError('Error al verificar el token');
       } finally {
         setVerifying(false);

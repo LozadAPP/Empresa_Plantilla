@@ -61,7 +61,7 @@ const MovementTable: React.FC<MovementTableProps> = ({ onViewDetails }) => {
       const response = await inventoryService.getAllCategories();
       setCategories(response.data || []);
     } catch (error) {
-      console.error('Error loading categories:', error);
+      // silently fail - categories are non-critical
     }
   };
 
@@ -79,7 +79,7 @@ const MovementTable: React.FC<MovementTableProps> = ({ onViewDetails }) => {
       setItems(response.data || []);
       setTotal(response.pagination?.total || 0);
     } catch (error) {
-      console.error('Error loading items:', error);
+      // silently fail - will show empty table
     } finally {
       setLoading(false);
     }

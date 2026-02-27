@@ -101,7 +101,6 @@ const AuditLog: React.FC = () => {
         setStats(response.data);
       }
     } catch (error) {
-      console.error('Error loading audit stats:', error);
     }
   };
 
@@ -123,7 +122,6 @@ const AuditLog: React.FC = () => {
         setTotalPages(response.pagination?.totalPages || 1);
       }
     } catch (error) {
-      console.error('Error loading audit logs:', error);
       setSnackbar({
         open: true,
         message: 'Error al cargar los registros de auditoría',
@@ -234,7 +232,6 @@ const AuditLog: React.FC = () => {
         severity: 'success'
       });
     } catch (error) {
-      console.error('Error exporting audit logs:', error);
       setSnackbar({
         open: true,
         message: 'Error al exportar los registros',

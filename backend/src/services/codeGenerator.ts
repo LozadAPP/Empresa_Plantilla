@@ -47,4 +47,49 @@ export class CodeGenerator {
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     return `DEV-${year}-${random}`;
   }
+
+  /**
+   * Genera código de cotización: COT-2026-0001
+   */
+  static async generateQuoteCode(): Promise<string> {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `COT-${year}-${random}`;
+  }
+
+  /**
+   * Genera codigo de gasto: EGR-2026-0001
+   */
+  static async generateExpenseCode(): Promise<string> {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `EGR-${year}-${random}`;
+  }
+
+  /**
+   * Genera codigo de proveedor: SUP-2026-0001
+   */
+  static async generateSupplierCode(): Promise<string> {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `SUP-${year}-${random}`;
+  }
+
+  /**
+   * Genera codigo de transaccion: TRX-2026-0001
+   */
+  static async generateTransactionCode(): Promise<string> {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `TRX-${year}-${random}`;
+  }
+
+  /**
+   * Genera codigo de documento: DOC-2026-0001
+   */
+  static async generateDocumentCode(): Promise<string> {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `DOC-${year}-${random}`;
+  }
 }

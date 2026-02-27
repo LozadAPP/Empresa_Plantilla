@@ -58,6 +58,7 @@ import EmptyState from '../components/common/EmptyState';
 import { exportToCSV, PAYMENTS_COLUMNS } from '../utils/exportCSV';
 import { formatDateTime } from '../utils/formatters';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useLocation as useLocationContext } from '../contexts/LocationContext';
 
 // Función para calcular fechas por defecto (últimos 30 días)
 const getDefaultDates = () => {
@@ -76,6 +77,7 @@ const Payments: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const { isDarkMode } = useCustomTheme();
   const { formatCurrency } = useCurrency();
+  const { selectedLocationId } = useLocationContext();
   const themeStyles = useThemeStyles();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -111,7 +113,7 @@ const Payments: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Fetch when filters or search change
+  // Fetch when filters, search, or location change
   useEffect(() => {
     const apiFilters = {
       ...filters,
@@ -120,10 +122,11 @@ const Payments: React.FC = () => {
       payment_type: filters.payment_type || undefined,
       payment_method: filters.payment_method || undefined,
       startDate: filters.startDate || undefined,
-      endDate: filters.endDate || undefined
+      endDate: filters.endDate || undefined,
+      location_id: selectedLocationId || undefined
     };
     dispatch(fetchPayments(apiFilters));
-  }, [dispatch, filters, debouncedSearch]);
+  }, [dispatch, filters, debouncedSearch, selectedLocationId]);
 
   const handleFilterChange = useCallback((key: string, value: unknown) => {
     setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
@@ -580,7 +583,7 @@ const Payments: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {payment.customer?.first_name} {payment.customer?.last_name}
+                      {payment.customer?.name}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {payment.customer?.email}

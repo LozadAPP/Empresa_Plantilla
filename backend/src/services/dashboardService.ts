@@ -1,5 +1,5 @@
 import { Op, fn, col, literal } from 'sequelize';
-import { Vehicle, Customer, Location, VehicleType, Rental, Payment } from '../models';
+import { Vehicle, Customer, Location, VehicleType, Rental, Payment, Expense } from '../models';
 
 interface DashboardFilters {
   location_id?: number;
@@ -66,19 +66,48 @@ class DashboardService {
       }
     });
 
-    // Pending payments (from active rentals)
-    const activeRentals = await Rental.findAll({
+    // Pending payments (from active rentals) — SQL SUM instead of loading all rows
+    const pendingResult = await Rental.findOne({
       where: {
         status: {
           [Op.in]: ['active', 'reserved']
         }
       },
-      attributes: ['total_amount', 'deposit_amount']
+      attributes: [
+        [fn('COALESCE', fn('SUM', literal('total_amount - COALESCE(deposit_amount, 0)')), 0), 'pendingTotal']
+      ],
+      raw: true
     });
 
-    const pendingPayments = activeRentals.reduce((sum: number, rental: any) => {
-      return sum + (Number.parseFloat(rental.total_amount) || 0) - (Number.parseFloat(rental.deposit_amount) || 0);
-    }, 0);
+    const pendingPayments = Number.parseFloat((pendingResult as any)?.pendingTotal) || 0;
+
+    // Expense statistics
+    const [monthExpensesResult, pendingExpensesResult] = await Promise.all([
+      Expense.findOne({
+        where: {
+          status: 'approved',
+          expenseDate: { [Op.between]: [dateRangeStart, dateRangeEnd] },
+        },
+        attributes: [[fn('COALESCE', fn('SUM', col('total_amount')), 0), 'total']],
+        raw: true,
+      }),
+      Expense.findOne({
+        where: { status: 'pending' },
+        attributes: [
+          [fn('COALESCE', fn('SUM', col('total_amount')), 0), 'total'],
+          [fn('COUNT', col('id')), 'count'],
+        ],
+        raw: true,
+      }),
+    ]);
+
+    const monthExpenses = parseFloat((monthExpensesResult as any)?.total) || 0;
+    const pendingExpenses = parseFloat((pendingExpensesResult as any)?.total) || 0;
+    const pendingExpensesCount = parseInt((pendingExpensesResult as any)?.count) || 0;
+    const monthIncome = periodPayments || 0;
+    const profitMargin = monthIncome > 0
+      ? ((monthIncome - monthExpenses) / monthIncome * 100).toFixed(1)
+      : '0.0';
 
     return {
       vehicles: {
@@ -94,8 +123,12 @@ class DashboardService {
       },
       financial: {
         todayIncome: todayPayments || 0,
-        monthIncome: periodPayments || 0,
-        pendingPayments: pendingPayments || 0
+        monthIncome,
+        pendingPayments: pendingPayments || 0,
+        monthExpenses,
+        pendingExpenses,
+        pendingExpensesCount,
+        profitMargin: parseFloat(profitMargin),
       }
     };
   }
@@ -205,73 +238,54 @@ class DashboardService {
     const where: any = {};
     if (location_id) where.location_id = location_id;
 
-    // Vehicles with expiring insurance
-    const expiringInsurance = await Vehicle.findAll({
+    // Single query for all vehicle alerts (insurance, maintenance, condition)
+    const alertVehicles = await Vehicle.findAll({
       where: {
         ...where,
-        insurance_expiry: {
-          [Op.between]: [now, sevenDaysFromNow]
-        }
+        [Op.or]: [
+          { insurance_expiry: { [Op.between]: [now, sevenDaysFromNow] } },
+          { next_maintenance: { [Op.between]: [now, sevenDaysFromNow] }, status: { [Op.ne]: 'maintenance' } },
+          { condition: 'poor', status: { [Op.ne]: 'maintenance' } }
+        ]
       },
-      attributes: ['id', 'make', 'model', 'license_plate', 'insurance_expiry']
+      attributes: ['id', 'make', 'model', 'license_plate', 'insurance_expiry', 'next_maintenance', 'condition', 'status']
     });
 
-    expiringInsurance.forEach((v: any) => {
-      alerts.push({
-        id: `insurance-${v.id}`,
-        severity: 'urgent',
-        title: 'Insurance Expiring Soon',
-        description: `${v.make} ${v.model} (${v.license_plate}) insurance expires on ${v.insurance_expiry.toLocaleDateString()}`,
-        entityType: 'vehicle',
-        entityId: v.id,
-        timestamp: now
-      });
-    });
-
-    // Vehicles with upcoming maintenance
-    const upcomingMaintenance = await Vehicle.findAll({
-      where: {
-        ...where,
-        next_maintenance: {
-          [Op.between]: [now, sevenDaysFromNow]
-        },
-        status: { [Op.ne]: 'maintenance' }
-      },
-      attributes: ['id', 'make', 'model', 'license_plate', 'next_maintenance']
-    });
-
-    upcomingMaintenance.forEach((v: any) => {
-      alerts.push({
-        id: `maintenance-${v.id}`,
-        severity: 'warning',
-        title: 'Maintenance Due Soon',
-        description: `${v.make} ${v.model} (${v.license_plate}) maintenance due on ${v.next_maintenance.toLocaleDateString()}`,
-        entityType: 'vehicle',
-        entityId: v.id,
-        timestamp: now
-      });
-    });
-
-    // Vehicles in poor condition
-    const poorCondition = await Vehicle.findAll({
-      where: {
-        ...where,
-        condition: 'poor',
-        status: { [Op.ne]: 'maintenance' }
-      },
-      attributes: ['id', 'make', 'model', 'license_plate']
-    });
-
-    poorCondition.forEach((v: any) => {
-      alerts.push({
-        id: `condition-${v.id}`,
-        severity: 'critical',
-        title: 'Vehicle in Poor Condition',
-        description: `${v.make} ${v.model} (${v.license_plate}) needs attention`,
-        entityType: 'vehicle',
-        entityId: v.id,
-        timestamp: now
-      });
+    // Categorize in JS (fast — already in memory)
+    alertVehicles.forEach((v: any) => {
+      if (v.insurance_expiry && v.insurance_expiry >= now && v.insurance_expiry <= sevenDaysFromNow) {
+        alerts.push({
+          id: `insurance-${v.id}`,
+          severity: 'urgent',
+          title: 'Insurance Expiring Soon',
+          description: `${v.make} ${v.model} (${v.license_plate}) insurance expires on ${v.insurance_expiry.toLocaleDateString()}`,
+          entityType: 'vehicle',
+          entityId: v.id,
+          timestamp: now
+        });
+      }
+      if (v.next_maintenance && v.next_maintenance >= now && v.next_maintenance <= sevenDaysFromNow && v.status !== 'maintenance') {
+        alerts.push({
+          id: `maintenance-${v.id}`,
+          severity: 'warning',
+          title: 'Maintenance Due Soon',
+          description: `${v.make} ${v.model} (${v.license_plate}) maintenance due on ${v.next_maintenance.toLocaleDateString()}`,
+          entityType: 'vehicle',
+          entityId: v.id,
+          timestamp: now
+        });
+      }
+      if (v.condition === 'poor' && v.status !== 'maintenance') {
+        alerts.push({
+          id: `condition-${v.id}`,
+          severity: 'critical',
+          title: 'Vehicle in Poor Condition',
+          description: `${v.make} ${v.model} (${v.license_plate}) needs attention`,
+          entityType: 'vehicle',
+          entityId: v.id,
+          timestamp: now
+        });
+      }
     });
 
     // Sort by severity

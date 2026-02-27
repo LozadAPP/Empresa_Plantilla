@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import {
   Box,
@@ -59,14 +60,31 @@ import { Vehicle, VehicleStatus, VehicleFilters, Pagination, VehicleFormData } f
 import { useAuth } from '../hooks/useAuth';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useLocation as useLocationContext } from '../contexts/LocationContext';
 import { StyledKPI, StyledSection } from '../components/styled';
 import VehicleForm from '../components/forms/VehicleForm';
 import EmptyState from '../components/common/EmptyState';
 
-const statusColors: Record<VehicleStatus, 'success' | 'info' | 'warning'> = {
-  available: 'success',
-  rented: 'info',
-  maintenance: 'warning'
+const getStatusChipSx = (status: VehicleStatus, isDarkMode: boolean) => {
+  const configs: Record<VehicleStatus, { bgcolor: string; color: string; border: string }> = {
+    available: {
+      bgcolor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+      color: isDarkMode ? '#34d399' : '#059669',
+      border: isDarkMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.3)',
+    },
+    rented: {
+      bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+      color: isDarkMode ? '#60a5fa' : '#2563eb',
+      border: isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.3)',
+    },
+    maintenance: {
+      bgcolor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)',
+      color: isDarkMode ? '#fbbf24' : '#92400e',
+      border: isDarkMode ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.3)',
+    },
+  };
+  const c = configs[status] || configs.available;
+  return { bgcolor: c.bgcolor, color: c.color, border: `1px solid ${c.border}`, fontWeight: 600 };
 };
 
 const statusLabels: Record<VehicleStatus, string> = {
@@ -81,10 +99,19 @@ const getConditionColor = (condition: string): 'success' | 'info' | 'warning' =>
   return 'warning';
 };
 
+const getConditionLabel = (condition: string): string => {
+  const labels: Record<string, string> = {
+    excellent: 'Excelente', good: 'Bueno', fair: 'Regular', poor: 'Malo',
+  };
+  return labels[condition] || condition;
+};
+
 const Inventory: React.FC = () => {
+  const navigate = useNavigate();
   const { hasAnyRole } = useAuth();
   const { isDarkMode } = useCustomTheme();
   const { formatCurrency } = useCurrency();
+  const { selectedLocationId } = useLocationContext();
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -117,7 +144,7 @@ const Inventory: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<VehicleStatus | ''>('');
   const [yearFilter, setYearFilter] = useState<{ min?: number; max?: number }>({});
   const [mileageFilter, setMileageFilter] = useState<{ min?: number; max?: number }>({});
-  const [locationFilter, setLocationFilter] = useState<number | ''>('');
+  const [locationFilter, setLocationFilter] = useState<number | ''>(selectedLocationId || '');
   const [typeFilter, setTypeFilter] = useState<number | ''>('');
   const [conditionFilter, setConditionFilter] = useState<string>('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -179,7 +206,6 @@ const Inventory: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching global statistics:', error);
     }
   };
 
@@ -238,7 +264,7 @@ const Inventory: React.FC = () => {
   };
 
   const handleView = () => {
-    setViewDialogOpen(true);
+    if (selectedVehicle) navigate(`/inventory/${selectedVehicle.id}`);
     handleMenuClose();
   };
 
@@ -621,22 +647,30 @@ const Inventory: React.FC = () => {
                     Rango de Año
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <TextField
-                      label="Desde"
-                      type="number"
-                      size="small"
-                      value={yearFilter.min || ''}
-                      onChange={(e) => setYearFilter(prev => ({ ...prev, min: e.target.value ? parseInt(e.target.value) : undefined }))}
-                      inputProps={{ min: 1900, max: new Date().getFullYear() + 1 }}
-                    />
-                    <TextField
-                      label="Hasta"
-                      type="number"
-                      size="small"
-                      value={yearFilter.max || ''}
-                      onChange={(e) => setYearFilter(prev => ({ ...prev, max: e.target.value ? parseInt(e.target.value) : undefined }))}
-                      inputProps={{ min: 1900, max: new Date().getFullYear() + 1 }}
-                    />
+                    <FormControl size="small" sx={{ flex: 1 }}>
+                      <InputLabel>Desde</InputLabel>
+                      <Select
+                        label="Desde"
+                        value={yearFilter.min || ''}
+                        onChange={(e) => setYearFilter(prev => ({ ...prev, min: e.target.value ? Number(e.target.value) : undefined }))}
+                      >
+                        <MenuItem value="">Todos</MenuItem>
+                        {Array.from({ length: new Date().getFullYear() + 1 - 1990 + 1 }, (_, i) => new Date().getFullYear() + 1 - i)
+                          .map(year => <MenuItem key={year} value={year}>{year}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ flex: 1 }}>
+                      <InputLabel>Hasta</InputLabel>
+                      <Select
+                        label="Hasta"
+                        value={yearFilter.max || ''}
+                        onChange={(e) => setYearFilter(prev => ({ ...prev, max: e.target.value ? Number(e.target.value) : undefined }))}
+                      >
+                        <MenuItem value="">Todos</MenuItem>
+                        {Array.from({ length: new Date().getFullYear() + 1 - 1990 + 1 }, (_, i) => new Date().getFullYear() + 1 - i)
+                          .map(year => <MenuItem key={year} value={year}>{year}</MenuItem>)}
+                      </Select>
+                    </FormControl>
                   </Box>
                 </Grid>
 
@@ -738,8 +772,8 @@ const Inventory: React.FC = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           <Chip
                             label={statusLabels[vehicle.status]}
-                            color={statusColors[vehicle.status]}
                             size="small"
+                            sx={getStatusChipSx(vehicle.status, isDarkMode)}
                           />
                           <IconButton size="small" onClick={(e) => handleMenuOpen(e, vehicle)}>
                             <MoreIcon />
@@ -764,7 +798,7 @@ const Inventory: React.FC = () => {
                             Condición
                           </Typography>
                           <Chip
-                            label={vehicle.condition}
+                            label={getConditionLabel(vehicle.condition)}
                             size="small"
                             variant="outlined"
                             color={getConditionColor(vehicle.condition)}
@@ -911,8 +945,8 @@ const Inventory: React.FC = () => {
                       <TableCell>
                         <Chip
                           label={statusLabels[vehicle.status]}
-                          color={statusColors[vehicle.status]}
                           size="small"
+                          sx={getStatusChipSx(vehicle.status, isDarkMode)}
                         />
                       </TableCell>
                       <TableCell>
@@ -925,7 +959,7 @@ const Inventory: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={vehicle.condition}
+                          label={getConditionLabel(vehicle.condition)}
                           size="small"
                           variant="outlined"
                           color={getConditionColor(vehicle.condition)}

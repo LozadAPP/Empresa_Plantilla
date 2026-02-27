@@ -30,7 +30,8 @@ import {
   Payment as PaymentIcon,
   CheckCircle as ApproveIcon,
   Cancel as RejectIcon,
-  HourglassEmpty as PendingIcon
+  HourglassEmpty as PendingIcon,
+  PictureAsPdf as PdfIcon
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import { rentalService } from '../services/rentalService';
@@ -42,6 +43,7 @@ import { formatDate, safeNumber } from '../utils/formatters';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getLocationById } from '../constants/locations';
 import { FUEL_LEVEL_LABELS } from '../constants/statusColors';
+import { DocumentPanel } from '../components/documents';
 
 const RentalDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -57,6 +59,26 @@ const RentalDetail: React.FC = () => {
   // Estado para aprobación
   const [approving, setApproving] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+
+  // Handler para descargar contrato PDF
+  const handleDownloadContract = async () => {
+    if (!rental) return;
+    try {
+      const response = await rentalService.downloadContract(rental.id);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `contrato-${rental.rental_code}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      enqueueSnackbar('Contrato descargado exitosamente', { variant: 'success' });
+    } catch (error: any) {
+      enqueueSnackbar(error?.response?.data?.message || 'Error al descargar contrato', { variant: 'error' });
+    }
+  };
 
   // Roles que pueden aprobar
   const canApprove = user?.roles?.some(role =>
@@ -162,6 +184,18 @@ const RentalDetail: React.FC = () => {
           >
             Volver
           </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PdfIcon />}
+            onClick={handleDownloadContract}
+            sx={{
+              borderColor: '#3b82f6',
+              color: '#3b82f6',
+              '&:hover': { borderColor: '#2563eb', bgcolor: 'rgba(59,130,246,0.08)' }
+            }}
+          >
+            Descargar Contrato
+          </Button>
           {!rental.invoice && (
             <Button
               variant="contained"
@@ -264,7 +298,14 @@ const RentalDetail: React.FC = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Nombre</Typography>
-                  <Typography variant="body1" fontWeight={500}>{rental.customer.name}</Typography>
+                  <Typography
+                    variant="body1"
+                    fontWeight={500}
+                    onClick={() => navigate(`/customers/${rental.customer?.id}`)}
+                    sx={{ cursor: 'pointer', color: '#8b5cf6', '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    {rental.customer.name}
+                  </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Email</Typography>
@@ -287,7 +328,14 @@ const RentalDetail: React.FC = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Vehículo</Typography>
-                  <Typography variant="body1" fontWeight={500}>{rental.vehicle.make} {rental.vehicle.model}</Typography>
+                  <Typography
+                    variant="body1"
+                    fontWeight={500}
+                    onClick={() => navigate(`/inventory/${rental.vehicle?.id}`)}
+                    sx={{ cursor: 'pointer', color: '#8b5cf6', '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    {rental.vehicle.make} {rental.vehicle.model}
+                  </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Placa</Typography>
@@ -653,6 +701,11 @@ const RentalDetail: React.FC = () => {
           <Typography variant="body1">{rental.notes}</Typography>
         </Paper>
       )}
+
+      {/* Documentos */}
+      <Box sx={{ mt: 3 }}>
+        <DocumentPanel entityType="rental" entityId={rental.id} />
+      </Box>
 
       {/* Diálogo de Rechazo */}
       <RentalRejectDialog

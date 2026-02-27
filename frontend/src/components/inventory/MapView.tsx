@@ -69,7 +69,6 @@ const MapView: React.FC<MapViewProps> = ({ onViewDetails }) => {
       setLocations(locationsResponse.data || []);
     } catch (err) {
       setError('Error al cargar datos del mapa');
-      console.error('Error loading map data:', err);
     } finally {
       setLoading(false);
     }

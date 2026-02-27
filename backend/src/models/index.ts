@@ -1,4 +1,5 @@
 import sequelize from '../config/database';
+import logger from '../config/logger';
 import Location from './Location';
 import Role from './Role';
 import User from './User';
@@ -28,6 +29,14 @@ import TokenBlacklist from './TokenBlacklist';
 // Extra Services Models
 import ExtraService from './ExtraService';
 import RentalService from './RentalService';
+// Quote Model
+import Quote from './Quote';
+// Expense Model
+import Expense from './Expense';
+// Supplier Model
+import Supplier from './Supplier';
+// Document Model
+import Document from './Document';
 
 // ============================================
 // ASSOCIATIONS / RELATIONSHIPS
@@ -246,15 +255,87 @@ RentalService.belongsTo(ExtraService, { foreignKey: 'extra_service_id', as: 'ext
 ExtraService.hasMany(RentalService, { foreignKey: 'extra_service_id', as: 'rentalServices' });
 
 // ============================================
+// QUOTE ASSOCIATIONS
+// ============================================
+
+// Quote - Customer (Many-to-One)
+Quote.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+Customer.hasMany(Quote, { foreignKey: 'customer_id', as: 'quotes' });
+
+// Quote - Vehicle (Many-to-One) - optional
+Quote.belongsTo(Vehicle, { foreignKey: 'vehicle_id', as: 'vehicle' });
+Vehicle.hasMany(Quote, { foreignKey: 'vehicle_id', as: 'quotes' });
+
+// Quote - Location (Many-to-One) - optional
+Quote.belongsTo(Location, { foreignKey: 'location_id', as: 'location' });
+Location.hasMany(Quote, { foreignKey: 'location_id', as: 'quotes' });
+
+// Quote - Rental (Many-to-One) - converted rental
+Quote.belongsTo(Rental, { foreignKey: 'converted_rental_id', as: 'convertedRental' });
+Rental.hasOne(Quote, { foreignKey: 'converted_rental_id', as: 'sourceQuote' });
+
+// Quote - User (Many-to-One) - created by
+Quote.belongsTo(User, { foreignKey: 'created_by', as: 'creator', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+User.hasMany(Quote, { foreignKey: 'created_by', as: 'createdQuotes' });
+
+// ============================================
+// EXPENSE ASSOCIATIONS
+// ============================================
+
+// Expense - Account (Many-to-One)
+Expense.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+Account.hasMany(Expense, { foreignKey: 'account_id', as: 'expenses' });
+
+// Expense - Transaction (Many-to-One)
+Expense.belongsTo(Transaction, { foreignKey: 'transaction_id', as: 'transaction' });
+Transaction.hasOne(Expense, { foreignKey: 'transaction_id', as: 'expense' });
+
+// Expense - Location (Many-to-One)
+Expense.belongsTo(Location, { foreignKey: 'location_id', as: 'location' });
+Location.hasMany(Expense, { foreignKey: 'location_id', as: 'expenses' });
+
+// Expense - User (Many-to-One) - created by
+Expense.belongsTo(User, { foreignKey: 'created_by', as: 'creator', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+User.hasMany(Expense, { foreignKey: 'created_by', as: 'createdExpenses' });
+
+// Expense - User (Many-to-One) - approved by
+Expense.belongsTo(User, { foreignKey: 'approved_by', as: 'approver', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+User.hasMany(Expense, { foreignKey: 'approved_by', as: 'approvedExpenses' });
+
+// ============================================
+// SUPPLIER ASSOCIATIONS
+// ============================================
+
+// Supplier - User (Many-to-One) - created by
+Supplier.belongsTo(User, { foreignKey: 'created_by', as: 'creator', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+User.hasMany(Supplier, { foreignKey: 'created_by', as: 'createdSuppliers' });
+
+// Expense - Supplier (Many-to-One) - optional
+Expense.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+Supplier.hasMany(Expense, { foreignKey: 'supplier_id', as: 'expenses' });
+
+// MaintenanceOrder - Supplier (Many-to-One) - optional
+MaintenanceOrder.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+Supplier.hasMany(MaintenanceOrder, { foreignKey: 'supplier_id', as: 'maintenanceOrders' });
+
+// ============================================
+// DOCUMENT ASSOCIATIONS
+// ============================================
+
+// Document - User (Many-to-One) - uploaded by
+Document.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+User.hasMany(Document, { foreignKey: 'uploaded_by', as: 'documents' });
+
+// ============================================
 // SYNC DATABASE
 // ============================================
 
 const syncDatabase = async (force: boolean = false): Promise<void> => {
   try {
     await sequelize.sync({ force, logging: false }); // Sin logs de cada tabla
-    console.log('✅ Tables synchronized');
+    logger.info('Tables synchronized');
   } catch (error) {
-    console.error('❌ Error synchronizing database:', error);
+    logger.error('Error synchronizing database:', error);
     throw error;
   }
 };
@@ -291,7 +372,11 @@ export {
   InventoryMovement,
   TokenBlacklist,
   ExtraService,
-  RentalService
+  RentalService,
+  Quote,
+  Expense,
+  Supplier,
+  Document
 };
 
 export default {
@@ -322,5 +407,9 @@ export default {
   InventoryMovement,
   TokenBlacklist,
   ExtraService,
-  RentalService
+  RentalService,
+  Quote,
+  Expense,
+  Supplier,
+  Document
 };

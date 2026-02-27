@@ -150,6 +150,7 @@ export interface RentalFilters {
   location_id?: number;
   start_date?: string;
   end_date?: string;
+  search?: string;
   page?: number;
   limit?: number;
 }

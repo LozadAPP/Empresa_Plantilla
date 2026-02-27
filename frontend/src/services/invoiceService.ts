@@ -83,17 +83,11 @@ export const invoiceService = {
   /**
    * Descargar PDF de factura
    */
-  downloadPDF: async (id: number): Promise<Blob> => {
+  downloadPDF: async (id: number) => {
     validateId(id, 'ID de factura');
-    const invoice = await invoiceService.getById(id);
-
-    if (invoice.data.pdf_url) {
-      // Si ya existe el PDF, descargarlo directamente
-      const response = await fetch(invoice.data.pdf_url);
-      return response.blob();
-    }
-
-    throw new Error('PDF no disponible para esta factura');
+    return api.get(`/invoices/${id}/pdf`, {
+      responseType: 'blob',
+    });
   }
 };
 

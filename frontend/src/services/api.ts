@@ -2,10 +2,6 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
-// Debug: ver qué valor tiene la variable (eliminar después)
-console.log('[API Config] VITE_API_URL:', import.meta.env.VITE_API_URL);
-console.log('[API Config] API_URL final:', API_URL);
-
 /**
  * Axios instance configured for HTTP-only cookie authentication
  * Tokens are automatically sent via cookies, not localStorage

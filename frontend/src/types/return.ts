@@ -42,8 +42,8 @@ export interface Return {
   };
   vehicle?: {
     id: number;
-    plate: string;
-    brand: string;
+    license_plate: string;
+    make: string;
     model: string;
   };
 }

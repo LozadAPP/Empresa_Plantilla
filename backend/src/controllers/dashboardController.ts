@@ -3,6 +3,7 @@ import { Op } from 'sequelize';
 import dashboardService from '../services/dashboardService';
 import Alert from '../models/Alert';
 import { AuthRequest } from '../types';
+import logger from '../config/logger';
 
 
 class DashboardController {
@@ -41,7 +42,7 @@ class DashboardController {
         }
       });
     } catch (error: any) {
-      console.error('Get dashboard error:', error);
+      logger.error('Get dashboard error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -65,7 +66,7 @@ class DashboardController {
         data: kpis
       });
     } catch (error: any) {
-      console.error('Get KPIs error:', error);
+      logger.error('Get KPIs error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -89,7 +90,7 @@ class DashboardController {
         data: alerts
       });
     } catch (error: any) {
-      console.error('Get alerts error:', error);
+      logger.error('Get alerts error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -110,7 +111,7 @@ class DashboardController {
         data
       });
     } catch (error: any) {
-      console.error('Get vehicles by location error:', error);
+      logger.error('Get vehicles by location error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -134,7 +135,7 @@ class DashboardController {
         data: trend
       });
     } catch (error: any) {
-      console.error('Get occupancy trend error:', error);
+      logger.error('Get occupancy trend error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -156,7 +157,7 @@ class DashboardController {
         data: customers
       });
     } catch (error: any) {
-      console.error('Get top customers error:', error);
+      logger.error('Get top customers error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -178,7 +179,7 @@ class DashboardController {
         data: rentals
       });
     } catch (error: any) {
-      console.error('Get recent rentals error:', error);
+      logger.error('Get recent rentals error', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener rentas recientes'
@@ -218,7 +219,7 @@ class DashboardController {
         data: formattedAlerts
       });
     } catch (error: any) {
-      console.error('Get critical alerts error:', error);
+      logger.error('Get critical alerts error', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener alertas críticas'
@@ -245,7 +246,7 @@ class DashboardController {
         data: performanceData
       });
     } catch (error: any) {
-      console.error('Get performance data error:', error);
+      logger.error('Get performance data error', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener datos de rendimiento'
@@ -266,7 +267,7 @@ class DashboardController {
         data: maintenanceData
       });
     } catch (error: any) {
-      console.error('Get maintenance schedule error:', error);
+      logger.error('Get maintenance schedule error', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener calendario de mantenimiento'

@@ -68,7 +68,6 @@ const InvoiceForm: React.FC = () => {
       setRentals(filtered);
     } catch (error) {
       enqueueSnackbar('Error al cargar las rentas', { variant: 'error' });
-      console.error('Error loading rentals:', error);
     } finally {
       setLoadingRentals(false);
     }

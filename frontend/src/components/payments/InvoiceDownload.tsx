@@ -60,7 +60,8 @@ const InvoiceDownload: React.FC<InvoiceDownloadProps> = ({
     // Si no, intentar generar el PDF
     setDownloading(true);
     try {
-      const blob = await invoiceService.downloadPDF(invoiceId);
+      const response = await invoiceService.downloadPDF(invoiceId);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -76,7 +77,6 @@ const InvoiceDownload: React.FC<InvoiceDownloadProps> = ({
         severity: 'success'
       });
     } catch (error: any) {
-      console.error('Error descargando factura:', error);
       setSnackbar({
         open: true,
         message: error.response?.data?.message || 'Error al descargar la factura',
@@ -109,7 +109,6 @@ const InvoiceDownload: React.FC<InvoiceDownloadProps> = ({
         severity: 'success'
       });
     } catch (error: unknown) {
-      console.error('Error enviando factura:', error);
       const message = error instanceof Error ? error.message : 'Error al enviar la factura';
       setSnackbar({
         open: true,

@@ -1,14 +1,18 @@
 import React from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Button } from '@mui/material';
 import { useTheme as useCustomTheme } from '../../contexts/ThemeContext';
 
 interface EmptyStateProps {
   icon: React.ReactElement;
   title: string;
   subtitle?: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
-const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, subtitle }) => {
+const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, subtitle, action }) => {
   const { isDarkMode } = useCustomTheme();
 
   return (
@@ -41,6 +45,15 @@ const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, subtitle }) => {
         <Typography variant="body2" color="text.secondary">
           {subtitle}
         </Typography>
+      )}
+      {action && (
+        <Button
+          variant="outlined"
+          onClick={action.onClick}
+          sx={{ mt: 2, borderRadius: '12px', textTransform: 'none', fontWeight: 600 }}
+        >
+          {action.label}
+        </Button>
       )}
     </Box>
   );

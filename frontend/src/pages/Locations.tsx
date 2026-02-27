@@ -103,7 +103,6 @@ const Locations: React.FC = () => {
         setLocations(response.data);
       }
     } catch (error) {
-      console.error('Error loading locations:', error);
       setSnackbar({
         open: true,
         message: 'Error al cargar las ubicaciones',
@@ -211,7 +210,6 @@ const Locations: React.FC = () => {
         setError(response.message || 'Error al guardar la sede');
       }
     } catch (error: any) {
-      console.error('Error saving location:', error);
       setError(error.response?.data?.message || 'Error al guardar la sede');
     } finally {
       setSaving(false);
@@ -237,7 +235,6 @@ const Locations: React.FC = () => {
       }
       handleMenuClose();
     } catch (error: any) {
-      console.error('Error toggling location status:', error);
       setSnackbar({
         open: true,
         message: error.response?.data?.message || 'Error al cambiar estado de la sede',

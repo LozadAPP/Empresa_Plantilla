@@ -15,6 +15,7 @@ interface MaintenanceOrderAttributes {
   notes?: string;
   actualCost?: number;
   actualDuration?: number; // en horas
+  supplierId?: number;
   workshopName?: string;
   technicianName?: string;
   mileageAtService?: number;
@@ -25,7 +26,7 @@ interface MaintenanceOrderAttributes {
   updatedAt?: Date;
 }
 
-interface MaintenanceOrderCreationAttributes extends Optional<MaintenanceOrderAttributes, 'id' | 'status' | 'priority' | 'startDate' | 'completedDate' | 'description' | 'notes' | 'actualCost' | 'actualDuration' | 'workshopName' | 'technicianName' | 'mileageAtService' | 'nextServiceMileage' | 'partsReplaced' | 'createdAt' | 'updatedAt'> {}
+interface MaintenanceOrderCreationAttributes extends Optional<MaintenanceOrderAttributes, 'id' | 'status' | 'priority' | 'startDate' | 'completedDate' | 'description' | 'notes' | 'actualCost' | 'actualDuration' | 'supplierId' | 'workshopName' | 'technicianName' | 'mileageAtService' | 'nextServiceMileage' | 'partsReplaced' | 'createdAt' | 'updatedAt'> {}
 
 class MaintenanceOrder extends Model<MaintenanceOrderAttributes, MaintenanceOrderCreationAttributes> implements MaintenanceOrderAttributes {
   public id!: number;
@@ -41,6 +42,7 @@ class MaintenanceOrder extends Model<MaintenanceOrderAttributes, MaintenanceOrde
   public notes?: string;
   public actualCost?: number;
   public actualDuration?: number;
+  public supplierId?: number;
   public workshopName?: string;
   public technicianName?: string;
   public mileageAtService?: number;
@@ -119,6 +121,11 @@ MaintenanceOrder.init(
       allowNull: true,
       comment: 'Duración real en horas',
     },
+    supplierId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: { model: 'suppliers', key: 'id' },
+    },
     workshopName: {
       type: DataTypes.STRING(255),
       allowNull: true,
@@ -168,6 +175,7 @@ MaintenanceOrder.init(
       { fields: ['scheduled_date'] },
       { fields: ['priority'] },
       { fields: ['maintenance_code'], unique: true },
+      { fields: ['supplier_id'] },
     ],
   }
 );

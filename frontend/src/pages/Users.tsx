@@ -121,7 +121,6 @@ const Users: React.FC = () => {
         setRoles(response.data);
       }
     } catch (error) {
-      console.error('[Users] Error loading roles:', error);
     }
   };
 
@@ -132,7 +131,6 @@ const Users: React.FC = () => {
         setStats(response.data);
       }
     } catch (error) {
-      console.error('[Users] Error loading stats:', error);
     }
   };
 

@@ -3,6 +3,7 @@ import { Op } from 'sequelize';
 import Location from '../models/Location';
 import Vehicle from '../models/Vehicle';
 import User from '../models/User';
+import logger from '../config/logger';
 
 // ====================================
 // GET ALL LOCATIONS
@@ -72,7 +73,7 @@ export const getLocations = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching locations:', error);
+    logger.error('Error fetching locations', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching locations',
@@ -114,7 +115,7 @@ export const getLocationById = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching location:', error);
+    logger.error('Error fetching location', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching location',
@@ -174,7 +175,7 @@ export const createLocation = async (req: Request, res: Response) => {
       data: location,
     });
   } catch (error: any) {
-    console.error('Error creating location:', error);
+    logger.error('Error creating location', { error });
     res.status(500).json({
       success: false,
       message: 'Error creating location',
@@ -220,7 +221,7 @@ export const updateLocation = async (req: Request, res: Response) => {
       data: location,
     });
   } catch (error: any) {
-    console.error('Error updating location:', error);
+    logger.error('Error updating location', { error });
     res.status(500).json({
       success: false,
       message: 'Error updating location',
@@ -274,7 +275,7 @@ export const toggleLocationStatus = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error toggling location status:', error);
+    logger.error('Error toggling location status', { error });
     res.status(500).json({
       success: false,
       message: 'Error toggling location status',
@@ -321,7 +322,7 @@ export const getLocationStats = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching location stats:', error);
+    logger.error('Error fetching location stats', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching location stats',
@@ -346,7 +347,7 @@ export const getLocationsDropdown = async (req: Request, res: Response) => {
       data: locations,
     });
   } catch (error: any) {
-    console.error('Error fetching locations dropdown:', error);
+    logger.error('Error fetching locations dropdown', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching locations',

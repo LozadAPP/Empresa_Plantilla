@@ -6,6 +6,8 @@ import Location from '../models/Location';
 import User from '../models/User';
 import { Op } from 'sequelize';
 import sequelize from '../config/database';
+import logger from '../config/logger';
+import { AuthRequest } from '../types';
 
 // ====================================
 // ACCOUNTS
@@ -41,7 +43,7 @@ export const getAccounts = async (req: Request, res: Response) => {
       data: accounts,
     });
   } catch (error: any) {
-    console.error('Error fetching accounts:', error);
+    logger.error('Error fetching accounts', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching accounts',
@@ -78,7 +80,7 @@ export const createAccount = async (req: Request, res: Response) => {
       data: account,
     });
   } catch (error: any) {
-    console.error('Error creating account:', error);
+    logger.error('Error creating account', { error });
     res.status(500).json({
       success: false,
       message: 'Error creating account',
@@ -125,7 +127,7 @@ export const updateAccount = async (req: Request, res: Response) => {
       data: account,
     });
   } catch (error: any) {
-    console.error('Error updating account:', error);
+    logger.error('Error updating account', { error });
     res.status(500).json({
       success: false,
       message: 'Error updating account',
@@ -206,7 +208,7 @@ export const getTransactions = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching transactions:', error);
+    logger.error('Error fetching transactions', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching transactions',
@@ -215,7 +217,7 @@ export const getTransactions = async (req: Request, res: Response) => {
   }
 };
 
-export const createTransaction = async (req: Request, res: Response) => {
+export const createTransaction = async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -240,7 +242,7 @@ export const createTransaction = async (req: Request, res: Response) => {
       notes,
     } = req.body;
 
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
 
     // Validate transfer-specific fields
     if (transactionType === 'transfer') {
@@ -311,7 +313,7 @@ export const createTransaction = async (req: Request, res: Response) => {
       data: transactionWithDetails,
     });
   } catch (error: any) {
-    console.error('Error creating transaction:', error);
+    logger.error('Error creating transaction', { error });
     res.status(500).json({
       success: false,
       message: 'Error creating transaction',
@@ -320,7 +322,7 @@ export const createTransaction = async (req: Request, res: Response) => {
   }
 };
 
-export const approveTransaction = async (req: Request, res: Response) => {
+export const approveTransaction = async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -332,7 +334,7 @@ export const approveTransaction = async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
 
     const transaction = await Transaction.findByPk(id);
 
@@ -419,7 +421,7 @@ export const approveTransaction = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error: any) {
-    console.error('Error approving transaction:', error);
+    logger.error('Error approving transaction', { error });
     res.status(500).json({
       success: false,
       message: 'Error approving transaction',
@@ -477,7 +479,7 @@ export const cancelTransaction = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     await t.rollback();
-    console.error('Error cancelling transaction:', error);
+    logger.error('Error cancelling transaction', { error });
     res.status(500).json({
       success: false,
       message: 'Error cancelling transaction',
@@ -533,7 +535,7 @@ export const getBalanceSheet = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error generating balance sheet:', error);
+    logger.error('Error generating balance sheet', { error });
     res.status(500).json({
       success: false,
       message: 'Error generating balance sheet',
@@ -585,7 +587,7 @@ export const getIncomeStatement = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error generating income statement:', error);
+    logger.error('Error generating income statement', { error });
     res.status(500).json({
       success: false,
       message: 'Error generating income statement',

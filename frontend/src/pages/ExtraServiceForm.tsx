@@ -28,9 +28,11 @@ import extraServiceService from '../services/extraServiceService';
 import { CreateExtraServiceDto, PriceType, ServiceCategory } from '../types/extraService';
 import vehicleService from '../services/vehicleService';
 import { locationService } from '../services/locationService';
+import { useLocation as useLocationContext } from '../contexts/LocationContext';
 
 const ExtraServiceForm: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
+  const { selectedLocationId } = useLocationContext();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
@@ -47,6 +49,7 @@ const ExtraServiceForm: React.FC = () => {
     price: 0,
     price_type: 'per_day',
     category: 'accessory',
+    location_id: selectedLocationId || undefined,
   });
 
   useEffect(() => {
@@ -83,7 +86,6 @@ const ExtraServiceForm: React.FC = () => {
           navigate('/settings?tab=5');
         }
       } catch (err) {
-        console.error('Error loading service:', err);
         setError('Error al cargar el servicio');
       }
     };
@@ -103,7 +105,6 @@ const ExtraServiceForm: React.FC = () => {
       setVehicleTypes(mappedTypes);
       setLocations(locationsRes.data || []);
     } catch (err) {
-      console.error('Error loading dropdown data:', err);
       setError('Error al cargar datos de referencia');
     } finally {
       setLoadingData(false);
@@ -135,7 +136,6 @@ const ExtraServiceForm: React.FC = () => {
       }
       navigate('/settings?tab=5');
     } catch (err: any) {
-      console.error('Error saving extra service:', err);
       setError(err.response?.data?.message || 'Error al guardar el servicio');
     } finally {
       setLoading(false);

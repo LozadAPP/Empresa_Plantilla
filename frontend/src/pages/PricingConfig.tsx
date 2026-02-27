@@ -30,9 +30,11 @@ import configService from '../services/configService';
 import { CreatePriceConfigDto } from '../types/config';
 import vehicleService from '../services/vehicleService';
 import { locationService } from '../services/locationService';
+import { useLocation as useLocationContext } from '../contexts/LocationContext';
 
 const PricingConfig: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
+  const { selectedLocationId } = useLocationContext();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
@@ -45,7 +47,7 @@ const PricingConfig: React.FC = () => {
 
   const [formData, setFormData] = useState<CreatePriceConfigDto>({
     vehicleTypeId: 0,
-    locationId: 1,
+    locationId: selectedLocationId || 1,
     dailyRate: 0,
     weeklyRate: 0,
     monthlyRate: 0,
@@ -107,7 +109,6 @@ const PricingConfig: React.FC = () => {
           navigate('/settings?tab=3');
         }
       } catch (error) {
-        console.error('Error loading config:', error);
         setError('Error al cargar la configuración');
       }
     };
@@ -128,7 +129,6 @@ const PricingConfig: React.FC = () => {
       setVehicleTypes(mappedTypes);
       setLocations(locationsRes.data || []);
     } catch (error) {
-      console.error('Error loading dropdown data:', error);
       setError('Error al cargar tipos de vehículos y ubicaciones');
     } finally {
       setLoadingData(false);
@@ -160,7 +160,6 @@ const PricingConfig: React.FC = () => {
       }
       navigate('/settings?tab=3');
     } catch (error: any) {
-      console.error('Error saving pricing config:', error);
       setError(error.response?.data?.message || 'Error al guardar la configuración de precios');
     } finally {
       setLoading(false);

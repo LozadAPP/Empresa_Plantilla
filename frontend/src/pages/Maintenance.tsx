@@ -247,7 +247,6 @@ const Maintenance: React.FC = () => {
       exportToCSV(filteredOrders, MAINTENANCE_COLUMNS, 'MOVICAR_Mantenimiento');
       enqueueSnackbar(`Exportación completada: ${filteredOrders.length} órdenes`, { variant: 'success' });
     } catch (error) {
-      console.error('Error exporting maintenance orders:', error);
       enqueueSnackbar('Error al exportar las órdenes', { variant: 'error' });
     }
   };

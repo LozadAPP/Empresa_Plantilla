@@ -137,13 +137,13 @@ const ReturnConfirmModal: React.FC<ReturnConfirmModalProps> = ({
               <InfoRow label="Código:" value={rental.rental_code} />
             </Grid>
             <Grid item xs={6}>
-              <InfoRow label="Placa:" value={rental.vehicle?.plate} />
+              <InfoRow label="Placa:" value={rental.vehicle?.license_plate} />
             </Grid>
             <Grid item xs={6}>
-              <InfoRow label="Vehículo:" value={`${rental.vehicle?.brand} ${rental.vehicle?.model}`} />
+              <InfoRow label="Vehículo:" value={`${rental.vehicle?.make} ${rental.vehicle?.model}`} />
             </Grid>
             <Grid item xs={6}>
-              <InfoRow label="Cliente:" value={`${rental.customer?.first_name} ${rental.customer?.last_name}`} />
+              <InfoRow label="Cliente:" value={rental.customer?.name} />
             </Grid>
           </Grid>
         </Paper>

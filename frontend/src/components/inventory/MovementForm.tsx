@@ -85,7 +85,7 @@ const MovementForm: React.FC<MovementFormProps> = ({
       const response = await inventoryService.getAllItems({ limit: 1000 });
       setItems(response.data || []);
     } catch (error) {
-      console.error('Error loading items:', error);
+      // silently fail - will show empty list
     }
   };
 
@@ -94,7 +94,7 @@ const MovementForm: React.FC<MovementFormProps> = ({
       const response = await inventoryService.getAllLocations();
       setLocations(response.data || []);
     } catch (error) {
-      console.error('Error loading locations:', error);
+      // silently fail - will show empty list
     }
   };
 

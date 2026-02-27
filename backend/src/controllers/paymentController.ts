@@ -1,16 +1,22 @@
 import { Request, Response } from 'express';
+import { AuthRequest } from '../types';
 import { Op } from 'sequelize';
+import fs from 'fs';
+import path from 'path';
 import { addDays } from 'date-fns';
 import sequelize from '../config/database';
 import Payment from '../models/Payment';
 import Invoice from '../models/Invoice';
 import Rental from '../models/Rental';
 import Customer from '../models/Customer';
+import Vehicle from '../models/Vehicle';
 import { PaymentStatus, PaymentType } from '../models/Payment';
 import { InvoiceStatus } from '../models/Invoice';
 import { CodeGenerator } from '../services/codeGenerator';
 import { PDFService } from '../services/pdfService';
 import { EmailService } from '../services/emailService';
+import logger from '../config/logger';
+import { DocumentRegistrationService } from '../services/documentRegistrationService';
 
 /**
  * Controlador de Pagos y Facturas
@@ -27,9 +33,13 @@ export class PaymentController {
       const {
         customer_id,
         rental_id,
+        location_id,
         status,
         payment_type,
+        payment_method,
         search,
+        startDate,
+        endDate,
         page = 1,
         limit = 20
       } = req.query;
@@ -40,6 +50,13 @@ export class PaymentController {
       if (rental_id) where.rental_id = rental_id;
       if (status) where.status = status;
       if (payment_type) where.payment_type = payment_type;
+      if (payment_method) where.payment_method = payment_method;
+      if (startDate || endDate) {
+        const dateFilter: any = {};
+        if (startDate) dateFilter[Op.gte] = new Date(startDate as string);
+        if (endDate) dateFilter[Op.lte] = new Date(endDate as string);
+        where.transaction_date = dateFilter;
+      }
 
       // Búsqueda por texto
       if (search && typeof search === 'string') {
@@ -54,6 +71,13 @@ export class PaymentController {
 
       const offset = (Number(page) - 1) * Number(limit);
 
+      // Build rental include with optional location filter
+      const rentalInclude: any = { model: Rental, as: 'rental' };
+      if (location_id) {
+        rentalInclude.where = { location_id: Number(location_id) };
+        rentalInclude.required = true;
+      }
+
       const { count, rows: payments } = await Payment.findAndCountAll({
         where,
         limit: Number(limit),
@@ -61,7 +85,7 @@ export class PaymentController {
         order: [['created_at', 'DESC']],
         include: [
           { model: Customer, as: 'customer' },
-          { model: Rental, as: 'rental' }
+          rentalInclude
         ],
         subQuery: false
       });
@@ -80,7 +104,7 @@ export class PaymentController {
       });
 
     } catch (error) {
-      console.error('[PAYMENT] Error obteniendo pagos:', error);
+      logger.error('[PAYMENT] Error obteniendo pagos', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener pagos',
@@ -117,7 +141,7 @@ export class PaymentController {
       });
 
     } catch (error) {
-      console.error('[PAYMENT] Error obteniendo pago:', error);
+      logger.error('[PAYMENT] Error obteniendo pago', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener pago',
@@ -129,7 +153,7 @@ export class PaymentController {
    * POST /api/payments
    * Registrar un nuevo pago
    */
-  static async createPayment(req: Request, res: Response) {
+  static async createPayment(req: AuthRequest, res: Response) {
     const transaction = await sequelize.transaction();
 
     try {
@@ -196,7 +220,7 @@ export class PaymentController {
         reference_number,
         transaction_date: transaction_date ? new Date(transaction_date) : new Date(),
         notes,
-        processed_by: (req as any).user?.id
+        processed_by: req.user?.id
       }, { transaction });
 
       // Solo actualizar balances si el pago está completado
@@ -242,7 +266,7 @@ export class PaymentController {
 
     } catch (error) {
       await transaction.rollback();
-      console.error('[PAYMENT] Error registrando pago:', error);
+      logger.error('[PAYMENT] Error registrando pago', { error });
       res.status(500).json({
         success: false,
         message: 'Error al registrar pago',
@@ -312,7 +336,7 @@ export class PaymentController {
 
     } catch (error) {
       await transaction.rollback();
-      console.error('[PAYMENT] Error confirmando pago:', error);
+      logger.error('[PAYMENT] Error confirmando pago', { error });
       res.status(500).json({ success: false, message: 'Error al confirmar pago' });
     }
   }
@@ -350,7 +374,7 @@ export class PaymentController {
       });
 
     } catch (error) {
-      console.error('[PAYMENT] Error rechazando pago:', error);
+      logger.error('[PAYMENT] Error rechazando pago', { error });
       res.status(500).json({ success: false, message: 'Error al rechazar pago' });
     }
   }
@@ -364,8 +388,11 @@ export class PaymentController {
       const {
         customer_id,
         rental_id,
+        location_id,
         status,
         search,
+        startDate,
+        endDate,
         page = 1,
         limit = 20
       } = req.query;
@@ -375,6 +402,12 @@ export class PaymentController {
       if (customer_id) where.customer_id = customer_id;
       if (rental_id) where.rental_id = rental_id;
       if (status) where.status = status;
+      if (startDate || endDate) {
+        const dateFilter: any = {};
+        if (startDate) dateFilter[Op.gte] = new Date(startDate as string);
+        if (endDate) dateFilter[Op.lte] = new Date(endDate as string);
+        where.issue_date = dateFilter;
+      }
 
       // Búsqueda por texto
       if (search && typeof search === 'string') {
@@ -388,6 +421,13 @@ export class PaymentController {
 
       const offset = (Number(page) - 1) * Number(limit);
 
+      // Build rental include with optional location filter
+      const rentalInclude: any = { model: Rental, as: 'rental' };
+      if (location_id) {
+        rentalInclude.where = { location_id: Number(location_id) };
+        rentalInclude.required = true;
+      }
+
       const { count, rows: invoices } = await Invoice.findAndCountAll({
         where,
         limit: Number(limit),
@@ -395,7 +435,7 @@ export class PaymentController {
         order: [['created_at', 'DESC']],
         include: [
           { model: Customer, as: 'customer' },
-          { model: Rental, as: 'rental' }
+          rentalInclude
         ],
         subQuery: false
       });
@@ -414,7 +454,7 @@ export class PaymentController {
       });
 
     } catch (error) {
-      console.error('[PAYMENT] Error obteniendo facturas:', error);
+      logger.error('[PAYMENT] Error obteniendo facturas', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener facturas',
@@ -451,7 +491,7 @@ export class PaymentController {
       });
 
     } catch (error) {
-      console.error('[PAYMENT] Error obteniendo factura:', error);
+      logger.error('[PAYMENT] Error obteniendo factura', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener factura',
@@ -463,7 +503,7 @@ export class PaymentController {
    * POST /api/invoices
    * Crear una nueva factura
    */
-  static async createInvoice(req: Request, res: Response) {
+  static async createInvoice(req: AuthRequest, res: Response) {
     try {
       const {
         rental_id,
@@ -520,7 +560,7 @@ export class PaymentController {
         balance: rental.total_amount,
         status: InvoiceStatus.SENT,
         notes,
-        created_by: (req as any).user?.id
+        created_by: req.user?.id
       });
 
       // Generar PDF de factura
@@ -537,7 +577,7 @@ export class PaymentController {
       });
 
     } catch (error) {
-      console.error('[PAYMENT] Error creando factura:', error);
+      logger.error('[PAYMENT] Error creando factura', { error });
       res.status(500).json({
         success: false,
         message: 'Error al crear factura',
@@ -578,7 +618,7 @@ export class PaymentController {
       });
 
     } catch (error) {
-      console.error('[PAYMENT] Error reenviando factura:', error);
+      logger.error('[PAYMENT] Error reenviando factura', { error });
       res.status(500).json({
         success: false,
         message: 'Error al reenviar factura',
@@ -616,11 +656,66 @@ export class PaymentController {
       });
 
     } catch (error) {
-      console.error('[PAYMENT] Error obteniendo facturas vencidas:', error);
+      logger.error('[PAYMENT] Error obteniendo facturas vencidas', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener facturas vencidas',
       });
+    }
+  }
+
+  /**
+   * GET /api/invoices/:id/pdf
+   * Descargar el PDF de una factura
+   */
+  static async downloadInvoicePDF(req: Request, res: Response) {
+    try {
+      const invoice = await Invoice.findByPk(req.params.id, {
+        include: [
+          { model: Customer, as: 'customer' },
+          {
+            model: Rental,
+            as: 'rental',
+            include: [{ model: Vehicle, as: 'vehicle' }]
+          }
+        ]
+      });
+
+      if (!invoice) {
+        return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+      }
+
+      // Path determinístico de la factura
+      const pdfPath = path.resolve('storage/pdfs', `invoice-${invoice.invoice_code}.pdf`);
+
+      // Si el archivo no existe, regenerarlo
+      if (!fs.existsSync(pdfPath)) {
+        try {
+          await PDFService.generateInvoice(invoice);
+        } catch (pdfError) {
+          logger.error('[PAYMENT] Error regenerando factura PDF', { error: pdfError });
+          return res.status(500).json({ success: false, message: 'Error al generar factura PDF' });
+        }
+      }
+
+      // Verificar que el archivo ahora existe
+      if (!fs.existsSync(pdfPath)) {
+        return res.status(404).json({ success: false, message: 'Factura PDF no disponible' });
+      }
+
+      // Fire-and-forget document registration
+      DocumentRegistrationService.registerAutoDocument({
+        documentType: 'invoice',
+        name: `Factura ${invoice.invoice_code}`,
+        filePath: pdfPath,
+        entityType: 'invoice',
+        entityId: invoice.id,
+      }).catch(() => {});
+
+      res.download(pdfPath, `factura-${invoice.invoice_code}.pdf`);
+    } catch (error) {
+      logger.error('[PAYMENT] Error descargando factura PDF', { error });
+      res.status(500).json({ success: false, message: 'Error al descargar factura PDF' });
     }
   }
 }

@@ -3,6 +3,8 @@ import { validationResult } from 'express-validator';
 import Alert from '../models/Alert';
 import User from '../models/User';
 import { Op } from 'sequelize';
+import logger from '../config/logger';
+import { AuthRequest } from '../types';
 
 export const getAlerts = async (req: Request, res: Response) => {
   try {
@@ -66,7 +68,7 @@ export const getAlerts = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching alerts:', error);
+    logger.error('Error fetching alerts', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching alerts',
@@ -115,7 +117,7 @@ export const getAlertById = async (req: Request, res: Response) => {
       data: alert,
     });
   } catch (error: any) {
-    console.error('Error fetching alert:', error);
+    logger.error('Error fetching alert', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching alert',
@@ -177,7 +179,7 @@ export const createAlert = async (req: Request, res: Response) => {
       data: alertWithDetails,
     });
   } catch (error: any) {
-    console.error('Error creating alert:', error);
+    logger.error('Error creating alert', { error });
     res.status(500).json({
       success: false,
       message: 'Error creating alert',
@@ -215,7 +217,7 @@ export const markAsRead = async (req: Request, res: Response) => {
       data: alert,
     });
   } catch (error: any) {
-    console.error('Error marking alert as read:', error);
+    logger.error('Error marking alert as read', { error });
     res.status(500).json({
       success: false,
       message: 'Error marking alert as read',
@@ -253,7 +255,7 @@ export const markAsUnread = async (req: Request, res: Response) => {
       data: alert,
     });
   } catch (error: any) {
-    console.error('Error marking alert as unread:', error);
+    logger.error('Error marking alert as unread', { error });
     res.status(500).json({
       success: false,
       message: 'Error marking alert as unread',
@@ -262,7 +264,7 @@ export const markAsUnread = async (req: Request, res: Response) => {
   }
 };
 
-export const resolveAlert = async (req: Request, res: Response) => {
+export const resolveAlert = async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -274,7 +276,7 @@ export const resolveAlert = async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
 
     const alert = await Alert.findByPk(id);
     if (!alert) {
@@ -296,7 +298,7 @@ export const resolveAlert = async (req: Request, res: Response) => {
       data: alert,
     });
   } catch (error: any) {
-    console.error('Error resolving alert:', error);
+    logger.error('Error resolving alert', { error });
     res.status(500).json({
       success: false,
       message: 'Error resolving alert',
@@ -333,7 +335,7 @@ export const deleteAlert = async (req: Request, res: Response) => {
       message: 'Alert deleted successfully',
     });
   } catch (error: any) {
-    console.error('Error deleting alert:', error);
+    logger.error('Error deleting alert', { error });
     res.status(500).json({
       success: false,
       message: 'Error deleting alert',
@@ -417,7 +419,7 @@ export const getAlertTrends = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching alert trends:', error);
+    logger.error('Error fetching alert trends', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching alert trends',
@@ -486,7 +488,7 @@ export const getAlertStats = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching alert stats:', error);
+    logger.error('Error fetching alert stats', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching alert stats',

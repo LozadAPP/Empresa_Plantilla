@@ -21,7 +21,6 @@ export const exportToCSV = (
   filename: string
 ): void => {
   if (data.length === 0) {
-    console.warn('No hay datos para exportar');
     return;
   }
 
@@ -112,12 +111,11 @@ export const formatDateForCSV = (date: string | Date | null): string => {
 
 export const RENTALS_COLUMNS: ExportColumn[] = [
   { key: 'rental_code', label: 'Código' },
-  { key: 'customer.first_name', label: 'Nombre Cliente' },
-  { key: 'customer.last_name', label: 'Apellido Cliente' },
+  { key: 'customer.name', label: 'Cliente' },
   { key: 'customer.email', label: 'Email Cliente' },
-  { key: 'vehicle.brand', label: 'Marca Vehículo' },
+  { key: 'vehicle.make', label: 'Marca Vehículo' },
   { key: 'vehicle.model', label: 'Modelo Vehículo' },
-  { key: 'vehicle.plate', label: 'Placa' },
+  { key: 'vehicle.license_plate', label: 'Placa' },
   { key: 'start_date', label: 'Fecha Inicio', formatter: formatDateForCSV },
   { key: 'end_date', label: 'Fecha Fin', formatter: formatDateForCSV },
   { key: 'days', label: 'Días' },
@@ -129,11 +127,10 @@ export const RENTALS_COLUMNS: ExportColumn[] = [
 export const RETURNS_COLUMNS: ExportColumn[] = [
   { key: 'return_code', label: 'Código' },
   { key: 'rental.rental_code', label: 'Código Renta' },
-  { key: 'rental.customer.first_name', label: 'Nombre Cliente' },
-  { key: 'rental.customer.last_name', label: 'Apellido Cliente' },
-  { key: 'rental.vehicle.brand', label: 'Marca Vehículo' },
+  { key: 'rental.customer.name', label: 'Cliente' },
+  { key: 'rental.vehicle.make', label: 'Marca Vehículo' },
   { key: 'rental.vehicle.model', label: 'Modelo Vehículo' },
-  { key: 'rental.vehicle.plate', label: 'Placa' },
+  { key: 'rental.vehicle.license_plate', label: 'Placa' },
   { key: 'return_date', label: 'Fecha Devolución', formatter: formatDateForCSV },
   { key: 'vehicle_condition', label: 'Condición' },
   { key: 'end_mileage', label: 'Kilometraje Final' },
@@ -147,8 +144,7 @@ export const RETURNS_COLUMNS: ExportColumn[] = [
 
 export const PAYMENTS_COLUMNS: ExportColumn[] = [
   { key: 'payment_code', label: 'Código' },
-  { key: 'customer.first_name', label: 'Nombre Cliente' },
-  { key: 'customer.last_name', label: 'Apellido Cliente' },
+  { key: 'customer.name', label: 'Cliente' },
   { key: 'invoice.invoice_code', label: 'Código Factura' },
   { key: 'amount', label: 'Monto', formatter: formatCurrencyForCSV },
   { key: 'payment_method', label: 'Método de Pago' },
@@ -156,4 +152,73 @@ export const PAYMENTS_COLUMNS: ExportColumn[] = [
   { key: 'transaction_date', label: 'Fecha de Pago', formatter: formatDateForCSV },
   { key: 'reference_number', label: 'Referencia' },
   { key: 'status', label: 'Estado' }
+];
+
+export const CUSTOMERS_COLUMNS: ExportColumn[] = [
+  { key: 'name', label: 'Nombre' },
+  { key: 'customer_type', label: 'Tipo' },
+  { key: 'contact_person', label: 'Contacto' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Teléfono' },
+  { key: 'tax_id', label: 'RFC' },
+  { key: 'city', label: 'Ciudad' },
+  { key: 'country', label: 'País' },
+  { key: 'credit_limit', label: 'Límite Crédito', formatter: formatCurrencyForCSV },
+  { key: 'payment_terms', label: 'Términos Pago (días)' },
+  { key: 'discount_percentage', label: 'Descuento (%)' },
+  { key: 'is_active', label: 'Activo', formatter: (value: any) => value ? 'Sí' : 'No' }
+];
+
+export const EXPENSES_COLUMNS: ExportColumn[] = [
+  { key: 'expense_code', label: 'Código' },
+  { key: 'expense_date', label: 'Fecha', formatter: formatDateForCSV },
+  { key: 'category', label: 'Categoría' },
+  { key: 'subcategory', label: 'Subcategoría' },
+  { key: 'description', label: 'Descripción' },
+  { key: 'supplier_name', label: 'Proveedor' },
+  { key: 'amount', label: 'Monto', formatter: formatCurrencyForCSV },
+  { key: 'tax_amount', label: 'IVA', formatter: formatCurrencyForCSV },
+  { key: 'total_amount', label: 'Total', formatter: formatCurrencyForCSV },
+  { key: 'payment_method', label: 'Método de Pago' },
+  { key: 'receipt_number', label: 'No. Comprobante' },
+  { key: 'status', label: 'Estado' },
+  { key: 'location.name', label: 'Ubicación' },
+  { key: 'creator.firstName', label: 'Creado Por', formatter: (_val: any, row: any) => {
+    const c = row.creator;
+    return c ? `${c.firstName} ${c.lastName}` : '';
+  }},
+  { key: 'created_at', label: 'Fecha Registro', formatter: formatDateForCSV }
+];
+
+export const SUPPLIERS_COLUMNS: ExportColumn[] = [
+  { key: 'supplier_code', label: 'Código' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'rfc', label: 'RFC' },
+  { key: 'supplier_type', label: 'Tipo' },
+  { key: 'category', label: 'Categoría' },
+  { key: 'contact_person', label: 'Contacto' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Teléfono' },
+  { key: 'city', label: 'Ciudad' },
+  { key: 'state', label: 'Estado' },
+  { key: 'payment_terms', label: 'Días Crédito' },
+  { key: 'credit_limit', label: 'Límite Crédito', formatter: formatCurrencyForCSV },
+  { key: 'rating', label: 'Calificación' },
+  { key: 'is_active', label: 'Activo', formatter: (value: any) => value ? 'Sí' : 'No' },
+];
+
+export const QUOTES_COLUMNS: ExportColumn[] = [
+  { key: 'quote_code', label: 'Código' },
+  { key: 'customer.name', label: 'Cliente' },
+  { key: 'vehicle.make', label: 'Marca Vehículo' },
+  { key: 'vehicle.model', label: 'Modelo Vehículo' },
+  { key: 'vehicle.license_plate', label: 'Placa' },
+  { key: 'start_date', label: 'Fecha Inicio', formatter: formatDateForCSV },
+  { key: 'end_date', label: 'Fecha Fin', formatter: formatDateForCSV },
+  { key: 'days', label: 'Días' },
+  { key: 'daily_rate', label: 'Tarifa Diaria', formatter: formatCurrencyForCSV },
+  { key: 'total_amount', label: 'Total', formatter: formatCurrencyForCSV },
+  { key: 'status', label: 'Estado' },
+  { key: 'valid_until', label: 'Válida Hasta', formatter: formatDateForCSV },
+  { key: 'created_at', label: 'Fecha Creación', formatter: formatDateForCSV }
 ];

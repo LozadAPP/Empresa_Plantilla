@@ -16,6 +16,10 @@ import userRoutes from './users';
 import locationRoutes from './locations';
 import auditRoutes from './audit';
 import extraServiceRoutes from './extraServices';
+import quoteRoutes from './quoteRoutes';
+import expenseRoutes from './expenseRoutes';
+import supplierRoutes from './supplierRoutes';
+import documentRoutes from './documentRoutes';
 
 const router = Router();
 
@@ -25,7 +29,8 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/vehicles', vehicleRoutes);
 router.use('/customers', customerRoutes);
 
-// API Routes - CHAT 2 (Rentals & Operations)
+// API Routes - VENTAS (Cotizaciones & Rentas)
+router.use('/quotes', quoteRoutes);
 router.use('/rentals', rentalRoutes);
 router.use('/returns', returnRoutes);
 router.use('/payments', paymentRoutes);
@@ -42,6 +47,13 @@ router.use('/users', userRoutes);
 router.use('/locations', locationRoutes);
 router.use('/audit', auditRoutes);
 router.use('/extra-services', extraServiceRoutes);
+
+// API Routes - FINANZAS (Gastos y Proveedores)
+router.use('/expenses', expenseRoutes);
+router.use('/suppliers', supplierRoutes);
+
+// API Routes - DOCUMENTOS
+router.use('/documents', documentRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

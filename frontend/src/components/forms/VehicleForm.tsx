@@ -326,7 +326,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
                 onChange={(e) => handleChange('year', parseInt(e.target.value))}
                 error={!!errors.year}
                 helperText={errors.year}
-                inputProps={{ min: 1900, max: currentYear + 1, 'data-testid': 'vehicle-year-field' }}
+                inputProps={{ min: 1990, max: currentYear + 1, 'data-testid': 'vehicle-year-field' }}
                 data-testid="vehicle-year-input"
               />
             </Grid>

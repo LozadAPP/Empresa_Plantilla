@@ -54,7 +54,6 @@ const TransactionForm: React.FC = () => {
       const response = await accountingService.getAccounts();
       setAccounts(response.data.filter((acc: Account) => acc.isActive));
     } catch (error) {
-      console.error('Error loading accounts:', error);
       setError('Error al cargar las cuentas');
     }
   };
@@ -93,7 +92,6 @@ const TransactionForm: React.FC = () => {
       await accountingService.createTransaction(formData);
       navigate('/accounting');
     } catch (error: any) {
-      console.error('Error saving transaction:', error);
       setError(error.response?.data?.message || 'Error al guardar la transacción');
     } finally {
       setLoading(false);

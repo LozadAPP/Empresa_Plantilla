@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 // Load environment variables from .env file
 dotenv.config();
 
+import logger from './logger';
+
 /**
  * Environment configuration interface
  * Defines all environment variables used by the MOVICAR backend
@@ -71,7 +73,7 @@ function parseInteger(value: string | undefined, defaultValue: number, name: str
   if (value === undefined) return defaultValue;
   const parsed = parseInt(value, 10);
   if (isNaN(parsed)) {
-    console.warn(`WARNING: ${name} is not a valid integer. Using default: ${defaultValue}`);
+    logger.warn(`WARNING: ${name} is not a valid integer. Using default: ${defaultValue}`);
     return defaultValue;
   }
   return parsed;
@@ -84,7 +86,7 @@ function parseFloat(value: string | undefined, defaultValue: number, name: strin
   if (value === undefined) return defaultValue;
   const parsed = Number.parseFloat(value);
   if (isNaN(parsed)) {
-    console.warn(`WARNING: ${name} is not a valid number. Using default: ${defaultValue}`);
+    logger.warn(`WARNING: ${name} is not a valid number. Using default: ${defaultValue}`);
     return defaultValue;
   }
   return parsed;
@@ -124,7 +126,7 @@ function validateEnv(): EnvConfig {
   // Validate NODE_ENV value
   const validNodeEnvs = ['development', 'production', 'test'];
   if (!validNodeEnvs.includes(nodeEnv)) {
-    console.warn(`WARNING: Invalid NODE_ENV "${nodeEnv}". Defaulting to "development".`);
+    logger.warn(`WARNING: Invalid NODE_ENV "${nodeEnv}". Defaulting to "development".`);
   }
 
   // JWT Secret validation
@@ -133,10 +135,10 @@ function validateEnv(): EnvConfig {
     if (isProduction) {
       throw new Error('CRITICAL: JWT_SECRET environment variable is required in production!');
     }
-    console.warn('WARNING: JWT_SECRET not set. Using default secret. DO NOT use in production!');
+    logger.warn('WARNING: JWT_SECRET not set. Using default secret. DO NOT use in production!');
     jwtSecret = 'movicar_dev_secret_DO_NOT_USE_IN_PRODUCTION';
   } else if (jwtSecret.length < 32 && isProduction) {
-    console.warn('WARNING: JWT_SECRET should be at least 32 characters for production security.');
+    logger.warn('WARNING: JWT_SECRET should be at least 32 characters for production security.');
   }
 
   // Build and return the configuration object
@@ -198,7 +200,7 @@ export const env = validateEnv();
 
 // Log environment info on startup (minimal, only in non-test mode)
 if (env.NODE_ENV !== 'test') {
-  console.log(`Environment: ${env.NODE_ENV} | DB: ${env.DB_NAME}`);
+  logger.info(`Environment: ${env.NODE_ENV} | DB: ${env.DB_NAME}`);
 }
 
 export default env;

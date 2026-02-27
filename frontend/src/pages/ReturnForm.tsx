@@ -91,7 +91,7 @@ const ReturnForm: React.FC = () => {
           Registrar Devolución
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Renta: {rental.rental_code} - {rental.vehicle?.brand} {rental.vehicle?.model} ({rental.vehicle?.plate})
+          Renta: {rental.rental_code} - {rental.vehicle?.make} {rental.vehicle?.model} ({rental.vehicle?.license_plate})
         </Typography>
       </Box>
 

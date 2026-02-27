@@ -6,7 +6,7 @@ import Customer from '../models/Customer';
 import Transaction from '../models/Transaction';
 import MaintenanceOrder from '../models/MaintenanceOrder';
 import Location from '../models/Location';
-import sequelize from '../config/database';
+import logger from '../config/logger';
 
 // ====================================
 // INCOME REPORTS
@@ -108,7 +108,7 @@ export const getIncomeReport = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error generating income report:', error);
+    logger.error('Error generating income report', { error });
     res.status(500).json({
       success: false,
       message: 'Error generating income report',
@@ -207,7 +207,7 @@ export const getOccupancyReport = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error generating occupancy report:', error);
+    logger.error('Error generating occupancy report', { error });
     res.status(500).json({
       success: false,
       message: 'Error generating occupancy report',
@@ -323,7 +323,7 @@ export const getProfitabilityReport = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error generating profitability report:', error);
+    logger.error('Error generating profitability report', { error });
     res.status(500).json({
       success: false,
       message: 'Error generating profitability report',
@@ -353,7 +353,7 @@ export const getTopCustomersReport = async (req: Request, res: Response) => {
       where,
       attributes: [
         'customer_id',
-        [fn('COUNT', col('id')), 'rentalCount'],
+        [fn('COUNT', col('Rental.id')), 'rentalCount'],
         [fn('SUM', col('total_amount')), 'totalRevenue'],
       ],
       include: [
@@ -363,7 +363,14 @@ export const getTopCustomersReport = async (req: Request, res: Response) => {
           attributes: ['id', 'name', 'email', 'phone', 'customer_type'],
         },
       ],
-      group: ['customer_id', 'customer.id'],
+      group: [
+        'Rental.customer_id',
+        col('customer.id'),
+        col('customer.name'),
+        col('customer.email'),
+        col('customer.phone'),
+        col('customer.customer_type'),
+      ],
       order: [[literal('"totalRevenue"'), 'DESC']],
       limit: Number(limit),
       raw: false,
@@ -374,7 +381,7 @@ export const getTopCustomersReport = async (req: Request, res: Response) => {
       data: topCustomers,
     });
   } catch (error: any) {
-    console.error('Error generating top customers report:', error);
+    logger.error('Error generating top customers report', { error });
     res.status(500).json({
       success: false,
       message: 'Error generating top customers report',
@@ -419,7 +426,15 @@ export const getVehiclePerformanceReport = async (req: Request, res: Response) =
           attributes: ['id', 'make', 'model', 'license_plate', 'year', 'status'],
         },
       ],
-      group: ['vehicle_id', 'vehicle.id'],
+      group: [
+        'Rental.vehicle_id',
+        col('vehicle.id'),
+        col('vehicle.make'),
+        col('vehicle.model'),
+        col('vehicle.license_plate'),
+        col('vehicle.year'),
+        col('vehicle.status'),
+      ],
       order: [[literal('"totalRevenue"'), 'DESC']],
       raw: false,
     });
@@ -429,7 +444,7 @@ export const getVehiclePerformanceReport = async (req: Request, res: Response) =
       data: vehiclePerformance,
     });
   } catch (error: any) {
-    console.error('Error generating vehicle performance report:', error);
+    logger.error('Error generating vehicle performance report', { error });
     res.status(500).json({
       success: false,
       message: 'Error generating vehicle performance report',
@@ -513,7 +528,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error generating dashboard summary:', error);
+    logger.error('Error generating dashboard summary', { error });
     res.status(500).json({
       success: false,
       message: 'Error generating dashboard summary',

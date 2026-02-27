@@ -73,7 +73,6 @@ const InventoryManagement: React.FC = () => {
         movementsThisMonth: response.data.movementsThisMonth || 0,
       });
     } catch (error: any) {
-      console.error('Error loading KPIs:', error);
       enqueueSnackbar(error?.response?.data?.message || 'Error al cargar las estadísticas', { variant: 'error' });
     } finally {
       setLoadingKpis(false);
@@ -311,7 +310,6 @@ const InventoryManagement: React.FC = () => {
                 inventoryService.getItemById(itemId).then(response => {
                   handleViewDetails(response.data);
                 }).catch(error => {
-                  console.error('Error loading item:', error);
                 });
               }}
             />

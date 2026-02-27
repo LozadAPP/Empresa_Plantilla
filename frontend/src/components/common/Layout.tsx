@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -8,14 +8,14 @@ import {
   Menu,
   MenuItem,
   Divider,
-  TextField,
-  InputAdornment,
   SwipeableDrawer,
   Collapse,
+  Tooltip,
   useMediaQuery,
   useTheme
 } from '@mui/material';
 import FPSCounter from './FPSCounter';
+import GlobalSearch from './GlobalSearch';
 import { AlertBadge } from '../alerts';
 import {
   Dashboard as DashboardIcon,
@@ -31,7 +31,6 @@ import {
   NotificationImportant as AlertsIcon,
   Settings as SettingsIcon,
   AdminPanelSettings as AdminIcon,
-  Search as SearchIcon,
   Logout as LogoutIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
@@ -41,10 +40,23 @@ import {
   ExpandMore as ExpandMoreIcon,
   SpaceDashboard as DashboardInventoryIcon,
   Menu as MenuIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  RequestQuote as QuotesIcon,
+  MoneyOff as ExpensesIcon,
+  Business as SuppliersIcon,
+  CalendarMonth as CalendarIcon,
+  Storefront as CatalogIcon,
+  Description as DocumentsIcon,
+  LocationOn as LocationOnIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme as useCustomTheme } from '../../contexts/ThemeContext';
+import { useLocation as useLocationContext } from '../../contexts/LocationContext';
+import { useNotificationToasts } from '../../hooks/useNotificationToasts';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import CommandPalette from './CommandPalette';
+import KeyboardShortcutsDialog from './KeyboardShortcutsDialog';
+import { useGuidedTour } from '../../hooks/useGuidedTour';
 
 interface NavItem {
   icon: React.ReactNode;
@@ -59,12 +71,28 @@ interface NavSection {
   items: NavItem[];
 }
 
-// Estructura del sidebar organizada por secciones
+// Estructura del sidebar organizada por departamentos de la empresa
 const navSections: NavSection[] = [
   {
     title: 'PRINCIPAL',
     items: [
-      { icon: <DashboardIcon />, label: 'Dashboard', path: '/dashboard' },
+      { icon: <DashboardIcon />, label: 'Dashboard', path: '/dashboard' }
+    ]
+  },
+  {
+    title: 'VENTAS',
+    items: [
+      { icon: <CalendarIcon />, label: 'Calendario', path: '/calendar' },
+      { icon: <CatalogIcon />, label: 'Catálogo', path: '/catalog' },
+      { icon: <QuotesIcon />, label: 'Cotizaciones', path: '/quotes', roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor'] },
+      { icon: <CustomersIcon />, label: 'Clientes', path: '/customers', roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor', 'jefe_finanzas', 'jefe_admin', 'cajero'] },
+      { icon: <RentalsIcon />, label: 'Rentas', path: '/rentals', roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor', 'jefe_inventarios', 'encargado_inventario', 'jefe_finanzas', 'jefe_admin'] },
+      { icon: <ReturnsIcon />, label: 'Devoluciones', path: '/returns', roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor', 'jefe_inventarios', 'encargado_inventario'] }
+    ]
+  },
+  {
+    title: 'INVENTARIO',
+    items: [
       {
         icon: <VehiclesIcon />,
         label: 'Inventario',
@@ -74,31 +102,26 @@ const navSections: NavSection[] = [
           { icon: <InventoryManagementIcon />, label: 'Gestión de Inventario', path: '/inventory-management', roles: ['admin', 'director_general', 'jefe_inventarios', 'encargado_inventario'] }
         ]
       },
-      { icon: <CustomersIcon />, label: 'Clientes', path: '/customers', roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor', 'jefe_finanzas', 'jefe_admin', 'cajero'] }
-    ]
-  },
-  {
-    title: 'OPERACIONES',
-    items: [
-      { icon: <RentalsIcon />, label: 'Rentas', path: '/rentals', roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor', 'jefe_inventarios', 'encargado_inventario', 'jefe_finanzas', 'jefe_admin'] },
-      { icon: <ReturnsIcon />, label: 'Devoluciones', path: '/returns', roles: ['admin', 'director_general', 'jefe_ventas', 'vendedor', 'jefe_inventarios', 'encargado_inventario'] },
-      { icon: <PaymentsIcon />, label: 'Pagos', path: '/payments', roles: ['admin', 'director_general', 'jefe_finanzas', 'cajero', 'jefe_ventas', 'jefe_admin', 'contador'] },
-      { icon: <InvoicesIcon />, label: 'Facturas', path: '/invoices', roles: ['admin', 'director_general', 'jefe_finanzas', 'jefe_ventas', 'vendedor', 'contador', 'cajero', 'jefe_admin'] }
+      { icon: <MaintenanceIcon />, label: 'Mantenimiento', path: '/maintenance', roles: ['admin', 'director_general', 'jefe_inventarios', 'encargado_inventario', 'tecnico', 'jefe_admin'] }
     ]
   },
   {
     title: 'FINANZAS',
     items: [
-      { icon: <ReportsIcon />, label: 'Reportes', path: '/reports', roles: ['admin', 'director_general', 'jefe_inventarios', 'jefe_ventas', 'jefe_finanzas', 'jefe_admin', 'contador', 'encargado_inventario'] },
+      { icon: <PaymentsIcon />, label: 'Pagos', path: '/payments', roles: ['admin', 'director_general', 'jefe_finanzas', 'cajero', 'jefe_ventas', 'jefe_admin', 'contador'] },
+      { icon: <InvoicesIcon />, label: 'Facturas', path: '/invoices', roles: ['admin', 'director_general', 'jefe_finanzas', 'jefe_ventas', 'vendedor', 'contador', 'cajero', 'jefe_admin'] },
+      { icon: <ExpensesIcon />, label: 'Gastos', path: '/expenses', roles: ['admin', 'director_general', 'jefe_finanzas', 'jefe_admin', 'contador', 'cajero'] },
+      { icon: <SuppliersIcon />, label: 'Proveedores', path: '/suppliers', roles: ['admin', 'director_general', 'jefe_finanzas', 'jefe_admin', 'jefe_inventarios', 'contador', 'cajero'] },
       { icon: <AccountingIcon />, label: 'Contabilidad', path: '/accounting', roles: ['admin', 'director_general', 'jefe_finanzas', 'contador', 'jefe_admin'] },
-      { icon: <AlertsIcon />, label: 'Alertas', path: '/alerts', roles: ['admin', 'director_general', 'jefe_inventarios', 'jefe_ventas', 'jefe_finanzas', 'jefe_admin', 'encargado_inventario', 'tecnico', 'vendedor', 'contador', 'asistente_admin'] }
+      { icon: <ReportsIcon />, label: 'Reportes', path: '/reports', roles: ['admin', 'director_general', 'jefe_inventarios', 'jefe_ventas', 'jefe_finanzas', 'jefe_admin', 'contador', 'encargado_inventario'] }
     ]
   },
   {
     title: 'ADMINISTRACIÓN',
     items: [
-      { icon: <MaintenanceIcon />, label: 'Mantenimiento', path: '/maintenance', roles: ['admin', 'director_general', 'jefe_inventarios', 'encargado_inventario', 'tecnico', 'jefe_admin'] },
+      { icon: <DocumentsIcon />, label: 'Documentos', path: '/documents', roles: ['admin', 'director_general', 'jefe_admin', 'jefe_ventas', 'jefe_finanzas', 'jefe_inventarios', 'asistente_admin', 'contador'] },
       { icon: <PeopleIcon />, label: 'Usuarios', path: '/users', roles: ['admin', 'director_general', 'jefe_admin', 'asistente_admin'] },
+      { icon: <AlertsIcon />, label: 'Alertas', path: '/alerts', roles: ['admin', 'director_general', 'jefe_inventarios', 'jefe_ventas', 'jefe_finanzas', 'jefe_admin', 'encargado_inventario', 'tecnico', 'vendedor', 'contador', 'asistente_admin'] },
       { icon: <SettingsIcon />, label: 'Configuración', path: '/settings', roles: ['admin', 'director_general', 'jefe_admin', 'jefe_finanzas', 'asistente_admin'] },
       { icon: <AdminIcon />, label: 'Auditoría', path: '/audit', roles: ['admin', 'director_general', 'jefe_admin', 'asistente_admin'] }
     ]
@@ -111,14 +134,36 @@ const Layout: React.FC = () => {
   const { user, logout, hasAnyRole } = useAuth();
   const { isDarkMode, toggleTheme } = useCustomTheme();
   const theme = useTheme();
+  const { selectedLocationId, selectedLocationName, locations, setLocationId, canChangeLocation, loading: locationLoading } = useLocationContext();
+
+  // WebSocket toast notifications (reacts to lastEvent from NotificationContext)
+  useNotificationToasts();
 
   // Media queries para responsive
   const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
   const isTablet = useMediaQuery(theme.breakpoints.down('md')); // < 900px
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [locationAnchorEl, setLocationAnchorEl] = useState<null | HTMLElement>(null);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['Inventario']); // Inventario expandido por defecto
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    openCommandPalette: useCallback(() => setCommandPaletteOpen(true), []),
+    openShortcutsDialog: useCallback(() => setShortcutsDialogOpen(true), []),
+    toggleDarkMode: toggleTheme,
+    navigate,
+    closeModals: useCallback(() => {
+      setCommandPaletteOpen(false);
+      setShortcutsDialogOpen(false);
+    }, []),
+  });
+
+  // Guided tour (auto-launches on first Dashboard visit)
+  useGuidedTour(isDarkMode);
 
   // Handler para toggle del drawer móvil
   const handleDrawerToggle = () => {
@@ -207,7 +252,7 @@ const Layout: React.FC = () => {
         }}
       >
         {/* Logo */}
-        <Box sx={{ mb: 4, px: 2 }}>
+        <Box sx={{ mb: 4, px: 2 }} data-tour="logo">
           <Box
             sx={{
               display: 'flex',
@@ -247,7 +292,7 @@ const Layout: React.FC = () => {
         </Box>
 
         {/* Navigation Sections */}
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }} data-tour="sidebar-nav">
           {navSections.map((section) => {
             // Filter items based on roles
             const visibleItems = section.items.filter((item) => {
@@ -425,6 +470,7 @@ const Layout: React.FC = () => {
         >
           <Box
             data-testid="user-menu-trigger"
+            data-tour="user-profile"
             onClick={handleMenuOpen}
             sx={{
               display: 'flex',
@@ -858,83 +904,139 @@ const Layout: React.FC = () => {
               <MenuIcon sx={{ fontSize: 24 }} />
             </IconButton>
 
-            {/* Search Bar - Oculto en xs, visible desde sm */}
-            <TextField
-              placeholder="Buscar..."
-              size="small"
-              inputProps={{ 'aria-label': 'Buscar en el sistema' }}
-              sx={{
-                display: { xs: 'none', sm: 'block' },
-                maxWidth: { sm: 200, md: 280 },
-                flex: { sm: 1, md: 'none' },
-                transition: 'max-width 0.3s ease',
-                '&:focus-within': {
-                  maxWidth: { sm: 240, md: 320 },
-                },
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '12px',
-                  bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#f9fafb',
-                  height: '40px',
-                  fontSize: '0.875rem',
-                  transition: 'box-shadow 0.2s ease',
-                  '& fieldset': {
-                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#e5e7eb',
-                    transition: 'border-color 0.2s ease',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : '#d1d5db'
-                  },
-                  '&.Mui-focused': {
-                    boxShadow: isDarkMode
-                      ? '0 0 0 3px rgba(0, 117, 255, 0.15)'
-                      : '0 0 0 3px rgba(0, 117, 255, 0.08)',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#0075ff',
-                    borderWidth: '1px',
-                  }
-                },
-                '& .MuiInputBase-input': {
-                  color: isDarkMode ? 'rgba(255, 255, 255, 0.9)' : '#111827',
-                  '&::placeholder': {
-                    color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : '#9ca3af',
-                    opacity: 1
-                  }
-                }
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{
-                      color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : '#9ca3af',
-                      fontSize: 20,
-                      transition: 'color 0.2s ease',
-                    }} />
-                  </InputAdornment>
-                )
-              }}
-            />
+            {/* Global Search - Búsqueda funcional en todas las entidades */}
+            <Box data-tour="global-search" sx={{ flex: 1 }}>
+              <GlobalSearch />
+            </Box>
+          </Box>
 
-            {/* Search Icon - Solo visible en móvil (xs) */}
-            <IconButton
-              aria-label="Buscar"
-              sx={{
-                display: { xs: 'flex', sm: 'none' },
-                color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
-                p: 1,
+          {/* Location Selector - Sucursal activa */}
+          <Box
+            data-tour="location-selector"
+            onClick={canChangeLocation ? (e: React.MouseEvent<HTMLElement>) => setLocationAnchorEl(e.currentTarget) : undefined}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.75,
+              px: { xs: 1, sm: 1.5 },
+              py: 0.75,
+              borderRadius: '12px',
+              cursor: canChangeLocation ? 'pointer' : 'default',
+              bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.06)',
+              border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)'}`,
+              transition: 'all 0.2s ease',
+              flexShrink: 0,
+              maxWidth: { xs: 160, sm: 220, md: 260 },
+              ...(canChangeLocation && {
                 '&:hover': {
-                  bgcolor: isDarkMode ? 'rgba(0, 117, 255, 0.12)' : '#f3f4f6',
-                }
+                  bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)',
+                  borderColor: isDarkMode ? 'rgba(139, 92, 246, 0.4)' : 'rgba(139, 92, 246, 0.3)',
+                },
+              }),
+            }}
+          >
+            <LocationOnIcon sx={{
+              fontSize: { xs: 18, sm: 20 },
+              color: '#8b5cf6',
+              flexShrink: 0,
+            }} />
+            <Typography
+              variant="body2"
+              noWrap
+              sx={{
+                fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
+                fontWeight: 600,
+                color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : '#374151',
+                display: { xs: 'none', sm: 'block' },
+                lineHeight: 1.2,
               }}
             >
-              <SearchIcon sx={{ fontSize: 22 }} />
-            </IconButton>
+              {locationLoading ? '...' : selectedLocationName}
+            </Typography>
+            {canChangeLocation && (
+              <ExpandMoreIcon sx={{
+                fontSize: 16,
+                color: isDarkMode ? 'rgba(255,255,255,0.5)' : '#9ca3af',
+                display: { xs: 'none', sm: 'block' },
+                flexShrink: 0,
+                transition: 'transform 0.2s ease',
+                transform: locationAnchorEl ? 'rotate(180deg)' : 'rotate(0deg)',
+              }} />
+            )}
           </Box>
+          <Menu
+            anchorEl={locationAnchorEl}
+            open={Boolean(locationAnchorEl)}
+            onClose={() => setLocationAnchorEl(null)}
+            PaperProps={{
+              sx: {
+                mt: 1,
+                bgcolor: isDarkMode ? '#1c1c2e' : '#ffffff',
+                border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(0,0,0,0.08)'}`,
+                borderRadius: '12px',
+                minWidth: 240,
+                boxShadow: isDarkMode
+                  ? '0 8px 32px rgba(0,0,0,0.4)'
+                  : '0 8px 32px rgba(0,0,0,0.1)',
+              },
+            }}
+          >
+            <MenuItem
+              onClick={() => { setLocationId(null); setLocationAnchorEl(null); }}
+              selected={selectedLocationId === null}
+              sx={{
+                borderRadius: '8px',
+                mx: 0.5,
+                my: 0.25,
+                fontSize: '0.85rem',
+                fontWeight: selectedLocationId === null ? 700 : 400,
+                color: selectedLocationId === null
+                  ? '#8b5cf6'
+                  : isDarkMode ? 'rgba(255,255,255,0.8)' : '#374151',
+                '&.Mui-selected': {
+                  bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.12)' : 'rgba(139, 92, 246, 0.08)',
+                },
+              }}
+            >
+              Todas las sucursales
+            </MenuItem>
+            <Divider sx={{ my: 0.5, borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }} />
+            {locations.map((loc) => (
+              <MenuItem
+                key={loc.id}
+                onClick={() => { setLocationId(loc.id); setLocationAnchorEl(null); }}
+                selected={selectedLocationId === loc.id}
+                sx={{
+                  borderRadius: '8px',
+                  mx: 0.5,
+                  my: 0.25,
+                  fontSize: '0.85rem',
+                  fontWeight: selectedLocationId === loc.id ? 700 : 400,
+                  color: selectedLocationId === loc.id
+                    ? '#8b5cf6'
+                    : isDarkMode ? 'rgba(255,255,255,0.8)' : '#374151',
+                  '&.Mui-selected': {
+                    bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.12)' : 'rgba(139, 92, 246, 0.08)',
+                  },
+                }}
+              >
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 'inherit', fontSize: 'inherit' }}>
+                    {loc.name}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.4)' : '#9ca3af', fontSize: '0.7rem' }}>
+                    {loc.city}, {loc.state}
+                  </Typography>
+                </Box>
+              </MenuItem>
+            ))}
+          </Menu>
 
           {/* Right: Controls - RESPONSIVE */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1, md: 2 } }}>
             {/* Theme Toggle - Pill Premium (desktop) */}
             <Box
+              data-tour="theme-toggle"
               onClick={toggleTheme}
               role="switch"
               aria-checked={isDarkMode}
@@ -1020,12 +1122,16 @@ const Layout: React.FC = () => {
             />
 
             {/* Notifications - AlertBadge con conteo real */}
-            <AlertBadge />
+            <Tooltip title="Alertas" arrow>
+              <Box data-tour="alerts" sx={{ display: 'flex' }}>
+                <AlertBadge />
+              </Box>
+            </Tooltip>
 
             {/* Email */}
+            <Tooltip title="Mensajes" arrow>
             <IconButton
               aria-label="Mensajes"
-              title="Mensajes"
               sx={{
                 display: { xs: 'none', sm: 'flex' },
                 color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
@@ -1041,6 +1147,7 @@ const Layout: React.FC = () => {
             >
               <EmailIcon sx={{ fontSize: 22 }} />
             </IconButton>
+            </Tooltip>
 
             {/* Divider - Gradiente vertical */}
             <Box
@@ -1056,10 +1163,11 @@ const Layout: React.FC = () => {
             />
 
             {/* Settings - Con rotacion al hover */}
+            <Tooltip title="Configuración" arrow>
             <IconButton
+              data-tour="settings"
               onClick={() => navigate('/settings')}
               aria-label="Configuración"
-              title="Configuración"
               sx={{
                 display: { xs: 'none', sm: 'flex' },
                 color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
@@ -1081,6 +1189,7 @@ const Layout: React.FC = () => {
             >
               <SettingsIcon sx={{ fontSize: 22 }} />
             </IconButton>
+            </Tooltip>
           </Box>
         </Box>
 
@@ -1152,6 +1261,19 @@ const Layout: React.FC = () => {
           Cerrar Sesión
         </MenuItem>
       </Menu>
+
+      {/* Command Palette (Ctrl+K) */}
+      <CommandPalette
+        open={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onOpenShortcuts={() => setShortcutsDialogOpen(true)}
+      />
+
+      {/* Keyboard Shortcuts Dialog (Ctrl+/) */}
+      <KeyboardShortcutsDialog
+        open={shortcutsDialogOpen}
+        onClose={() => setShortcutsDialogOpen(false)}
+      />
     </Box>
   );
 };

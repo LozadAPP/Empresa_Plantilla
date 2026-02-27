@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import {
   Box,
@@ -48,9 +49,11 @@ import {
   AccountBalance as GovIcon,
   History as HistoryIcon
 } from '@mui/icons-material';
+import { FileDownload as ExportIcon } from '@mui/icons-material';
 import { customerService } from '../services/customerService';
 import { Customer, CustomerType, CustomerFilters, Pagination, CustomerFormData } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { exportToCSV, CUSTOMERS_COLUMNS } from '../utils/exportCSV';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import CustomerForm from '../components/forms/CustomerForm';
 import CustomerRentalsDialog from '../components/dialogs/CustomerRentalsDialog';
@@ -70,6 +73,7 @@ const typeLabels: Record<CustomerType, string> = {
 };
 
 const Customers: React.FC = () => {
+  const navigate = useNavigate();
   const { hasAnyRole } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
   const { formatCurrency } = useCurrency();
@@ -114,6 +118,15 @@ const Customers: React.FC = () => {
 
   // Rentals History Dialog
   const [rentalsDialogOpen, setRentalsDialogOpen] = useState(false);
+
+  const handleExportCSV = () => {
+    if (customers.length === 0) {
+      enqueueSnackbar('No hay datos para exportar', { variant: 'warning' });
+      return;
+    }
+    exportToCSV(customers, CUSTOMERS_COLUMNS, 'clientes');
+    enqueueSnackbar('CSV exportado exitosamente', { variant: 'success' });
+  };
 
   useEffect(() => {
     fetchCustomers();
@@ -175,7 +188,7 @@ const Customers: React.FC = () => {
   };
 
   const handleView = () => {
-    setViewDialogOpen(true);
+    if (selectedCustomer) navigate(`/customers/${selectedCustomer.id}`);
     handleMenuClose();
   };
 
@@ -262,11 +275,12 @@ const Customers: React.FC = () => {
         <Typography variant="h5" fontWeight="bold">
           Gestión de Clientes
         </Typography>
-        {canEdit && (
+        <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' }, width: { xs: '100%', sm: 'auto' } }}>
           <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreateClick}
+            variant="outlined"
+            startIcon={<ExportIcon />}
+            onClick={handleExportCSV}
+            disabled={customers.length === 0}
             fullWidth={isMobile}
             sx={{
               borderRadius: '12px',
@@ -275,9 +289,25 @@ const Customers: React.FC = () => {
               minHeight: { xs: 48, sm: 40 }
             }}
           >
-            Nuevo Cliente
+            Exportar CSV
           </Button>
-        )}
+          {canEdit && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleCreateClick}
+              fullWidth={isMobile}
+              sx={{
+                borderRadius: '12px',
+                textTransform: 'none',
+                fontWeight: 600,
+                minHeight: { xs: 48, sm: 40 }
+              }}
+            >
+              Nuevo Cliente
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {error && (
@@ -361,6 +391,7 @@ const Customers: React.FC = () => {
                 icon={<PersonIcon />}
                 title="No se encontraron clientes"
                 subtitle="Agrega un nuevo cliente para empezar"
+                action={canEdit ? { label: 'Agregar Primer Cliente', onClick: handleCreateClick } : undefined}
               />
             </Paper>
           ) : (
@@ -524,6 +555,7 @@ const Customers: React.FC = () => {
                       icon={<PersonIcon />}
                       title="No se encontraron clientes"
                       subtitle="Agrega un nuevo cliente para empezar"
+                      action={canEdit ? { label: 'Agregar Primer Cliente', onClick: handleCreateClick } : undefined}
                     />
                   </TableCell>
                 </TableRow>
@@ -600,7 +632,7 @@ const Customers: React.FC = () => {
                 <Typography variant="body1" gutterBottom>{selectedCustomer.phone || '-'}</Typography>
               </Grid>
               <Grid item xs={12} md={6}>
-                <Typography variant="subtitle2" color="textSecondary">RFC/Tax ID</Typography>
+                <Typography variant="subtitle2" color="textSecondary">RFC</Typography>
                 <Typography variant="body1" gutterBottom>{selectedCustomer.tax_id || '-'}</Typography>
               </Grid>
               <Grid item xs={12}>
@@ -615,7 +647,7 @@ const Customers: React.FC = () => {
               </Grid>
               <Grid item xs={12} md={4}>
                 <Typography variant="subtitle2" color="textSecondary">Términos de Pago</Typography>
-                <Typography variant="body1" gutterBottom>Net {selectedCustomer.payment_terms} días</Typography>
+                <Typography variant="body1" gutterBottom>Plazo neto: {selectedCustomer.payment_terms} días</Typography>
               </Grid>
               <Grid item xs={12} md={4}>
                 <Typography variant="subtitle2" color="textSecondary">Descuento</Typography>

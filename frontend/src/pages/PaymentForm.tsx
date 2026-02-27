@@ -114,7 +114,6 @@ const PaymentForm: React.FC = () => {
       const response = await customerService.getAll({});
       setCustomers(response.data || []);
     } catch (error) {
-      console.error('Error loading customers:', error);
     }
   };
 
@@ -123,7 +122,6 @@ const PaymentForm: React.FC = () => {
       const response = await invoiceService.getAll();
       setInvoices(response.data?.invoices || []);
     } catch (error) {
-      console.error('Error loading invoices:', error);
     }
   };
 
@@ -138,7 +136,6 @@ const PaymentForm: React.FC = () => {
         amount: response.data.balance
       }));
     } catch (error) {
-      console.error('Error loading invoice:', error);
     }
   };
 
@@ -179,7 +176,7 @@ const PaymentForm: React.FC = () => {
       const receipt = {
         payment_code: result.payment_code || `PAY-${Date.now()}`,
         date: new Date(),
-        customer_name: customer ? `${customer.first_name} ${customer.last_name}` : 'N/A',
+        customer_name: customer ? customer.name : 'N/A',
         customer_email: customer?.email || '',
         amount: formData.amount,
         payment_method: formData.payment_method,
@@ -280,7 +277,7 @@ const PaymentForm: React.FC = () => {
                   <MenuItem value="">Seleccionar cliente</MenuItem>
                   {customers.map(customer => (
                     <MenuItem key={customer.id} value={customer.id}>
-                      {customer.first_name} {customer.last_name} - {customer.email}
+                      {customer.name} - {customer.email}
                     </MenuItem>
                   ))}
                 </Select>

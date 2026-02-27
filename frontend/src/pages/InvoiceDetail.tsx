@@ -1,7 +1,7 @@
 /**
  * Detalle de Factura (CHAT 2) - Convertido a Material UI con Dark Mode
  */
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -33,8 +33,11 @@ import {
   Warning as OverdueIcon,
   Schedule as SentIcon,
   Description as DraftIcon,
-  Cancel as CancelledIcon
+  Cancel as CancelledIcon,
+  Send as SendIcon
 } from '@mui/icons-material';
+import { useSnackbar } from 'notistack';
+import { invoiceService } from '../services/invoiceService';
 import { AppDispatch, RootState } from '../store';
 import { fetchInvoiceById } from '../store/slices/paymentSlice';
 import { InvoiceStatus } from '../types/invoice';
@@ -49,7 +52,41 @@ const InvoiceDetail: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
   const { formatCurrency } = useCurrency();
 
+  const { enqueueSnackbar } = useSnackbar();
   const { selectedInvoice: invoice, loading } = useSelector((state: RootState) => state.payments);
+  const [resending, setResending] = useState(false);
+
+  const handleResendEmail = async () => {
+    if (!invoice) return;
+    setResending(true);
+    try {
+      await invoiceService.resend(invoice.id);
+      enqueueSnackbar('Factura reenviada por email exitosamente', { variant: 'success' });
+    } catch (error: any) {
+      enqueueSnackbar(error?.response?.data?.message || 'Error al reenviar factura', { variant: 'error' });
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!invoice) return;
+    try {
+      const response = await invoiceService.downloadPDF(invoice.id);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `factura-${invoice.invoice_code}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      enqueueSnackbar('PDF descargado exitosamente', { variant: 'success' });
+    } catch (error: any) {
+      enqueueSnackbar(error?.response?.data?.message || 'Error al descargar PDF', { variant: 'error' });
+    }
+  };
 
   useEffect(() => {
     const numericId = Number(id);
@@ -132,16 +169,27 @@ const InvoiceDetail: React.FC = () => {
           >
             Volver
           </Button>
-          {invoice.pdf_url && (
-            <Button
-              variant="contained"
-              startIcon={<PdfIcon />}
-              onClick={() => window.open(invoice.pdf_url, '_blank')}
-              sx={{ bgcolor: '#3b82f6', '&:hover': { bgcolor: '#2563eb' } }}
-            >
-              Ver PDF
-            </Button>
-          )}
+          <Button
+            variant="outlined"
+            startIcon={<SendIcon />}
+            onClick={handleResendEmail}
+            disabled={resending}
+            sx={{
+              borderColor: '#10b981',
+              color: '#10b981',
+              '&:hover': { borderColor: '#059669', bgcolor: 'rgba(16,185,129,0.08)' }
+            }}
+          >
+            {resending ? 'Enviando...' : 'Reenviar Email'}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<PdfIcon />}
+            onClick={handleDownloadPDF}
+            sx={{ bgcolor: '#3b82f6', '&:hover': { bgcolor: '#2563eb' } }}
+          >
+            Descargar PDF
+          </Button>
           {invoice.balance > 0 && (
             <Button
               variant="contained"
@@ -252,8 +300,12 @@ const InvoiceDetail: React.FC = () => {
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6} md={3}>
               <Typography variant="body2" color="text.secondary">Nombre</Typography>
-              <Typography fontWeight="500">
-                {invoice.customer.first_name} {invoice.customer.last_name}
+              <Typography
+                fontWeight="500"
+                onClick={() => navigate(`/customers/${invoice.customer?.id}`)}
+                sx={{ cursor: 'pointer', color: '#8b5cf6', '&:hover': { textDecoration: 'underline' } }}
+              >
+                {invoice.customer.name}
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
@@ -300,7 +352,7 @@ const InvoiceDetail: React.FC = () => {
               <Grid item xs={12} sm={4}>
                 <Typography variant="body2" color="text.secondary">Vehículo</Typography>
                 <Typography fontWeight="500">
-                  {invoice.rental.vehicle.brand} {invoice.rental.vehicle.model}
+                  {invoice.rental.vehicle.make} {invoice.rental.vehicle.model}
                 </Typography>
               </Grid>
             )}

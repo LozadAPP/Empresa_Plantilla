@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import alertService from '../services/alertService';
+import logger from '../config/logger';
 
 /**
  * AlertScheduler - Programador de tareas automáticas para generación de alertas
@@ -21,123 +22,136 @@ class AlertScheduler {
    * Inicia todos los cron jobs
    */
   start(): void {
-    console.log('[AlertScheduler] Iniciando programador de alertas...');
+    logger.info('Iniciando programador de alertas...');
 
     // 1. Verificación completa diaria a las 6:00 AM
     const fullCheckTask = cron.schedule('0 6 * * *', async () => {
-      console.log('[AlertScheduler] Ejecutando verificación completa...');
+      logger.info('Ejecutando verificación completa...');
       try {
         await alertService.runAllChecks();
       } catch (error) {
-        console.error('[AlertScheduler] Error en verificación completa:', error);
+        logger.error('Error en verificación completa', { error });
       }
     });
     this.tasks.push(fullCheckTask);
-    console.log('[AlertScheduler] ✓ Verificación completa programada (6:00 AM)');
+    logger.info('Verificación completa programada (6:00 AM)');
 
     // 2. Mantenimiento - Diariamente a las 7:00 AM
     const maintenanceTask = cron.schedule('0 7 * * *', async () => {
-      console.log('[AlertScheduler] Verificando mantenimiento de vehículos...');
+      logger.info('Verificando mantenimiento de vehículos...');
       try {
         const count = await alertService.checkMaintenanceDue();
-        console.log(`[AlertScheduler] ${count} alerta(s) de mantenimiento creada(s)`);
+        logger.info(`${count} alerta(s) de mantenimiento creada(s)`);
       } catch (error) {
-        console.error('[AlertScheduler] Error verificando mantenimiento:', error);
+        logger.error('Error verificando mantenimiento', { error });
       }
     });
     this.tasks.push(maintenanceTask);
-    console.log('[AlertScheduler] ✓ Verificación de mantenimiento programada (7:00 AM)');
+    logger.info('Verificación de mantenimiento programada (7:00 AM)');
 
     // 3. Seguros - Diariamente a las 7:30 AM
     const insuranceTask = cron.schedule('30 7 * * *', async () => {
-      console.log('[AlertScheduler] Verificando seguros por vencer...');
+      logger.info('Verificando seguros por vencer...');
       try {
         const count = await alertService.checkExpiringInsurance();
-        console.log(`[AlertScheduler] ${count} alerta(s) de seguro creada(s)`);
+        logger.info(`${count} alerta(s) de seguro creada(s)`);
       } catch (error) {
-        console.error('[AlertScheduler] Error verificando seguros:', error);
+        logger.error('Error verificando seguros', { error });
       }
     });
     this.tasks.push(insuranceTask);
-    console.log('[AlertScheduler] ✓ Verificación de seguros programada (7:30 AM)');
+    logger.info('Verificación de seguros programada (7:30 AM)');
 
     // 4. Rentas por vencer - Diariamente a las 8:00 AM
     const expiringRentalsTask = cron.schedule('0 8 * * *', async () => {
-      console.log('[AlertScheduler] Verificando rentas por vencer...');
+      logger.info('Verificando rentas por vencer...');
       try {
         const count = await alertService.checkExpiringRentals();
-        console.log(`[AlertScheduler] ${count} alerta(s) de rentas por vencer creada(s)`);
+        logger.info(`${count} alerta(s) de rentas por vencer creada(s)`);
       } catch (error) {
-        console.error('[AlertScheduler] Error verificando rentas por vencer:', error);
+        logger.error('Error verificando rentas por vencer', { error });
       }
     });
     this.tasks.push(expiringRentalsTask);
-    console.log('[AlertScheduler] ✓ Verificación de rentas por vencer programada (8:00 AM)');
+    logger.info('Verificación de rentas por vencer programada (8:00 AM)');
 
     // 5. Rentas vencidas - Diariamente a las 9:00 AM
     const overdueRentalsTask = cron.schedule('0 9 * * *', async () => {
-      console.log('[AlertScheduler] Verificando rentas vencidas...');
+      logger.info('Verificando rentas vencidas...');
       try {
         const count = await alertService.checkOverdueRentals();
-        console.log(`[AlertScheduler] ${count} alerta(s) de rentas vencidas creada(s)`);
+        logger.info(`${count} alerta(s) de rentas vencidas creada(s)`);
       } catch (error) {
-        console.error('[AlertScheduler] Error verificando rentas vencidas:', error);
+        logger.error('Error verificando rentas vencidas', { error });
       }
     });
     this.tasks.push(overdueRentalsTask);
-    console.log('[AlertScheduler] ✓ Verificación de rentas vencidas programada (9:00 AM)');
+    logger.info('Verificación de rentas vencidas programada (9:00 AM)');
 
     // 6. Pagos pendientes - Cada 6 horas
     const pendingPaymentsTask = cron.schedule('0 */6 * * *', async () => {
-      console.log('[AlertScheduler] Verificando pagos pendientes...');
+      logger.info('Verificando pagos pendientes...');
       try {
         const count = await alertService.checkPendingPayments();
-        console.log(`[AlertScheduler] ${count} alerta(s) de pagos pendientes creada(s)`);
+        logger.info(`${count} alerta(s) de pagos pendientes creada(s)`);
       } catch (error) {
-        console.error('[AlertScheduler] Error verificando pagos pendientes:', error);
+        logger.error('Error verificando pagos pendientes', { error });
       }
     });
     this.tasks.push(pendingPaymentsTask);
-    console.log('[AlertScheduler] ✓ Verificación de pagos pendientes programada (cada 6 horas)');
+    logger.info('Verificación de pagos pendientes programada (cada 6 horas)');
 
     // 7. Inventario bajo - Cada 12 horas
     const lowInventoryTask = cron.schedule('0 */12 * * *', async () => {
-      console.log('[AlertScheduler] Verificando inventario bajo...');
+      logger.info('Verificando inventario bajo...');
       try {
         const count = await alertService.checkLowInventory();
-        console.log(`[AlertScheduler] ${count} alerta(s) de inventario bajo creada(s)`);
+        logger.info(`${count} alerta(s) de inventario bajo creada(s)`);
       } catch (error) {
-        console.error('[AlertScheduler] Error verificando inventario bajo:', error);
+        logger.error('Error verificando inventario bajo', { error });
       }
     });
     this.tasks.push(lowInventoryTask);
-    console.log('[AlertScheduler] ✓ Verificación de inventario bajo programada (cada 12 horas)');
+    logger.info('Verificación de inventario bajo programada (cada 12 horas)');
 
-    // 8. Limpieza de alertas antiguas - Diariamente a las 3:00 AM
+    // 8. Cotizaciones por vencer - Diariamente a las 10:00 AM
+    const expiringQuotesTask = cron.schedule('0 10 * * *', async () => {
+      logger.info('Verificando cotizaciones por vencer...');
+      try {
+        const count = await alertService.checkExpiringQuotes();
+        logger.info(`${count} alerta(s) de cotizaciones creada(s)`);
+      } catch (error) {
+        logger.error('Error verificando cotizaciones', { error });
+      }
+    });
+    this.tasks.push(expiringQuotesTask);
+    logger.info('Verificación de cotizaciones programada (10:00 AM)');
+
+    // 9. Limpieza de alertas antiguas - Diariamente a las 3:00 AM
     const cleanupTask = cron.schedule('0 3 * * *', async () => {
-      console.log('[AlertScheduler] Ejecutando limpieza de alertas antiguas...');
+      logger.info('Ejecutando limpieza de alertas antiguas...');
       try {
         const result = await alertService.cleanupOldAlerts();
-        console.log(`[AlertScheduler] Limpieza completada: ${result.total} alerta(s) eliminada(s) (${result.expiredDeleted} expiradas, ${result.oldResolvedDeleted} resueltas antiguas)`);
+        logger.info(`Limpieza completada: ${result.total} alerta(s) eliminada(s) (${result.expiredDeleted} expiradas, ${result.oldResolvedDeleted} resueltas antiguas)`);
       } catch (error) {
-        console.error('[AlertScheduler] Error en limpieza de alertas:', error);
+        logger.error('Error en limpieza de alertas', { error });
       }
     });
     this.tasks.push(cleanupTask);
-    console.log('[AlertScheduler] ✓ Limpieza de alertas programada (3:00 AM)');
+    logger.info('Limpieza de alertas programada (3:00 AM)');
 
-    console.log(`[AlertScheduler] ${this.tasks.length} tareas programadas activas`);
-    console.log('[AlertScheduler] Programador de alertas iniciado correctamente');
+    logger.info(`${this.tasks.length} tareas programadas activas`);
+    logger.info('Programador de alertas iniciado correctamente');
   }
 
   /**
    * Detiene todos los cron jobs
    */
   stop(): void {
-    console.log('[AlertScheduler] Deteniendo programador de alertas...');
+    logger.info('Deteniendo programador de alertas...');
     this.tasks.forEach((task) => task.stop());
     this.tasks = [];
-    console.log('[AlertScheduler] Programador de alertas detenido');
+    logger.info('Programador de alertas detenido');
   }
 
   /**
@@ -157,12 +171,12 @@ class AlertScheduler {
    * Ejecuta todas las verificaciones manualmente (para testing)
    */
   async runManualCheck(): Promise<void> {
-    console.log('[AlertScheduler] Ejecutando verificación manual...');
+    logger.info('Ejecutando verificación manual...');
     try {
       const results = await alertService.runAllChecks();
-      console.log('[AlertScheduler] Verificación manual completada:', results);
+      logger.info('Verificación manual completada', { results });
     } catch (error) {
-      console.error('[AlertScheduler] Error en verificación manual:', error);
+      logger.error('Error en verificación manual', { error });
       throw error;
     }
   }

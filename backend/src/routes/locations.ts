@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { body, param, query } from 'express-validator';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { requireRole } from '../middleware/roleMiddleware';
 import {
   getLocations,
   getLocationById,
@@ -344,6 +345,11 @@ const getAllLocationsValidation = [
     .isInt({ min: 1, max: 100 }).withMessage('El límite debe ser un número entre 1 y 100')
 ];
 
+// Roles con acceso de escritura a ubicaciones
+const locationWriteRoles = requireRole(
+  'admin', 'director_general', 'jefe_admin', 'jefe_inventarios'
+);
+
 // GET /api/locations - Get all locations with filters and pagination
 router.get('/', getAllLocationsValidation, getLocations);
 
@@ -357,12 +363,12 @@ router.get('/dropdown', getLocationsDropdown);
 router.get('/:id', getLocationByIdValidation, getLocationById);
 
 // POST /api/locations - Create new location
-router.post('/', createLocationValidation, createLocation);
+router.post('/', locationWriteRoles, createLocationValidation, createLocation);
 
 // PUT /api/locations/:id - Update location
-router.put('/:id', updateLocationValidation, updateLocation);
+router.put('/:id', locationWriteRoles, updateLocationValidation, updateLocation);
 
 // POST /api/locations/:id/toggle - Toggle location active status
-router.post('/:id/toggle', toggleLocationStatusValidation, toggleLocationStatus);
+router.post('/:id/toggle', locationWriteRoles, toggleLocationStatusValidation, toggleLocationStatus);
 
 export default router;

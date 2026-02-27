@@ -444,5 +444,8 @@ invoiceRouter.get('/:id', requireRole(...invoiceReadRoles), getInvoiceByIdValida
 // POST /api/v1/invoices - Crear una nueva factura
 invoiceRouter.post('/', requireRole(...invoiceWriteRoles), createInvoiceValidation, PaymentController.createInvoice);
 
+// GET /api/v1/invoices/:id/pdf - Descargar PDF de factura
+invoiceRouter.get('/:id/pdf', requireRole(...invoiceReadRoles), getInvoiceByIdValidation, PaymentController.downloadInvoicePDF);
+
 // POST /api/v1/invoices/:id/send - Reenviar factura por email
-invoiceRouter.post('/:id/send', resendInvoiceValidation, PaymentController.resendInvoice);
+invoiceRouter.post('/:id/send', requireRole(...invoiceWriteRoles), resendInvoiceValidation, PaymentController.resendInvoice);

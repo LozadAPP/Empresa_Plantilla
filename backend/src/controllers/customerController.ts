@@ -3,6 +3,7 @@ import { validationResult } from 'express-validator';
 import customerService from '../services/customerService';
 import { AuthRequest } from '../types';
 import { AuditLog } from '../models';
+import logger from '../config/logger';
 
 class CustomerController {
   /**
@@ -49,7 +50,7 @@ class CustomerController {
         ...result
       });
     } catch (error: any) {
-      console.error('Get customers error:', error);
+      logger.error('Get customers error', { error });
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor'
@@ -70,7 +71,7 @@ class CustomerController {
         data: customers
       });
     } catch (error: any) {
-      console.error('Get active customers error:', error);
+      logger.error('Get active customers error', { error });
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor'
@@ -101,7 +102,7 @@ class CustomerController {
         data: customers
       });
     } catch (error: any) {
-      console.error('Search customers error:', error);
+      logger.error('Search customers error', { error });
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor'
@@ -122,7 +123,7 @@ class CustomerController {
         data: stats
       });
     } catch (error: any) {
-      console.error('Get statistics error:', error);
+      logger.error('Get statistics error', { error });
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor'
@@ -152,7 +153,7 @@ class CustomerController {
         data: customer
       });
     } catch (error: any) {
-      console.error('Get customer error:', error);
+      logger.error('Get customer error', { error });
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor'
@@ -196,7 +197,7 @@ class CustomerController {
         data: customer
       });
     } catch (error: any) {
-      console.error('Create customer error:', error);
+      logger.error('Create customer error', { error });
       res.status(400).json({
         success: false,
         message: 'Error interno del servidor'
@@ -252,7 +253,7 @@ class CustomerController {
         data: customer
       });
     } catch (error: any) {
-      console.error('Update customer error:', error);
+      logger.error('Update customer error', { error });
       res.status(400).json({
         success: false,
         message: 'Error interno del servidor'
@@ -287,7 +288,7 @@ class CustomerController {
         data: customer
       });
     } catch (error: any) {
-      console.error('Toggle active error:', error);
+      logger.error('Toggle active error', { error });
       res.status(400).json({
         success: false,
         message: 'Error interno del servidor'
@@ -332,7 +333,7 @@ class CustomerController {
         data: customer
       });
     } catch (error: any) {
-      console.error('Update credit limit error:', error);
+      logger.error('Update credit limit error', { error });
       res.status(400).json({
         success: false,
         message: 'Error interno del servidor'
@@ -376,7 +377,7 @@ class CustomerController {
         message: 'Customer deleted successfully'
       });
     } catch (error: any) {
-      console.error('Delete customer error:', error);
+      logger.error('Delete customer error', { error });
       res.status(400).json({
         success: false,
         message: error.message || 'Error al eliminar cliente'
@@ -416,7 +417,7 @@ class CustomerController {
         ...result
       });
     } catch (error: any) {
-      console.error('Get customer rentals error:', error);
+      logger.error('Get customer rentals error', { error });
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor'

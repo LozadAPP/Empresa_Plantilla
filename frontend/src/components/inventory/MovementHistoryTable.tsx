@@ -68,7 +68,6 @@ const MovementHistoryTable: React.FC<MovementHistoryTableProps> = ({ refreshKey,
       setLocations(locRes.data || []);
       setCategories(catRes.data || []);
     } catch (error: any) {
-      console.error('Error loading filters data:', error);
       enqueueSnackbar('Error al cargar datos de filtros', { variant: 'error' });
     } finally {
       setLoadingFilters(false);

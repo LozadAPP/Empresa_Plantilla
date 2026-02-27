@@ -32,12 +32,11 @@ export interface Invoice {
   // Relaciones
   customer?: {
     id: number;
-    first_name: string;
-    last_name: string;
+    name: string;
+    contact_person?: string;
     email: string;
     phone?: string;
     address?: string;
-    company_name?: string;
   };
   rental?: {
     id: number;
@@ -45,9 +44,9 @@ export interface Invoice {
     start_date: string;
     end_date: string;
     vehicle?: {
-      brand: string;
+      make: string;
       model: string;
-      plate: string;
+      license_plate: string;
     };
   };
   payments?: Array<{
@@ -70,7 +69,11 @@ export interface CreateInvoiceDTO {
 export interface InvoiceFilters {
   customer_id?: number;
   rental_id?: number;
+  location_id?: number;
   status?: InvoiceStatus;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
   page?: number;
   limit?: number;
 }

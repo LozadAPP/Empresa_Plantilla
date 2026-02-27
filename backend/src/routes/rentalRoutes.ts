@@ -423,6 +423,9 @@ router.post(
 // RUTAS CRUD ESTÁNDAR
 // ============================================
 
+// GET /api/rentals/:id/contract-pdf - Descargar contrato PDF
+router.get('/:id/contract-pdf', getByIdValidation, RentalController.downloadContract);
+
 // GET /api/rentals/:id - Obtener una renta por ID
 router.get('/:id', getByIdValidation, RentalController.getById);
 

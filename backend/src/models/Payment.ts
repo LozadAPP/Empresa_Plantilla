@@ -3,6 +3,7 @@ import sequelize from '../config/database';
 import Alert from './Alert';
 import Rental from './Rental';
 import Customer from './Customer';
+import logger from '../config/logger';
 
 export enum PaymentStatus {
   PENDING = 'pending',
@@ -158,10 +159,10 @@ Payment.addHook('afterCreate', async (payment: Payment) => {
     // Solo para pagos PENDING de tipo RENTAL_PAYMENT
     if (payment.status === PaymentStatus.PENDING && payment.payment_type === PaymentType.RENTAL_PAYMENT) {
       // Crear job para verificar en 3 días (esto se hace mejor con cron, pero agregamos el hook como backup)
-      console.log(`[Hook] Pago ${payment.payment_code} creado como PENDING - Será monitoreado por alertScheduler`);
+      logger.debug(`[Hook] Pago ${payment.payment_code} creado como PENDING - Sera monitoreado por alertScheduler`);
     }
   } catch (error) {
-    console.error('[Hook] Error en Payment afterCreate:', error);
+    logger.error('[Hook] Error en Payment afterCreate:', error);
   }
 });
 
@@ -212,11 +213,11 @@ Payment.addHook('afterUpdate', async (payment: Payment) => {
           },
           isResolved: false
         });
-        console.log(`[Hook] Alerta PAYMENT FAILED creada para pago ${payment.payment_code}`);
+        logger.debug(`[Hook] Alerta PAYMENT FAILED creada para pago ${payment.payment_code}`);
       }
     }
   } catch (error) {
-    console.error('[Hook] Error en Payment afterUpdate:', error);
+    logger.error('[Hook] Error en Payment afterUpdate:', error);
   }
 });
 

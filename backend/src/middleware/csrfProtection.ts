@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { env } from '../config/env';
 import { isOriginAllowed, getOriginFromReferer } from '../config/cors';
+import logger from '../config/logger';
 
 /**
  * CSRF Protection Middleware for REST APIs
@@ -60,7 +61,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
 
   // Validate origin
   if (!isOriginAllowed(origin)) {
-    console.warn(`[CSRF] Blocked request from unauthorized origin: ${origin || 'none'}`);
+    logger.warn(`[CSRF] Blocked request from unauthorized origin: ${origin || 'none'}`);
     res.status(403).json({
       success: false,
       message: 'Request blocked: Invalid origin'

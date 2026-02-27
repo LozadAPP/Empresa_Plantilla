@@ -76,7 +76,6 @@ const CustomerRentalsDialog: React.FC<CustomerRentalsDialogProps> = ({
       }
     } catch (err) {
       setError('Error al conectar con el servidor');
-      console.error('Error fetching rentals:', err);
     } finally {
       setLoading(false);
     }

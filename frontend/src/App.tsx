@@ -4,6 +4,8 @@ import { CircularProgress, Box } from '@mui/material';
 import { useAuth } from './hooks/useAuth';
 import Layout from './components/common/Layout';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { LocationProvider } from './contexts/LocationContext';
 
 // Loading component for Suspense fallback
 const PageLoader = () => (
@@ -21,7 +23,23 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Inventory = lazy(() => import('./pages/Inventory'));
 const InventoryManagement = lazy(() => import('./pages/InventoryManagement'));
+const VehicleDetail = lazy(() => import('./pages/VehicleDetail'));
 const Customers = lazy(() => import('./pages/Customers'));
+const CustomerDetail = lazy(() => import('./pages/CustomerDetail'));
+
+// Lazy loaded pages - Calendario + Cotizaciones + Catálogo (Ventas)
+const Calendar = lazy(() => import('./pages/Calendar'));
+const Catalog = lazy(() => import('./pages/Catalog'));
+const Quotes = lazy(() => import('./pages/Quotes'));
+const QuoteForm = lazy(() => import('./pages/QuoteForm'));
+const QuoteDetail = lazy(() => import('./pages/QuoteDetail'));
+
+// Lazy loaded pages - Gastos y Proveedores (Finanzas)
+const Expenses = lazy(() => import('./pages/Expenses'));
+const ExpenseForm = lazy(() => import('./pages/ExpenseForm'));
+const Suppliers = lazy(() => import('./pages/Suppliers'));
+const SupplierForm = lazy(() => import('./pages/SupplierForm'));
+const SupplierDetail = lazy(() => import('./pages/SupplierDetail'));
 
 // Lazy loaded pages - CHAT 2: Flujo Operacional
 const Rentals = lazy(() => import('./pages/Rentals'));
@@ -48,6 +66,7 @@ const Users = lazy(() => import('./pages/Users'));
 const Locations = lazy(() => import('./pages/Locations'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
 const ExtraServiceForm = lazy(() => import('./pages/ExtraServiceForm'));
+const Documents = lazy(() => import('./pages/Documents'));
 
 // Protected Route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -107,14 +126,28 @@ const App: React.FC = () => {
           <Route
             element={
               <ProtectedRoute>
-                <Layout />
+                <LocationProvider>
+                  <NotificationProvider>
+                    <Layout />
+                  </NotificationProvider>
+                </LocationProvider>
               </ProtectedRoute>
             }
           >
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/inventory" element={<Inventory />} />
+            <Route path="/inventory/:id" element={<VehicleDetail />} />
             <Route path="/inventory-management" element={<InventoryManagement />} />
             <Route path="/customers" element={<Customers />} />
+            <Route path="/customers/:id" element={<CustomerDetail />} />
+
+            {/* Calendario + Catálogo + Cotizaciones (Ventas) */}
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/catalog" element={<Catalog />} />
+            <Route path="/quotes" element={<Quotes />} />
+            <Route path="/quotes/new" element={<QuoteForm />} />
+            <Route path="/quotes/:id" element={<QuoteDetail />} />
+            <Route path="/quotes/:id/edit" element={<QuoteForm />} />
 
             {/* CHAT 2: Flujo Operacional */}
             <Route path="/rentals" element={<Rentals />} />
@@ -127,6 +160,15 @@ const App: React.FC = () => {
             <Route path="/invoices" element={<Invoices />} />
             <Route path="/invoices/new" element={<InvoiceForm />} />
             <Route path="/invoices/:id" element={<InvoiceDetail />} />
+
+            {/* Gastos y Proveedores (Finanzas) */}
+            <Route path="/expenses" element={<Expenses />} />
+            <Route path="/expenses/new" element={<ExpenseForm />} />
+            <Route path="/expenses/:id/edit" element={<ExpenseForm />} />
+            <Route path="/suppliers" element={<Suppliers />} />
+            <Route path="/suppliers/new" element={<SupplierForm />} />
+            <Route path="/suppliers/:id" element={<SupplierDetail />} />
+            <Route path="/suppliers/:id/edit" element={<SupplierForm />} />
 
             {/* CHAT 3: Administración + Reportes */}
             <Route path="/maintenance" element={<Maintenance />} />
@@ -143,6 +185,7 @@ const App: React.FC = () => {
             <Route path="/settings/extra-services/:id/edit" element={<ExtraServiceForm />} />
             <Route path="/users" element={<Users />} />
             <Route path="/settings/locations" element={<Locations />} />
+            <Route path="/documents" element={<Documents />} />
             <Route path="/audit" element={<AuditLog />} />
           </Route>
 

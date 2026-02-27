@@ -57,6 +57,7 @@ import {
 } from '@mui/icons-material';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useLocation as useLocationContext } from '../contexts/LocationContext';
 import accountingService from '../services/accountingService';
 import { Account, Transaction } from '../types/accounting';
 import { format } from 'date-fns';
@@ -68,6 +69,7 @@ import TabPanel from '../components/common/TabPanel';
 const Accounting: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
   const { formatCurrency } = useCurrency();
+  const { selectedLocationId } = useLocationContext();
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
@@ -104,13 +106,14 @@ const Accounting: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, selectedLocationId]);
 
   const loadData = async () => {
     try {
       const filters: any = {};
       if (startDate) filters.startDate = startDate;
       if (endDate) filters.endDate = endDate;
+      if (selectedLocationId) filters.locationId = selectedLocationId;
 
       const [accountsRes, transactionsRes, balanceRes] = await Promise.all([
         accountingService.getAccounts(),

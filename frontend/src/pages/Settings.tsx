@@ -128,7 +128,6 @@ const Settings: React.FC = () => {
         setUserStats(response.data);
       }
     } catch (error: any) {
-      console.error('Error loading user stats:', error);
     } finally {
       setLoadingUserStats(false);
     }
@@ -213,7 +212,6 @@ const Settings: React.FC = () => {
       setSuccess(true);
       // Cleanup manejado por useEffect
     } catch (error: any) {
-      console.error('Error saving configs:', error);
       setError(error.response?.data?.message || 'Error al guardar las configuraciones');
     } finally {
       setSaving(false);
@@ -874,7 +872,7 @@ const Settings: React.FC = () => {
                       }
                       secondary={
                         <>
-                          ${service.price.toFixed(2)} {service.price_type === 'per_day' ? '/ día' : '(único)'}
+                          ${Number(service.price).toFixed(2)} {service.price_type === 'per_day' ? '/ día' : '(único)'}
                           {service.description && ` - ${service.description}`}
                         </>
                       }

@@ -6,6 +6,9 @@ import Vehicle from '../models/Vehicle';
 import User from '../models/User';
 import { Op } from 'sequelize';
 import sequelize from '../config/database';
+import { createAuditLog, getClientIp } from '../utils/auditLogger';
+import logger from '../config/logger';
+import { AuthRequest } from '../types';
 
 // ====================================
 // MAINTENANCE TYPES
@@ -30,7 +33,7 @@ export const getMaintenanceTypes = async (req: Request, res: Response) => {
       data: types,
     });
   } catch (error: any) {
-    console.error('Error fetching maintenance types:', error);
+    logger.error('Error fetching maintenance types', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching maintenance types',
@@ -71,7 +74,7 @@ export const createMaintenanceType = async (req: Request, res: Response) => {
         message: 'Ya existe un tipo de mantenimiento con ese nombre',
       });
     }
-    console.error('Error creating maintenance type:', error);
+    logger.error('Error creating maintenance type', { error });
     res.status(500).json({
       success: false,
       message: 'Error creating maintenance type',
@@ -118,7 +121,7 @@ export const updateMaintenanceType = async (req: Request, res: Response) => {
       data: type,
     });
   } catch (error: any) {
-    console.error('Error updating maintenance type:', error);
+    logger.error('Error updating maintenance type', { error });
     res.status(500).json({
       success: false,
       message: 'Error updating maintenance type',
@@ -184,7 +187,7 @@ export const getMaintenanceOrders = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching maintenance orders:', error);
+    logger.error('Error fetching maintenance orders', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching maintenance orders',
@@ -227,7 +230,7 @@ export const getMaintenanceOrderById = async (req: Request, res: Response) => {
       data: order,
     });
   } catch (error: any) {
-    console.error('Error fetching maintenance order:', error);
+    logger.error('Error fetching maintenance order', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching maintenance order',
@@ -236,7 +239,7 @@ export const getMaintenanceOrderById = async (req: Request, res: Response) => {
   }
 };
 
-export const createMaintenanceOrder = async (req: Request, res: Response) => {
+export const createMaintenanceOrder = async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -257,7 +260,7 @@ export const createMaintenanceOrder = async (req: Request, res: Response) => {
       technicianName,
     } = req.body;
 
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
 
     // Validate FK references exist
     const vehicle = await Vehicle.findByPk(vehicleId);
@@ -313,13 +316,23 @@ export const createMaintenanceOrder = async (req: Request, res: Response) => {
       ],
     });
 
+    // Audit log
+    createAuditLog({
+      userId: userId,
+      entityType: 'maintenance_order',
+      entityId: order.id,
+      action: 'create',
+      newValues: { maintenanceCode, vehicleId, maintenanceTypeId, priority, scheduledDate },
+      ipAddress: getClientIp(req),
+    });
+
     res.status(201).json({
       success: true,
       message: 'Maintenance order created successfully',
       data: orderWithDetails,
     });
   } catch (error: any) {
-    console.error('Error creating maintenance order:', error);
+    logger.error('Error creating maintenance order', { error });
     res.status(500).json({
       success: false,
       message: 'Error creating maintenance order',
@@ -328,7 +341,7 @@ export const createMaintenanceOrder = async (req: Request, res: Response) => {
   }
 };
 
-export const updateMaintenanceOrder = async (req: Request, res: Response) => {
+export const updateMaintenanceOrder = async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -380,7 +393,21 @@ export const updateMaintenanceOrder = async (req: Request, res: Response) => {
       }
     }
 
+    const oldValues = { status: order.status, priority: order.priority };
     await order.update(updates);
+
+    // Audit log
+    if (req.user) {
+      createAuditLog({
+        userId: req.user.id,
+        entityType: 'maintenance_order',
+        entityId: Number(id),
+        action: 'update',
+        oldValues,
+        newValues: updates,
+        ipAddress: getClientIp(req),
+      });
+    }
 
     const updatedOrder = await MaintenanceOrder.findByPk(id, {
       include: [
@@ -401,7 +428,7 @@ export const updateMaintenanceOrder = async (req: Request, res: Response) => {
       data: updatedOrder,
     });
   } catch (error: any) {
-    console.error('Error updating maintenance order:', error);
+    logger.error('Error updating maintenance order', { error });
     res.status(500).json({
       success: false,
       message: 'Error updating maintenance order',
@@ -410,7 +437,7 @@ export const updateMaintenanceOrder = async (req: Request, res: Response) => {
   }
 };
 
-export const completeMaintenanceOrder = async (req: Request, res: Response) => {
+export const completeMaintenanceOrder = async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -456,6 +483,19 @@ export const completeMaintenanceOrder = async (req: Request, res: Response) => {
       // Commit the transaction
       await t.commit();
 
+      // Audit log (after commit so we don't slow down the transaction)
+      if (req.user) {
+        createAuditLog({
+          userId: req.user.id,
+          entityType: 'maintenance_order',
+          entityId: Number(id),
+          action: 'update',
+          oldValues: { status: 'in_progress' },
+          newValues: { status: 'completed', actualCost, actualDuration, mileageAtService },
+          ipAddress: getClientIp(req),
+        });
+      }
+
       res.json({
         success: true,
         message: 'Maintenance order completed successfully',
@@ -467,7 +507,7 @@ export const completeMaintenanceOrder = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error: any) {
-    console.error('Error completing maintenance order:', error);
+    logger.error('Error completing maintenance order', { error });
     res.status(500).json({
       success: false,
       message: 'Error completing maintenance order',
@@ -501,7 +541,7 @@ export const getMaintenanceHistory = async (req: Request, res: Response) => {
       data: history,
     });
   } catch (error: any) {
-    console.error('Error fetching maintenance history:', error);
+    logger.error('Error fetching maintenance history', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching maintenance history',

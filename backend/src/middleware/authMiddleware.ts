@@ -4,6 +4,7 @@ import { jwtConfig } from '../config/jwt';
 import { AuthRequest, IUserPayload } from '../types';
 import { User, Role, TokenBlacklist } from '../models';
 import { hashToken } from '../utils/tokenUtils';
+import logger from '../config/logger';
 
 /**
  * Extracts JWT token from HTTP-only cookie or Authorization header (fallback)
@@ -93,7 +94,7 @@ export const authMiddleware = async (
       return;
     }
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    logger.error('Auth middleware error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error during authentication.'

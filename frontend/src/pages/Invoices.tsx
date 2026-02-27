@@ -62,13 +62,13 @@ import TableSkeleton from '../components/common/TableSkeleton';
 import EmptyState from '../components/common/EmptyState';
 import { formatDate } from '../utils/formatters';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useLocation as useLocationContext } from '../contexts/LocationContext';
 import { exportToCSV, formatCurrencyForCSV, formatDateForCSV } from '../utils/exportCSV';
 
 // Invoice CSV columns
 const INVOICES_COLUMNS = [
   { key: 'invoice_code', label: 'Código' },
-  { key: 'customer.first_name', label: 'Nombre Cliente' },
-  { key: 'customer.last_name', label: 'Apellido Cliente' },
+  { key: 'customer.name', label: 'Cliente' },
   { key: 'customer.email', label: 'Email Cliente' },
   { key: 'issue_date', label: 'Fecha Emisión', formatter: formatDateForCSV },
   { key: 'due_date', label: 'Fecha Vencimiento', formatter: formatDateForCSV },
@@ -85,6 +85,7 @@ const Invoices: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { isDarkMode } = useCustomTheme();
   const { formatCurrency } = useCurrency();
+  const { selectedLocationId } = useLocationContext();
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -135,10 +136,11 @@ const Invoices: React.FC = () => {
       search: debouncedSearch || undefined,
       status: filters.status || undefined,
       startDate: filters.startDate || undefined,
-      endDate: filters.endDate || undefined
+      endDate: filters.endDate || undefined,
+      location_id: selectedLocationId || undefined
     };
     dispatch(fetchInvoices(apiFilters));
-  }, [dispatch, filters, debouncedSearch]);
+  }, [dispatch, filters, debouncedSearch, selectedLocationId]);
 
   const handleFilterChange = useCallback((key: string, value: string | number) => {
     setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
@@ -622,7 +624,7 @@ const Invoices: React.FC = () => {
                           {invoice.invoice_code}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {invoice.customer?.first_name} {invoice.customer?.last_name}
+                          {invoice.customer?.name}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -818,7 +820,7 @@ const Invoices: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {invoice.customer?.first_name} {invoice.customer?.last_name}
+                        {invoice.customer?.name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {invoice.customer?.email}

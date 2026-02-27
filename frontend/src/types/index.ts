@@ -212,6 +212,10 @@ export interface DashboardKPIs {
     todayIncome: number;
     monthIncome: number;
     pendingPayments: number;
+    monthExpenses: number;
+    pendingExpenses: number;
+    pendingExpensesCount: number;
+    profitMargin: number;
   };
 }
 

@@ -44,6 +44,7 @@ import customerService from '../services/customerService';
 import vehicleService from '../services/vehicleService';
 import extraServiceService from '../services/extraServiceService';
 import { locationService } from '../services/locationService';
+import { useLocation as useLocationContext } from '../contexts/LocationContext';
 import { differenceInDays } from 'date-fns';
 
 const RentalForm: React.FC = () => {
@@ -53,6 +54,7 @@ const RentalForm: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { selectedLocationId } = useLocationContext();
 
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -65,7 +67,7 @@ const RentalForm: React.FC = () => {
   const [formData, setFormData] = useState<CreateRentalDTO>({
     customer_id: 0,
     vehicle_id: 0,
-    location_id: 0,
+    location_id: selectedLocationId || 0,
     return_location_id: undefined,
     start_date: '',
     end_date: '',
@@ -120,7 +122,6 @@ const RentalForm: React.FC = () => {
       const response = await customerService.getAll({});
       setCustomers(response.data || []);
     } catch (error) {
-      console.error('Error loading customers:', error);
     }
   };
 
@@ -129,7 +130,6 @@ const RentalForm: React.FC = () => {
       const response = await vehicleService.getAvailable();
       setVehicles(response.data || []);
     } catch (error) {
-      console.error('Error loading vehicles:', error);
     }
   };
 
@@ -138,7 +138,6 @@ const RentalForm: React.FC = () => {
       const response = await locationService.getLocationsDropdown();
       setLocations(response.data || []);
     } catch (error) {
-      console.error('Error loading locations:', error);
     }
   };
 
@@ -147,7 +146,6 @@ const RentalForm: React.FC = () => {
       const response = await extraServiceService.getActiveServices();
       setExtraServices(response.data || []);
     } catch (error) {
-      console.error('Error loading extra services:', error);
     }
   };
 
@@ -623,7 +621,7 @@ const RentalForm: React.FC = () => {
                                     </Typography>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
                                       <Typography variant="caption" color="text.secondary">
-                                        ${service.price.toFixed(2)}
+                                        ${Number(service.price).toFixed(2)}
                                         {service.price_type === 'per_day' ? '/día' : ' único'}
                                       </Typography>
                                       {isSelected && (

@@ -1,4 +1,4 @@
-import { Op } from 'sequelize';
+import { Op, fn, col } from 'sequelize';
 import { Vehicle, VehicleType, Location, Rental } from '../models';
 
 interface VehicleFilters {
@@ -287,23 +287,47 @@ class VehicleService {
 
   /**
    * Get vehicles by type statistics
+   * Uses GROUP BY aggregation instead of eager-loading all vehicles
    */
   async getByTypeStatistics() {
+    // 1. Fetch only type metadata (no vehicles)
     const types = await VehicleType.findAll({
-      include: [{
-        model: Vehicle,
-        as: 'vehicles'
-      }]
+      attributes: ['id', 'name'],
+      order: [['name', 'ASC']],
+      raw: true
     });
 
-    return types.map((type: any) => ({
-      id: type.id,
-      name: type.name,
-      total: type.vehicles?.length || 0,
-      available: type.vehicles?.filter((v: any) => v.status === 'available').length || 0,
-      rented: type.vehicles?.filter((v: any) => v.status === 'rented').length || 0,
-      maintenance: type.vehicles?.filter((v: any) => v.status === 'maintenance').length || 0
-    }));
+    // 2. Single aggregation query: count vehicles grouped by type + status
+    const stats = await Vehicle.findAll({
+      attributes: [
+        'vehicle_type_id',
+        'status',
+        [fn('COUNT', col('id')), 'count']
+      ],
+      group: ['vehicle_type_id', 'status'],
+      raw: true
+    }) as unknown as Array<{ vehicle_type_id: number; status: string; count: string }>;
+
+    // 3. Build lookup map: typeId → { available, rented, maintenance, total }
+    const statsMap = new Map<number, { available: number; rented: number; maintenance: number; total: number }>();
+    for (const row of stats) {
+      const typeId = row.vehicle_type_id;
+      if (!statsMap.has(typeId)) {
+        statsMap.set(typeId, { available: 0, rented: 0, maintenance: 0, total: 0 });
+      }
+      const entry = statsMap.get(typeId)!;
+      const count = Number.parseInt(row.count, 10) || 0;
+      if (row.status === 'available') entry.available = count;
+      else if (row.status === 'rented') entry.rented = count;
+      else if (row.status === 'maintenance') entry.maintenance = count;
+      entry.total += count;
+    }
+
+    // 4. Merge types with their stats
+    return types.map((type: any) => {
+      const s = statsMap.get(type.id) || { available: 0, rented: 0, maintenance: 0, total: 0 };
+      return { id: type.id, name: type.name, ...s };
+    });
   }
 }
 

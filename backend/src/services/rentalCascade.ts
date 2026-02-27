@@ -10,6 +10,7 @@ import { CodeGenerator } from './codeGenerator';
 import { EmailService } from './emailService';
 import { PDFService } from './pdfService';
 import { WebSocketService } from './websocketService';
+import logger from '../config/logger';
 
 /**
  * Servicio de Cascadas Automáticas
@@ -33,40 +34,40 @@ export class RentalCascadeService {
     userId?: number
   ): Promise<void> {
     try {
-      console.log(`[CASCADA] Iniciando cascadas para renta ${rental.rental_code}`);
+      logger.info(`[CASCADA] Iniciando cascadas para renta ${rental.rental_code}`);
 
       // 1. Actualizar estado del vehículo
       await this.updateVehicleStatus(rental.vehicle_id, VehicleStatus.RENTED);
-      console.log(`[CASCADA] ✓ Vehículo #${rental.vehicle_id} marcado como rentado`);
+      logger.info(`[CASCADA] Vehiculo #${rental.vehicle_id} marcado como rentado`);
 
       // 2. Crear registro de ingreso
       await this.createIncomeRecord(rental, userId);
-      console.log(`[CASCADA] ✓ Ingreso registrado`);
+      logger.info('[CASCADA] Ingreso registrado');
 
       // 3. Generar contrato PDF
       const pdfUrl = await PDFService.generateContract(rental);
-      console.log(`[CASCADA] ✓ Contrato PDF generado: ${pdfUrl}`);
+      logger.info(`[CASCADA] Contrato PDF generado: ${pdfUrl}`);
 
       // 4. Obtener datos del cliente para email
       const customer = await Customer.findByPk(rental.customer_id);
       if (customer) {
         // 5. Enviar email de confirmación
         await EmailService.sendRentalConfirmation(customer, rental, pdfUrl);
-        console.log(`[CASCADA] ✓ Email enviado a ${customer.email}`);
+        logger.info(`[CASCADA] Email enviado a ${customer.email}`);
 
         // 6. Actualizar balance del cliente
         await this.updateCustomerBalance(customer.id, rental.total_amount);
-        console.log(`[CASCADA] ✓ Balance del cliente actualizado`);
+        logger.info('[CASCADA] Balance del cliente actualizado');
       }
 
       // 7. Notificar via WebSocket
       WebSocketService.notifyRentalCreated(rental);
       WebSocketService.notifyInventoryUpdated(rental.vehicle_id, VehicleStatus.RENTED);
 
-      console.log(`[CASCADA] ✅ Todas las cascadas completadas exitosamente`);
+      logger.info('[CASCADA] Todas las cascadas completadas exitosamente');
 
     } catch (error) {
-      console.error(`[CASCADA] ❌ Error en cascadas:`, error);
+      logger.error('[CASCADA] Error en cascadas', { error });
       throw new Error(`Error en cascadas automáticas: ${error}`);
     }
   }
@@ -86,11 +87,11 @@ export class RentalCascadeService {
     transaction?: Transaction
   ): Promise<void> {
     try {
-      console.log(`[CASCADA] Iniciando cascadas para devolución de renta ${rental.rental_code}`);
+      logger.info(`[CASCADA] Iniciando cascadas para devolucion de renta ${rental.rental_code}`);
 
       // 1. Actualizar estado del vehículo a disponible
       await this.updateVehicleStatus(rental.vehicle_id, VehicleStatus.AVAILABLE, transaction);
-      console.log(`[CASCADA] ✓ Vehículo #${rental.vehicle_id} marcado como disponible`);
+      logger.info(`[CASCADA] Vehiculo #${rental.vehicle_id} marcado como disponible`);
 
       // 2. Actualizar mileage del vehículo
       if (returnData.end_mileage) {
@@ -98,7 +99,7 @@ export class RentalCascadeService {
           { mileage: returnData.end_mileage },
           { where: { id: rental.vehicle_id }, transaction }
         );
-        console.log(`[CASCADA] ✓ Kilometraje actualizado a ${returnData.end_mileage}`);
+        logger.info(`[CASCADA] Kilometraje actualizado a ${returnData.end_mileage}`);
       }
 
       // 3. Actualizar estado de la renta
@@ -111,12 +112,12 @@ export class RentalCascadeService {
         },
         { where: { id: rental.id }, transaction }
       );
-      console.log(`[CASCADA] ✓ Renta marcada como completada`);
+      logger.info('[CASCADA] Renta marcada como completada');
 
       // 4. Si hay penalidades, crear ingreso adicional
       if (returnData.total_penalty && returnData.total_penalty > 0) {
         await this.createPenaltyIncome(rental, returnData.total_penalty, userId, transaction);
-        console.log(`[CASCADA] ✓ Penalidad de $${returnData.total_penalty} registrada`);
+        logger.info(`[CASCADA] Penalidad de $${returnData.total_penalty} registrada`);
       }
 
       // 5. Obtener cliente para notificación (después del commit de la transacción)
@@ -127,9 +128,9 @@ export class RentalCascadeService {
         setImmediate(async () => {
           try {
             await EmailService.sendReturnConfirmation(customer, rental);
-            console.log(`[CASCADA] ✓ Email de devolución enviado a ${customer.email}`);
+            logger.info(`[CASCADA] Email de devolucion enviado a ${customer.email}`);
           } catch (emailError) {
-            console.error(`[CASCADA] ⚠ Error enviando email:`, emailError);
+            logger.error('[CASCADA] Error enviando email', { error: emailError });
           }
         });
       }
@@ -139,10 +140,10 @@ export class RentalCascadeService {
         WebSocketService.notifyInventoryUpdated(rental.vehicle_id, VehicleStatus.AVAILABLE);
       });
 
-      console.log(`[CASCADA] ✅ Todas las cascadas de devolución completadas`);
+      logger.info('[CASCADA] Todas las cascadas de devolucion completadas');
 
     } catch (error) {
-      console.error(`[CASCADA] ❌ Error en cascadas de devolución:`, error);
+      logger.error('[CASCADA] Error en cascadas de devolucion', { error });
       throw new Error(`Error en cascadas de devolución: ${error}`);
     }
   }

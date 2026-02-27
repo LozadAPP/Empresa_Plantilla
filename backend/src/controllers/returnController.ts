@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { AuthRequest } from '../types';
 import { Op } from 'sequelize';
 import { differenceInDays } from 'date-fns';
 import sequelize from '../config/database';
@@ -10,6 +11,7 @@ import { RentalStatus } from '../models/Rental';
 import { CodeGenerator } from '../services/codeGenerator';
 import { RentalCalculator } from '../services/rentalCalculator';
 import { RentalCascadeService } from '../services/rentalCascade';
+import logger from '../config/logger';
 
 /**
  * Controlador de Devoluciones
@@ -98,7 +100,7 @@ export class ReturnController {
       });
 
     } catch (error) {
-      console.error('[RETURN] Error obteniendo devoluciones:', error);
+      logger.error('[RETURN] Error obteniendo devoluciones', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener devoluciones',
@@ -134,7 +136,7 @@ export class ReturnController {
       });
 
     } catch (error) {
-      console.error('[RETURN] Error obteniendo devolución:', error);
+      logger.error('[RETURN] Error obteniendo devolución', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener devolución',
@@ -146,7 +148,7 @@ export class ReturnController {
    * POST /api/returns
    * Registrar una devolución con inspección y cálculo de penalidades
    */
-  static async create(req: Request, res: Response) {
+  static async create(req: AuthRequest, res: Response) {
     const transaction = await sequelize.transaction();
 
     try {
@@ -260,7 +262,7 @@ export class ReturnController {
         cleaning_required: cleaning_required || false,
         cleaning_cost: cleaningCost,
         total_penalty: totalPenalty,
-        inspected_by: (req as any).user?.id,
+        inspected_by: req.user?.id,
         inspection_notes,
         photos: photos || []
       }, { transaction });
@@ -274,7 +276,7 @@ export class ReturnController {
           fuel_level_end: fuel_level,
           total_penalty: totalPenalty
         },
-        (req as any).user?.id,
+        req.user?.id,
         transaction
       );
 
@@ -305,7 +307,7 @@ export class ReturnController {
 
     } catch (error) {
       await transaction.rollback();
-      console.error('[RETURN] Error registrando devolución:', error);
+      logger.error('[RETURN] Error registrando devolución', { error });
       res.status(500).json({
         success: false,
         message: 'Error al registrar devolución',
@@ -358,7 +360,7 @@ export class ReturnController {
       });
 
     } catch (error) {
-      console.error('[RETURN] Error actualizando devolución:', error);
+      logger.error('[RETURN] Error actualizando devolución', { error });
       res.status(500).json({
         success: false,
         message: 'Error al actualizar devolución',
@@ -395,7 +397,7 @@ export class ReturnController {
       });
 
     } catch (error) {
-      console.error('[RETURN] Error obteniendo devolución por rental_id:', error);
+      logger.error('[RETURN] Error obteniendo devolución por rental_id', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener devolución',

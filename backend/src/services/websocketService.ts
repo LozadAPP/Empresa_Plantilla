@@ -4,6 +4,9 @@ import { env } from '../config/env';
 import Rental from '../models/Rental';
 import Payment from '../models/Payment';
 import Return from '../models/Return';
+import Quote from '../models/Quote';
+import Expense from '../models/Expense';
+import logger from '../config/logger';
 
 /**
  * Servicio de WebSockets para actualizaciones en tiempo real
@@ -26,7 +29,7 @@ export class WebSocketService {
     });
 
     this.setupEventHandlers();
-    console.log('[WEBSOCKET] Servidor WebSocket inicializado');
+    logger.info('[WEBSOCKET] Servidor WebSocket inicializado');
   }
 
   /**
@@ -34,7 +37,7 @@ export class WebSocketService {
    */
   private static setupEventHandlers() {
     this.io.on('connection', (socket) => {
-      console.log(`[WEBSOCKET] Cliente conectado: ${socket.id}`);
+      logger.debug(`[WEBSOCKET] Cliente conectado: ${socket.id}`);
 
       // Guardar información del cliente
       socket.on('register', (data) => {
@@ -43,13 +46,13 @@ export class WebSocketService {
           role: data.role,
           location: data.location
         });
-        console.log(`[WEBSOCKET] Cliente registrado: ${data.userId} (${data.role})`);
+        logger.debug(`[WEBSOCKET] Cliente registrado: ${data.userId} (${data.role})`);
       });
 
       // Cliente se desconecta
       socket.on('disconnect', () => {
         this.connectedClients.delete(socket.id);
-        console.log(`[WEBSOCKET] Cliente desconectado: ${socket.id}`);
+        logger.debug(`[WEBSOCKET] Cliente desconectado: ${socket.id}`);
       });
 
       // Ping/Pong para mantener conexión activa
@@ -63,58 +66,63 @@ export class WebSocketService {
    * Notificar creación de renta
    */
   static notifyRentalCreated(rental: Rental) {
+    if (!this.io) return;
     this.io.emit('rental:created', {
       type: 'RENTAL_CREATED',
       data: rental,
       timestamp: new Date()
     });
 
-    console.log(`[WEBSOCKET] Notificación enviada: RENTAL_CREATED - ${rental.rental_code}`);
+    logger.debug(`[WEBSOCKET] Notificacion enviada: RENTAL_CREATED - ${rental.rental_code}`);
   }
 
   /**
    * Notificar actualización de renta
    */
   static notifyRentalUpdated(rental: Rental) {
+    if (!this.io) return;
     this.io.emit('rental:updated', {
       type: 'RENTAL_UPDATED',
       data: rental,
       timestamp: new Date()
     });
 
-    console.log(`[WEBSOCKET] Notificación enviada: RENTAL_UPDATED - ${rental.rental_code}`);
+    logger.debug(`[WEBSOCKET] Notificacion enviada: RENTAL_UPDATED - ${rental.rental_code}`);
   }
 
   /**
    * Notificar devolución procesada
    */
   static notifyReturnProcessed(returnRecord: Return) {
+    if (!this.io) return;
     this.io.emit('return:processed', {
       type: 'RETURN_PROCESSED',
       data: returnRecord,
       timestamp: new Date()
     });
 
-    console.log(`[WEBSOCKET] Notificación enviada: RETURN_PROCESSED - ${returnRecord.return_code}`);
+    logger.debug(`[WEBSOCKET] Notificacion enviada: RETURN_PROCESSED - ${returnRecord.return_code}`);
   }
 
   /**
    * Notificar pago recibido
    */
   static notifyPaymentReceived(payment: Payment) {
+    if (!this.io) return;
     this.io.emit('payment:received', {
       type: 'PAYMENT_RECEIVED',
       data: payment,
       timestamp: new Date()
     });
 
-    console.log(`[WEBSOCKET] Notificación enviada: PAYMENT_RECEIVED - ${payment.payment_code}`);
+    logger.debug(`[WEBSOCKET] Notificacion enviada: PAYMENT_RECEIVED - ${payment.payment_code}`);
   }
 
   /**
    * Notificar inventario actualizado (cuando se crea/devuelve renta)
    */
   static notifyInventoryUpdated(vehicleId: number, status: string) {
+    if (!this.io) return;
     this.io.emit('inventory:updated', {
       type: 'INVENTORY_UPDATED',
       data: {
@@ -124,7 +132,7 @@ export class WebSocketService {
       timestamp: new Date()
     });
 
-    console.log(`[WEBSOCKET] Notificación enviada: INVENTORY_UPDATED - Vehículo ${vehicleId}`);
+    logger.debug(`[WEBSOCKET] Notificacion enviada: INVENTORY_UPDATED - Vehiculo ${vehicleId}`);
   }
 
   /**
@@ -136,19 +144,21 @@ export class WebSocketService {
     message: string;
     data?: any;
   }) {
+    if (!this.io) return;
     this.io.emit('alert', {
       type: 'ALERT',
       data: alert,
       timestamp: new Date()
     });
 
-    console.log(`[WEBSOCKET] Alerta enviada: ${alert.type} - ${alert.title}`);
+    logger.debug(`[WEBSOCKET] Alerta enviada: ${alert.type} - ${alert.title}`);
   }
 
   /**
    * Notificar a usuarios específicos por rol
    */
   static notifyByRole(role: string, event: string, data: any) {
+    if (!this.io) return;
     const clients = Array.from(this.connectedClients.entries())
       .filter(([_, client]) => client.role === role);
 
@@ -160,13 +170,14 @@ export class WebSocketService {
       });
     });
 
-    console.log(`[WEBSOCKET] Notificación enviada a rol ${role}: ${clients.length} clientes`);
+    logger.debug(`[WEBSOCKET] Notificacion enviada a rol ${role}: ${clients.length} clientes`);
   }
 
   /**
    * Notificar a ubicación específica
    */
   static notifyByLocation(locationId: number, event: string, data: any) {
+    if (!this.io) return;
     const clients = Array.from(this.connectedClients.entries())
       .filter(([_, client]) => client.location === locationId);
 
@@ -178,7 +189,81 @@ export class WebSocketService {
       });
     });
 
-    console.log(`[WEBSOCKET] Notificación enviada a ubicación ${locationId}: ${clients.length} clientes`);
+    logger.debug(`[WEBSOCKET] Notificacion enviada a ubicacion ${locationId}: ${clients.length} clientes`);
+  }
+
+  /**
+   * Notificar cambio de status de cotización
+   */
+  static notifyQuoteStatusChanged(quote: Quote, newStatus: string) {
+    if (!this.io) return;
+
+    this.io.emit('quote:status_changed', {
+      type: 'QUOTE_STATUS_CHANGED',
+      data: {
+        id: quote.id,
+        quote_code: quote.quote_code,
+        status: newStatus,
+        customer_id: quote.customer_id,
+        total_amount: quote.total_amount
+      },
+      timestamp: new Date()
+    });
+
+    logger.debug(`[WEBSOCKET] Notificacion enviada: QUOTE_STATUS_CHANGED - ${quote.quote_code} -> ${newStatus}`);
+  }
+
+  /**
+   * Notificar gasto registrado
+   */
+  static notifyExpenseCreated(expense: Expense) {
+    if (!this.io) return;
+    this.io.emit('expense:created', {
+      type: 'EXPENSE_CREATED',
+      data: {
+        id: expense.id,
+        expense_code: expense.expenseCode,
+        total_amount: expense.totalAmount,
+        category: expense.category
+      },
+      timestamp: new Date()
+    });
+    logger.debug(`[WEBSOCKET] Notificacion enviada: EXPENSE_CREATED - ${expense.expenseCode}`);
+  }
+
+  /**
+   * Notificar gasto aprobado
+   */
+  static notifyExpenseApproved(expense: Expense) {
+    if (!this.io) return;
+    this.io.emit('expense:approved', {
+      type: 'EXPENSE_APPROVED',
+      data: {
+        id: expense.id,
+        expense_code: expense.expenseCode,
+        total_amount: expense.totalAmount,
+        category: expense.category
+      },
+      timestamp: new Date()
+    });
+    logger.debug(`[WEBSOCKET] Notificacion enviada: EXPENSE_APPROVED - ${expense.expenseCode}`);
+  }
+
+  /**
+   * Notificar proveedor creado
+   */
+  static notifySupplierCreated(supplier: any) {
+    if (!this.io) return;
+    this.io.emit('supplier:created', {
+      type: 'SUPPLIER_CREATED',
+      data: {
+        id: supplier.id,
+        supplier_code: supplier.supplierCode,
+        name: supplier.name,
+      },
+      timestamp: new Date()
+    });
+    logger.debug(`[WEBSOCKET] Notificacion enviada: SUPPLIER_CREATED - ${supplier.supplierCode}`);
   }
 
   /**

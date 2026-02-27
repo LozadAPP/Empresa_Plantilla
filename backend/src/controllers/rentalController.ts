@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
+import { AuthRequest } from '../types';
 import { Op } from 'sequelize';
+import fs from 'fs';
+import path from 'path';
 import Rental from '../models/Rental';
 import Vehicle from '../models/Vehicle';
 import Customer from '../models/Customer';
@@ -11,6 +14,9 @@ import { VehicleStatus } from '../models/Vehicle';
 import { RentalCalculator } from '../services/rentalCalculator';
 import { CodeGenerator } from '../services/codeGenerator';
 import { RentalCascadeService } from '../services/rentalCascade';
+import { PDFService } from '../services/pdfService';
+import logger from '../config/logger';
+import { DocumentRegistrationService } from '../services/documentRegistrationService';
 
 // Roles que pueden crear rentas sin necesidad de aprobación
 const ROLES_SIN_APROBACION = new Set(['admin', 'director_general', 'jefe_ventas']);
@@ -34,6 +40,7 @@ export class RentalController {
         location_id,
         startDate,
         endDate,
+        search,
         page = 1,
         limit = 20
       } = req.query;
@@ -45,10 +52,14 @@ export class RentalController {
       if (vehicle_id) where.vehicle_id = vehicle_id;
       if (location_id) where.location_id = location_id;
 
-      if (startDate || endDate) {
-        where.start_date = {};
-        if (startDate) where.start_date[Op.gte] = new Date(startDate as string);
-        if (endDate) where.start_date[Op.lte] = new Date(endDate as string);
+      if (search) {
+        where.rental_code = { [Op.iLike]: `%${search as string}%` };
+      }
+      if (startDate) {
+        where.start_date = { [Op.gte]: new Date(startDate as string) };
+      }
+      if (endDate) {
+        where.end_date = { [Op.lte]: new Date(endDate as string) };
       }
 
       const offset = (Number(page) - 1) * Number(limit);
@@ -78,7 +89,7 @@ export class RentalController {
       });
 
     } catch (error) {
-      console.error('[RENTAL] Error obteniendo rentas:', error);
+      logger.error('[RENTAL] Error obteniendo rentas', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener rentas',
@@ -116,7 +127,7 @@ export class RentalController {
       });
 
     } catch (error) {
-      console.error('[RENTAL] Error obteniendo renta:', error);
+      logger.error('[RENTAL] Error obteniendo renta', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener renta',
@@ -128,7 +139,7 @@ export class RentalController {
    * POST /api/rentals
    * Crear una nueva renta con cálculos automáticos y cascadas
    */
-  static async create(req: Request, res: Response) {
+  static async create(req: AuthRequest, res: Response) {
     try {
       const {
         customer_id,
@@ -262,10 +273,10 @@ export class RentalController {
       const rentalCode = await CodeGenerator.generateRentalCode();
 
       // Determinar si necesita aprobación basado en el rol del creador
-      const userRole = (req as any).user?.role;
-      const userId = (req as any).user?.id;
-      const userName = (req as any).user?.name || (req as any).user?.email || 'Usuario';
-      const necesitaAprobacion = !ROLES_SIN_APROBACION.has(userRole);
+      const userRoles = req.user!.roles;
+      const userId = req.user!.id;
+      const userName = `${req.user!.first_name} ${req.user!.last_name}`.trim() || req.user!.email;
+      const necesitaAprobacion = !userRoles.some(r => ROLES_SIN_APROBACION.has(r));
 
       // Crear la renta
       const rental = await Rental.create({
@@ -319,7 +330,7 @@ export class RentalController {
             createdByName: userName
           })
         });
-        console.log(`[RENTAL] Renta ${rental.rental_code} creada con estado PENDING_APPROVAL`);
+        logger.info(`[RENTAL] Renta ${rental.rental_code} creada con estado PENDING_APPROVAL`);
 
         res.status(201).json({
           success: true,
@@ -331,7 +342,7 @@ export class RentalController {
         // Ejecutar cascadas automáticas (marcar vehículo como rentado, etc.)
         RentalCascadeService.onRentalCreated(rental, userId)
           .catch(error => {
-            console.error('[RENTAL] Error en cascadas:', error);
+            logger.error('[RENTAL] Error en cascadas', { error });
           });
 
         res.status(201).json({
@@ -343,7 +354,7 @@ export class RentalController {
       }
 
     } catch (error) {
-      console.error('[RENTAL] Error creando renta:', error);
+      logger.error('[RENTAL] Error creando renta', { error });
       res.status(500).json({
         success: false,
         message: 'Error al crear renta',
@@ -420,7 +431,7 @@ export class RentalController {
       });
 
     } catch (error) {
-      console.error('[RENTAL] Error actualizando renta:', error);
+      logger.error('[RENTAL] Error actualizando renta', { error });
       res.status(500).json({
         success: false,
         message: 'Error al actualizar renta',
@@ -473,7 +484,7 @@ export class RentalController {
       });
 
     } catch (error) {
-      console.error('[RENTAL] Error cancelando renta:', error);
+      logger.error('[RENTAL] Error cancelando renta', { error });
       res.status(500).json({
         success: false,
         message: 'Error al cancelar renta',
@@ -506,7 +517,7 @@ export class RentalController {
         count: rentals.length
       });
     } catch (error) {
-      console.error('[RENTAL] Error obteniendo rentas pendientes:', error);
+      logger.error('[RENTAL] Error obteniendo rentas pendientes', { error });
       res.status(500).json({
         success: false,
         message: 'Error al obtener rentas pendientes de aprobación'
@@ -518,11 +529,11 @@ export class RentalController {
    * POST /api/rentals/:id/approve
    * Aprobar una renta pendiente
    */
-  static async approve(req: Request, res: Response) {
+  static async approve(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const userId = (req as any).user?.id;
-      const userName = (req as any).user?.name || (req as any).user?.email || 'Supervisor';
+      const userId = req.user!.id;
+      const userName = `${req.user!.first_name} ${req.user!.last_name}`.trim() || req.user!.email;
 
       const rental = await Rental.findByPk(id, {
         include: [
@@ -598,7 +609,7 @@ export class RentalController {
         }
       );
 
-      console.log(`[RENTAL] Renta ${rental.rental_code} APROBADA por usuario ${userId}`);
+      logger.info(`[RENTAL] Renta ${rental.rental_code} APROBADA por usuario ${userId}`);
 
       res.json({
         success: true,
@@ -607,7 +618,7 @@ export class RentalController {
       });
 
     } catch (error) {
-      console.error('[RENTAL] Error aprobando renta:', error);
+      logger.error('[RENTAL] Error aprobando renta', { error });
       res.status(500).json({
         success: false,
         message: 'Error al aprobar renta'
@@ -619,12 +630,12 @@ export class RentalController {
    * POST /api/rentals/:id/reject
    * Rechazar una renta pendiente
    */
-  static async reject(req: Request, res: Response) {
+  static async reject(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      const userId = (req as any).user?.id;
-      const userName = (req as any).user?.name || (req as any).user?.email || 'Supervisor';
+      const userId = req.user!.id;
+      const userName = `${req.user!.first_name} ${req.user!.last_name}`.trim() || req.user!.email;
 
       // Validar razón
       if (!reason || reason.trim().length < 10) {
@@ -701,7 +712,7 @@ export class RentalController {
         }
       );
 
-      console.log(`[RENTAL] Renta ${rental.rental_code} RECHAZADA por usuario ${userId}. Razón: ${reason}`);
+      logger.info(`[RENTAL] Renta ${rental.rental_code} RECHAZADA por usuario ${userId}. Razón: ${reason}`);
 
       res.json({
         success: true,
@@ -710,11 +721,62 @@ export class RentalController {
       });
 
     } catch (error) {
-      console.error('[RENTAL] Error rechazando renta:', error);
+      logger.error('[RENTAL] Error rechazando renta', { error });
       res.status(500).json({
         success: false,
         message: 'Error al rechazar renta'
       });
+    }
+  }
+
+  /**
+   * GET /api/rentals/:id/contract-pdf
+   * Descargar el contrato PDF de una renta
+   */
+  static async downloadContract(req: Request, res: Response) {
+    try {
+      const rental = await Rental.findByPk(req.params.id, {
+        include: [
+          { model: Customer, as: 'customer' },
+          { model: Vehicle, as: 'vehicle' }
+        ]
+      });
+
+      if (!rental) {
+        return res.status(404).json({ success: false, message: 'Renta no encontrada' });
+      }
+
+      // Path determinístico del contrato
+      const pdfPath = path.resolve('storage/pdfs', `contract-${rental.rental_code}.pdf`);
+
+      // Si el archivo no existe, regenerarlo
+      if (!fs.existsSync(pdfPath)) {
+        try {
+          await PDFService.generateContract(rental);
+        } catch (pdfError) {
+          logger.error('[RENTAL] Error regenerando contrato PDF', { error: pdfError });
+          return res.status(500).json({ success: false, message: 'Error al generar contrato PDF' });
+        }
+      }
+
+      // Verificar que el archivo ahora existe
+      if (!fs.existsSync(pdfPath)) {
+        return res.status(404).json({ success: false, message: 'Contrato PDF no disponible' });
+      }
+
+      // Fire-and-forget document registration
+      DocumentRegistrationService.registerAutoDocument({
+        documentType: 'contract',
+        name: `Contrato ${rental.rental_code}`,
+        filePath: pdfPath,
+        entityType: 'rental',
+        entityId: rental.id,
+      }).catch(() => {});
+
+      res.download(pdfPath, `contrato-${rental.rental_code}.pdf`);
+    } catch (error) {
+      logger.error('[RENTAL] Error descargando contrato', { error });
+      res.status(500).json({ success: false, message: 'Error al descargar contrato' });
     }
   }
 }

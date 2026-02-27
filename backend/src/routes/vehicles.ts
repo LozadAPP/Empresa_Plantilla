@@ -415,6 +415,11 @@ router.get('/available', vehicleController.getAvailable);
 router.get('/statistics', vehicleController.getStatistics);
 router.get('/by-type', getByTypeValidation, vehicleController.getByType);
 router.get('/types', vehicleController.getVehicleTypes);
+router.get(
+  '/:id/ficha-pdf',
+  param('id').isInt({ min: 1 }).withMessage('ID de vehículo inválido'),
+  vehicleController.downloadFicha
+);
 router.get('/:id', getVehicleByIdValidation, vehicleController.getById);
 
 // POST/PUT/DELETE routes - require specific roles

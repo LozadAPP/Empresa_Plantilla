@@ -76,5 +76,7 @@ export interface AlertListItem {
   message: string;
   isRead: boolean;
   isResolved?: boolean;
+  entityType?: string;
+  entityId?: string;
   createdAt: string;
 }

@@ -1,8 +1,11 @@
 import { Response } from 'express';
 import { validationResult } from 'express-validator';
 import vehicleService from '../services/vehicleService';
+import { PDFService } from '../services/pdfService';
 import { AuthRequest } from '../types';
-import { AuditLog, VehicleType } from '../models';
+import { AuditLog, Vehicle, VehicleType, Location } from '../models';
+import logger from '../config/logger';
+import { DocumentRegistrationService } from '../services/documentRegistrationService';
 
 class VehicleController {
   /**
@@ -57,7 +60,7 @@ class VehicleController {
         ...result
       });
     } catch (error: any) {
-      console.error('Get vehicles error:', error);
+      logger.error('Get vehicles error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -81,7 +84,7 @@ class VehicleController {
         data: vehicles
       });
     } catch (error: any) {
-      console.error('Get available vehicles error:', error);
+      logger.error('Get available vehicles error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -105,7 +108,7 @@ class VehicleController {
         data: stats
       });
     } catch (error: any) {
-      console.error('Get statistics error:', error);
+      logger.error('Get statistics error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -126,7 +129,7 @@ class VehicleController {
         data: stats
       });
     } catch (error: any) {
-      console.error('Get by type error:', error);
+      logger.error('Get by type error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -150,7 +153,7 @@ class VehicleController {
         data: types
       });
     } catch (error: any) {
-      console.error('Get vehicle types error:', error);
+      logger.error('Get vehicle types error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -180,7 +183,7 @@ class VehicleController {
         data: vehicle
       });
     } catch (error: any) {
-      console.error('Get vehicle error:', error);
+      logger.error('Get vehicle error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -224,7 +227,7 @@ class VehicleController {
         data: vehicle
       });
     } catch (error: any) {
-      console.error('Create vehicle error:', error);
+      logger.error('Create vehicle error', { error });
       res.status(400).json({
         success: false,
         message: 'Failed to create vehicle'
@@ -280,7 +283,7 @@ class VehicleController {
         data: vehicle
       });
     } catch (error: any) {
-      console.error('Update vehicle error:', error);
+      logger.error('Update vehicle error', { error });
       res.status(400).json({
         success: false,
         message: 'Failed to update vehicle'
@@ -325,7 +328,7 @@ class VehicleController {
         data: vehicle
       });
     } catch (error: any) {
-      console.error('Update status error:', error);
+      logger.error('Update status error', { error });
       res.status(400).json({
         success: false,
         message: 'Failed to update vehicle status'
@@ -369,10 +372,53 @@ class VehicleController {
         message: 'Vehicle deleted successfully'
       });
     } catch (error: any) {
-      console.error('Delete vehicle error:', error);
+      logger.error('Delete vehicle error', { error });
       res.status(400).json({
         success: false,
         message: error.message || 'Failed to delete vehicle'
+      });
+    }
+  }
+
+  /**
+   * GET /vehicles/:id/ficha-pdf
+   * Download vehicle technical spec sheet as PDF
+   */
+  async downloadFicha(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      const vehicle = await Vehicle.findByPk(id, {
+        include: [
+          { model: VehicleType, as: 'vehicleType' },
+          { model: Location, as: 'location' },
+        ],
+      });
+
+      if (!vehicle) {
+        res.status(404).json({ success: false, message: 'Vehículo no encontrado' });
+        return;
+      }
+
+      const pdfPath = await PDFService.generateFicha(vehicle);
+      const filename = `ficha-tecnica-${vehicle.license_plate || vehicle.id}.pdf`;
+
+      // Fire-and-forget document registration
+      DocumentRegistrationService.registerAutoDocument({
+        documentType: 'ficha',
+        name: `Ficha Técnica - ${vehicle.make} ${vehicle.model} (${vehicle.license_plate})`,
+        filePath: pdfPath,
+        entityType: 'vehicle',
+        entityId: vehicle.id,
+        userId: req.user?.id,
+      }).catch(() => {});
+
+      res.download(pdfPath, filename);
+    } catch (error: any) {
+      logger.error('Download ficha PDF error', { error });
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Error al generar ficha técnica'
       });
     }
   }

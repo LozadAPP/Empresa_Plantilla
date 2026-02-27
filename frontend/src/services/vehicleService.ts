@@ -79,6 +79,11 @@ export const vehicleService = {
   async delete(id: number): Promise<ApiResponse<void>> {
     const response = await api.delete(`/vehicles/${id}`);
     return response.data;
+  },
+
+  async downloadFicha(id: number): Promise<Blob> {
+    const response = await api.get(`/vehicles/${id}/ficha-pdf`, { responseType: 'blob' });
+    return response.data;
   }
 };
 

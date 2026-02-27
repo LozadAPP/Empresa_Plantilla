@@ -31,6 +31,7 @@ import {
 } from '@mui/icons-material';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useLocation as useLocationContext } from '../contexts/LocationContext';
 import reportService from '../services/reportService';
 import { locationService } from '../services/locationService';
 import {
@@ -86,6 +87,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
 const Reports: React.FC = () => {
   const { isDarkMode } = useCustomTheme();
   const { formatCurrency } = useCurrency();
+  const { selectedLocationId } = useLocationContext();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(true);
@@ -107,7 +109,7 @@ const Reports: React.FC = () => {
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [selectedLocationId]);
 
   const loadInitialData = async () => {
     try {
@@ -124,7 +126,6 @@ const Reports: React.FC = () => {
       // Load reports with initial filters
       await loadReports();
     } catch (err) {
-      console.error('Error loading reports:', err);
       setError('Error al cargar los datos. Por favor intente nuevamente.');
     } finally {
       setLoading(false);
@@ -132,18 +133,28 @@ const Reports: React.FC = () => {
   };
 
   const loadReports = async () => {
-    try {
-      const [incomeRes, profitRes, customersRes] = await Promise.all([
-        reportService.getIncomeReport(filters),
-        reportService.getProfitabilityReport(filters),
-        reportService.getTopCustomers(filters)
-      ]);
+    // Merge global location into filters
+    const reportFilters = { ...filters, locationId: selectedLocationId || undefined };
+    // Cargar cada reporte de forma independiente para que un error no bloquee a los demás
+    const results = await Promise.allSettled([
+      reportService.getIncomeReport(reportFilters),
+      reportService.getProfitabilityReport(reportFilters),
+      reportService.getTopCustomers(reportFilters)
+    ]);
 
-      setIncomeReport(incomeRes.data);
-      setProfitabilityReport(profitRes.data);
-      setTopCustomers(customersRes.data);
-    } catch (error) {
-      // Error loading reports silently handled
+    if (results[0].status === 'fulfilled') {
+      setIncomeReport(results[0].value.data);
+    } else {
+    }
+
+    if (results[1].status === 'fulfilled') {
+      setProfitabilityReport(results[1].value.data);
+    } else {
+    }
+
+    if (results[2].status === 'fulfilled') {
+      setTopCustomers(results[2].value.data);
+    } else {
     }
   };
 
@@ -678,11 +689,45 @@ const Reports: React.FC = () => {
         <TabPanel value={currentTab} index={1}>
           <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ p: { xs: 2, sm: 3 } }}>
             <Grid item xs={12} md={6}>
-              <Box sx={{ height: { xs: 280, sm: 350, md: 400 } }}>
-                <Typography variant="h6" sx={{ mb: 3 }}>
-                  Distribución de Flota
-                </Typography>
-                <Doughnut data={occupancyChartData} options={{ responsive: true, maintainAspectRatio: false }} />
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Distribución de Flota
+              </Typography>
+              <Box sx={{
+                height: { xs: 240, sm: 280, md: 320 },
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                px: { xs: 2, sm: 4 }
+              }}>
+                <Doughnut
+                  data={occupancyChartData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                      legend: {
+                        position: 'bottom' as const,
+                        labels: {
+                          padding: 20,
+                          usePointStyle: true,
+                          pointStyle: 'circle',
+                          font: { size: 13, family: 'Poppins' },
+                          color: isDarkMode ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)'
+                        }
+                      },
+                      tooltip: {
+                        callbacks: {
+                          label: (ctx: any) => {
+                            const total = ctx.dataset.data.reduce((a: number, b: number) => a + b, 0);
+                            const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : '0';
+                            return ` ${ctx.label}: ${ctx.raw} (${pct}%)`;
+                          }
+                        }
+                      }
+                    }
+                  }}
+                />
               </Box>
             </Grid>
             <Grid item xs={12} md={6}>

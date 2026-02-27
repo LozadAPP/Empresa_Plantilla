@@ -7,6 +7,8 @@ import { Op } from 'sequelize';
 import DocumentService from '../services/documentService';
 import fs from 'fs/promises';
 import path from 'path';
+import logger from '../config/logger';
+import { AuthRequest } from '../types';
 
 // GET /api/inventory/items
 export const getAllItems = async (req: Request, res: Response) => {
@@ -43,8 +45,8 @@ export const getAllItems = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching items:', error);
-    res.status(500).json({ success: false, error: 'Error al obtener artículos' });
+    logger.error('Error fetching items', { error });
+    res.status(500).json({ success: false, message: 'Error al obtener artículos' });
   }
 };
 
@@ -56,7 +58,7 @@ export const getItemById = async (req: Request, res: Response) => {
     const item = await InventoryItem.findByPk(id);
 
     if (!item) {
-      return res.status(404).json({ success: false, error: 'Artículo no encontrado' });
+      return res.status(404).json({ success: false, message: 'Artículo no encontrado' });
     }
 
     res.json({
@@ -64,8 +66,8 @@ export const getItemById = async (req: Request, res: Response) => {
       data: item,
     });
   } catch (error) {
-    console.error('Error fetching item:', error);
-    res.status(500).json({ success: false, error: 'Error al obtener artículo' });
+    logger.error('Error fetching item', { error });
+    res.status(500).json({ success: false, message: 'Error al obtener artículo' });
   }
 };
 
@@ -81,8 +83,8 @@ export const createItem = async (req: Request, res: Response) => {
       data: item,
     });
   } catch (error) {
-    console.error('Error creating item:', error);
-    res.status(500).json({ success: false, error: 'Error al crear artículo' });
+    logger.error('Error creating item', { error });
+    res.status(500).json({ success: false, message: 'Error al crear artículo' });
   }
 };
 
@@ -95,7 +97,7 @@ export const updateItem = async (req: Request, res: Response) => {
     const item = await InventoryItem.findByPk(id);
 
     if (!item) {
-      return res.status(404).json({ success: false, error: 'Artículo no encontrado' });
+      return res.status(404).json({ success: false, message: 'Artículo no encontrado' });
     }
 
     await item.update(updateData);
@@ -105,8 +107,8 @@ export const updateItem = async (req: Request, res: Response) => {
       data: item,
     });
   } catch (error) {
-    console.error('Error updating item:', error);
-    res.status(500).json({ success: false, error: 'Error al actualizar artículo' });
+    logger.error('Error updating item', { error });
+    res.status(500).json({ success: false, message: 'Error al actualizar artículo' });
   }
 };
 
@@ -118,7 +120,7 @@ export const deleteItem = async (req: Request, res: Response) => {
     const item = await InventoryItem.findByPk(id);
 
     if (!item) {
-      return res.status(404).json({ success: false, error: 'Artículo no encontrado' });
+      return res.status(404).json({ success: false, message: 'Artículo no encontrado' });
     }
 
     await item.destroy();
@@ -128,13 +130,13 @@ export const deleteItem = async (req: Request, res: Response) => {
       message: 'Artículo eliminado correctamente',
     });
   } catch (error) {
-    console.error('Error deleting item:', error);
-    res.status(500).json({ success: false, error: 'Error al eliminar artículo' });
+    logger.error('Error deleting item', { error });
+    res.status(500).json({ success: false, message: 'Error al eliminar artículo' });
   }
 };
 
 // POST /api/inventory/movements
-export const createMovement = async (req: Request, res: Response) => {
+export const createMovement = async (req: AuthRequest, res: Response) => {
   try {
     const {
       itemId,
@@ -147,19 +149,19 @@ export const createMovement = async (req: Request, res: Response) => {
       notes,
     } = req.body;
 
-    const userId = (req as any).user.id;
-    const userName = (req as any).user.name;
+    const userId = req.user!.id;
+    const userName = `${req.user?.first_name} ${req.user?.last_name}`;
 
     // 1. Obtener info del artículo
     const item = await InventoryItem.findByPk(itemId);
     if (!item) {
-      return res.status(404).json({ success: false, error: 'Artículo no encontrado' });
+      return res.status(404).json({ success: false, message: 'Artículo no encontrado' });
     }
 
     // 2. Obtener ubicación destino
     const toLocation = await Location.findByPk(toLocationId);
     if (!toLocation) {
-      return res.status(404).json({ success: false, error: 'Ubicación destino no encontrada' });
+      return res.status(404).json({ success: false, message: 'Ubicación destino no encontrada' });
     }
 
     // 3. Generar número de movimiento único
@@ -207,8 +209,8 @@ export const createMovement = async (req: Request, res: Response) => {
       data: movement,
     });
   } catch (error) {
-    console.error('Error creating movement:', error);
-    res.status(500).json({ success: false, error: 'Error al crear movimiento' });
+    logger.error('Error creating movement', { error });
+    res.status(500).json({ success: false, message: 'Error al crear movimiento' });
   }
 };
 
@@ -284,8 +286,8 @@ export const getAllMovements = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching movements:', error);
-    res.status(500).json({ success: false, error: 'Error al obtener movimientos' });
+    logger.error('Error fetching movements', { error });
+    res.status(500).json({ success: false, message: 'Error al obtener movimientos' });
   }
 };
 
@@ -304,8 +306,8 @@ export const getItemHistory = async (req: Request, res: Response) => {
       data: movements,
     });
   } catch (error) {
-    console.error('Error fetching history:', error);
-    res.status(500).json({ success: false, error: 'Error al obtener historial' });
+    logger.error('Error fetching history', { error });
+    res.status(500).json({ success: false, message: 'Error al obtener historial' });
   }
 };
 
@@ -322,8 +324,8 @@ export const getAllCategories = async (req: Request, res: Response) => {
       data: categories,
     });
   } catch (error) {
-    console.error('Error fetching categories:', error);
-    res.status(500).json({ success: false, error: 'Error al obtener categorías' });
+    logger.error('Error fetching categories', { error });
+    res.status(500).json({ success: false, message: 'Error al obtener categorías' });
   }
 };
 
@@ -340,8 +342,8 @@ export const getAllLocations = async (req: Request, res: Response) => {
       data: locations,
     });
   } catch (error) {
-    console.error('Error fetching locations:', error);
-    res.status(500).json({ success: false, error: 'Error al obtener ubicaciones' });
+    logger.error('Error fetching locations', { error });
+    res.status(500).json({ success: false, message: 'Error al obtener ubicaciones' });
   }
 };
 
@@ -353,13 +355,13 @@ export const downloadMovementDocument = async (req: Request, res: Response) => {
     // 1. Buscar movimiento
     const movement = await InventoryMovement.findByPk(id);
     if (!movement) {
-      return res.status(404).json({ success: false, error: 'Movimiento no encontrado' });
+      return res.status(404).json({ success: false, message: 'Movimiento no encontrado' });
     }
 
     // 2. Buscar artículo
     const item = await InventoryItem.findByPk(movement.itemId);
     if (!item) {
-      return res.status(404).json({ success: false, error: 'Artículo no encontrado' });
+      return res.status(404).json({ success: false, message: 'Artículo no encontrado' });
     }
 
     // 3. Generar PDF
@@ -381,8 +383,8 @@ export const downloadMovementDocument = async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error generating document:', error);
-    res.status(500).json({ success: false, error: 'Error al generar documento' });
+    logger.error('Error generating document', { error });
+    res.status(500).json({ success: false, message: 'Error al generar documento' });
   }
 };
 
@@ -478,8 +480,8 @@ export const getInventoryStats = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error getting inventory stats:', error);
-    res.status(500).json({ success: false, error: 'Error al obtener las estadísticas de inventario' });
+    logger.error('Error getting inventory stats', { error });
+    res.status(500).json({ success: false, message: 'Error al obtener las estadísticas de inventario' });
   }
 };
 
@@ -504,7 +506,7 @@ export const createLocation = async (req: Request, res: Response) => {
       data: location,
     });
   } catch (error) {
-    console.error('Error creating location:', error);
-    res.status(500).json({ success: false, error: 'Error al crear la ubicación' });
+    logger.error('Error creating location', { error });
+    res.status(500).json({ success: false, message: 'Error al crear la ubicación' });
   }
 };

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import AuditLog from '../models/AuditLog';
+import logger from '../config/logger';
 
 interface AuditableRequest extends Request {
   user?: {
@@ -44,7 +45,7 @@ export const auditLogger = (entityType: string) => {
             new_values: newValues || undefined,
             ip_address: req.ip || req.connection.remoteAddress,
           }).catch((error: any) => {
-            console.error('Error creating audit log:', error);
+            logger.error('Error creating audit log:', error);
           });
         }
       }
@@ -82,7 +83,7 @@ export const logCustomEvent = async (
       ip_address: details?.ipAddress || undefined,
     });
   } catch (error) {
-    console.error('Error logging custom event:', error);
+    logger.error('Error logging custom event:', error);
   }
 };
 

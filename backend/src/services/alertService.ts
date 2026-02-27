@@ -1,10 +1,12 @@
-import { Op } from 'sequelize';
+import { Op, fn, col } from 'sequelize';
 import Alert from '../models/Alert';
 import Rental from '../models/Rental';
 import Payment from '../models/Payment';
 import Vehicle from '../models/Vehicle';
 import VehicleType from '../models/VehicleType';
 import Customer from '../models/Customer';
+import Quote, { QuoteStatus } from '../models/Quote';
+import logger from '../config/logger';
 
 /**
  * AlertService - Servicio para generación automática de alertas
@@ -52,6 +54,33 @@ class AlertService {
     });
 
     return recentCount > 0;
+  }
+
+  /**
+   * Batch version: loads all existing alert entity IDs in one query
+   * Replaces per-entity alertExists() calls to fix N+1
+   */
+  private async getExistingAlertEntityIds(
+    alertType: string,
+    entityType: string,
+    entityIds: string[]
+  ): Promise<Set<string>> {
+    if (entityIds.length === 0) return new Set();
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const existing = await Alert.findAll({
+      where: {
+        alertType,
+        entityType,
+        entityId: { [Op.in]: entityIds },
+        [Op.or]: [
+          { isResolved: false },
+          { createdAt: { [Op.gte]: twentyFourHoursAgo } }
+        ]
+      },
+      attributes: ['entityId'],
+      raw: true
+    });
+    return new Set(existing.map((a: any) => a.entityId));
   }
 
   /**
@@ -109,34 +138,31 @@ class AlertService {
     });
 
     let created = 0;
+    const existingIds = await this.getExistingAlertEntityIds(
+      'rental_expiring', 'rental', expiringRentals.map(r => r.id.toString())
+    );
 
     for (const rental of expiringRentals) {
-      const exists = await this.alertExists(
-        'rental_expiring',
-        'rental',
-        rental.id.toString()
-      );
+      if (existingIds.has(rental.id.toString())) continue;
 
-      if (!exists) {
-        const customer = rental.get('customer') as any;
-        const vehicle = rental.get('vehicle') as any;
+      const customer = rental.get('customer') as any;
+      const vehicle = rental.get('vehicle') as any;
 
-        await this.createAlert({
-          alertType: 'rental_expiring',
-          severity: 'warning',
-          title: 'Renta Próxima a Vencer',
-          message: `La renta ${rental.rental_code} vence en 7 días (${rental.end_date.toLocaleDateString()}). Cliente: ${customer?.name || customer?.contact_person}. Vehículo: ${vehicle?.make} ${vehicle?.model} (${vehicle?.license_plate}).`,
-          entityType: 'rental',
-          entityId: rental.id.toString(),
-          metadata: {
-            rentalCode: rental.rental_code,
-            endDate: rental.end_date,
-            customerId: rental.customer_id,
-            vehicleId: rental.vehicle_id,
-          },
-        });
-        created++;
-      }
+      await this.createAlert({
+        alertType: 'rental_expiring',
+        severity: 'warning',
+        title: 'Renta Próxima a Vencer',
+        message: `La renta ${rental.rental_code} vence en 7 días (${rental.end_date.toLocaleDateString()}). Cliente: ${customer?.name || customer?.contact_person}. Vehículo: ${vehicle?.make} ${vehicle?.model} (${vehicle?.license_plate}).`,
+        entityType: 'rental',
+        entityId: rental.id.toString(),
+        metadata: {
+          rentalCode: rental.rental_code,
+          endDate: rental.end_date,
+          customerId: rental.customer_id,
+          vehicleId: rental.vehicle_id,
+        },
+      });
+      created++;
     }
 
     return created;
@@ -172,39 +198,36 @@ class AlertService {
     });
 
     let created = 0;
+    const existingIds = await this.getExistingAlertEntityIds(
+      'rental_overdue', 'rental', overdueRentals.map(r => r.id.toString())
+    );
 
     for (const rental of overdueRentals) {
-      const exists = await this.alertExists(
-        'rental_overdue',
-        'rental',
-        rental.id.toString()
+      if (existingIds.has(rental.id.toString())) continue;
+
+      const customer = rental.get('customer') as any;
+      const vehicle = rental.get('vehicle') as any;
+
+      const daysOverdue = Math.floor(
+        (now.getTime() - rental.end_date.getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      if (!exists) {
-        const customer = rental.get('customer') as any;
-        const vehicle = rental.get('vehicle') as any;
-
-        const daysOverdue = Math.floor(
-          (now.getTime() - rental.end_date.getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        await this.createAlert({
-          alertType: 'rental_overdue',
-          severity: 'critical',
-          title: 'Renta Vencida',
-          message: `La renta ${rental.rental_code} está vencida por ${daysOverdue} día(s). Fecha de fin: ${rental.end_date.toLocaleDateString()}. Cliente: ${customer?.name || customer?.contact_person}. Vehículo: ${vehicle?.make} ${vehicle?.model} (${vehicle?.license_plate}).`,
-          entityType: 'rental',
-          entityId: rental.id.toString(),
-          metadata: {
-            rentalCode: rental.rental_code,
-            endDate: rental.end_date,
-            daysOverdue,
-            customerId: rental.customer_id,
-            vehicleId: rental.vehicle_id,
-          },
-        });
-        created++;
-      }
+      await this.createAlert({
+        alertType: 'rental_overdue',
+        severity: 'critical',
+        title: 'Renta Vencida',
+        message: `La renta ${rental.rental_code} está vencida por ${daysOverdue} día(s). Fecha de fin: ${rental.end_date.toLocaleDateString()}. Cliente: ${customer?.name || customer?.contact_person}. Vehículo: ${vehicle?.make} ${vehicle?.model} (${vehicle?.license_plate}).`,
+        entityType: 'rental',
+        entityId: rental.id.toString(),
+        metadata: {
+          rentalCode: rental.rental_code,
+          endDate: rental.end_date,
+          daysOverdue,
+          customerId: rental.customer_id,
+          vehicleId: rental.vehicle_id,
+        },
+      });
+      created++;
     }
 
     return created;
@@ -234,37 +257,34 @@ class AlertService {
     });
 
     let created = 0;
+    const existingIds = await this.getExistingAlertEntityIds(
+      'payment_pending', 'payment', pendingPayments.map(p => p.id.toString())
+    );
 
     for (const payment of pendingPayments) {
-      const exists = await this.alertExists(
-        'payment_pending',
-        'payment',
-        payment.id.toString()
+      if (existingIds.has(payment.id.toString())) continue;
+
+      const customer = payment.get('customer') as any;
+
+      const daysPending = Math.floor(
+        (new Date().getTime() - payment.transaction_date.getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      if (!exists) {
-        const customer = payment.get('customer') as any;
-
-        const daysPending = Math.floor(
-          (new Date().getTime() - payment.transaction_date.getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        await this.createAlert({
-          alertType: 'payment_pending',
-          severity: 'warning',
-          title: 'Pago Pendiente',
-          message: `El pago ${payment.payment_code} está pendiente por ${daysPending} días. Monto: $${payment.amount}. Cliente: ${customer?.name || customer?.contact_person}.`,
-          entityType: 'payment',
-          entityId: payment.id.toString(),
-          metadata: {
-            paymentCode: payment.payment_code,
-            amount: payment.amount,
-            daysPending,
-            customerId: payment.customer_id,
-          },
-        });
-        created++;
-      }
+      await this.createAlert({
+        alertType: 'payment_pending',
+        severity: 'warning',
+        title: 'Pago Pendiente',
+        message: `El pago ${payment.payment_code} está pendiente por ${daysPending} días. Monto: $${payment.amount}. Cliente: ${customer?.name || customer?.contact_person}.`,
+        entityType: 'payment',
+        entityId: payment.id.toString(),
+        metadata: {
+          paymentCode: payment.payment_code,
+          amount: payment.amount,
+          daysPending,
+          customerId: payment.customer_id,
+        },
+      });
+      created++;
     }
 
     return created;
@@ -288,42 +308,39 @@ class AlertService {
     });
 
     let created = 0;
+    const existingIds = await this.getExistingAlertEntityIds(
+      'maintenance_due', 'vehicle', vehiclesNeedingMaintenance.map(v => v.id.toString())
+    );
 
     for (const vehicle of vehiclesNeedingMaintenance) {
-      const exists = await this.alertExists(
-        'maintenance_due',
-        'vehicle',
-        vehicle.id.toString()
+      if (existingIds.has(vehicle.id.toString())) continue;
+
+      const now = new Date();
+      const isPastDue = vehicle.next_maintenance! < now;
+
+      const daysUntil = Math.floor(
+        (vehicle.next_maintenance!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      if (!exists) {
-        const now = new Date();
-        const isPastDue = vehicle.next_maintenance! < now;
-
-        const daysUntil = Math.floor(
-          (vehicle.next_maintenance!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        await this.createAlert({
-          alertType: 'maintenance_due',
-          severity: isPastDue ? 'critical' : 'warning',
-          title: isPastDue ? 'Mantenimiento Vencido' : 'Mantenimiento Próximo',
-          message: isPastDue
-            ? `El vehículo ${vehicle.make} ${vehicle.model} (${vehicle.license_plate}) tiene mantenimiento vencido desde ${vehicle.next_maintenance!.toLocaleDateString()}. Kilometraje: ${vehicle.mileage} km.`
-            : `El vehículo ${vehicle.make} ${vehicle.model} (${vehicle.license_plate}) requiere mantenimiento en ${daysUntil} días (${vehicle.next_maintenance!.toLocaleDateString()}). Kilometraje: ${vehicle.mileage} km.`,
-          entityType: 'vehicle',
-          entityId: vehicle.id.toString(),
-          metadata: {
-            vehicleMake: vehicle.make,
-            vehicleModel: vehicle.model,
-            licensePlate: vehicle.license_plate,
-            nextMaintenance: vehicle.next_maintenance,
-            mileage: vehicle.mileage,
-            isPastDue,
-          },
-        });
-        created++;
-      }
+      await this.createAlert({
+        alertType: 'maintenance_due',
+        severity: isPastDue ? 'critical' : 'warning',
+        title: isPastDue ? 'Mantenimiento Vencido' : 'Mantenimiento Próximo',
+        message: isPastDue
+          ? `El vehículo ${vehicle.make} ${vehicle.model} (${vehicle.license_plate}) tiene mantenimiento vencido desde ${vehicle.next_maintenance!.toLocaleDateString()}. Kilometraje: ${vehicle.mileage} km.`
+          : `El vehículo ${vehicle.make} ${vehicle.model} (${vehicle.license_plate}) requiere mantenimiento en ${daysUntil} días (${vehicle.next_maintenance!.toLocaleDateString()}). Kilometraje: ${vehicle.mileage} km.`,
+        entityType: 'vehicle',
+        entityId: vehicle.id.toString(),
+        metadata: {
+          vehicleMake: vehicle.make,
+          vehicleModel: vehicle.model,
+          licensePlate: vehicle.license_plate,
+          nextMaintenance: vehicle.next_maintenance,
+          mileage: vehicle.mileage,
+          isPastDue,
+        },
+      });
+      created++;
     }
 
     return created;
@@ -350,36 +367,33 @@ class AlertService {
     });
 
     let created = 0;
+    const existingIds = await this.getExistingAlertEntityIds(
+      'insurance_expiring', 'vehicle', vehiclesWithExpiringInsurance.map(v => v.id.toString())
+    );
 
     for (const vehicle of vehiclesWithExpiringInsurance) {
-      const exists = await this.alertExists(
-        'insurance_expiring',
-        'vehicle',
-        vehicle.id.toString()
+      if (existingIds.has(vehicle.id.toString())) continue;
+
+      const daysUntilExpiry = Math.floor(
+        (vehicle.insurance_expiry!.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      if (!exists) {
-        const daysUntilExpiry = Math.floor(
-          (vehicle.insurance_expiry!.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        await this.createAlert({
-          alertType: 'insurance_expiring',
-          severity: daysUntilExpiry <= 7 ? 'critical' : 'warning',
-          title: 'Seguro Por Vencer',
-          message: `El seguro del vehículo ${vehicle.make} ${vehicle.model} (${vehicle.license_plate}) vence en ${daysUntilExpiry} días (${vehicle.insurance_expiry!.toLocaleDateString()}).`,
-          entityType: 'vehicle',
-          entityId: vehicle.id.toString(),
-          metadata: {
-            vehicleMake: vehicle.make,
-            vehicleModel: vehicle.model,
-            licensePlate: vehicle.license_plate,
-            insuranceExpiry: vehicle.insurance_expiry,
-            daysUntilExpiry,
-          },
-        });
-        created++;
-      }
+      await this.createAlert({
+        alertType: 'insurance_expiring',
+        severity: daysUntilExpiry <= 7 ? 'critical' : 'warning',
+        title: 'Seguro Por Vencer',
+        message: `El seguro del vehículo ${vehicle.make} ${vehicle.model} (${vehicle.license_plate}) vence en ${daysUntilExpiry} días (${vehicle.insurance_expiry!.toLocaleDateString()}).`,
+        entityType: 'vehicle',
+        entityId: vehicle.id.toString(),
+        metadata: {
+          vehicleMake: vehicle.make,
+          vehicleModel: vehicle.model,
+          licensePlate: vehicle.license_plate,
+          insuranceExpiry: vehicle.insurance_expiry,
+          daysUntilExpiry,
+        },
+      });
+      created++;
     }
 
     return created;
@@ -397,39 +411,117 @@ class AlertService {
 
     let created = 0;
 
-    for (const vehicleType of vehicleTypes) {
-      const availableCount = await Vehicle.count({
-        where: {
-          vehicle_type_id: vehicleType.id,
-          status: 'available',
-          is_active: true,
+    // Batch: get available counts per type in one query
+    const availableCounts = await Vehicle.findAll({
+      where: { status: 'available', is_active: true },
+      attributes: ['vehicle_type_id', [fn('COUNT', col('id')), 'count']],
+      group: ['vehicle_type_id'],
+      raw: true
+    });
+
+    const countMap = new Map<number, number>();
+    (availableCounts as any[]).forEach((row: any) => {
+      countMap.set(row.vehicle_type_id, Number.parseInt(row.count));
+    });
+
+    // Find types below threshold
+    const lowTypes = vehicleTypes.filter(vt => (countMap.get(vt.id) || 0) < threshold);
+
+    const existingIds = await this.getExistingAlertEntityIds(
+      'low_inventory', 'vehicle_type', lowTypes.map(vt => vt.id.toString())
+    );
+
+    for (const vehicleType of lowTypes) {
+      if (existingIds.has(vehicleType.id.toString())) continue;
+
+      const availableCount = countMap.get(vehicleType.id) || 0;
+
+      await this.createAlert({
+        alertType: 'low_inventory',
+        severity: availableCount === 0 ? 'critical' : 'warning',
+        title: 'Inventario Bajo',
+        message: `Solo quedan ${availableCount} vehículo(s) disponible(s) del tipo "${vehicleType.name}". Considere revisar la disponibilidad.`,
+        entityType: 'vehicle_type',
+        entityId: vehicleType.id.toString(),
+        metadata: {
+          vehicleTypeName: vehicleType.name,
+          availableCount,
+          threshold,
         },
       });
+      created++;
+    }
 
-      if (availableCount < threshold) {
-        const exists = await this.alertExists(
-          'low_inventory',
-          'vehicle_type',
-          vehicleType.id.toString()
-        );
+    return created;
+  }
 
-        if (!exists) {
-          await this.createAlert({
-            alertType: 'low_inventory',
-            severity: availableCount === 0 ? 'critical' : 'warning',
-            title: 'Inventario Bajo',
-            message: `Solo quedan ${availableCount} vehículo(s) disponible(s) del tipo "${vehicleType.name}". Considere revisar la disponibilidad.`,
-            entityType: 'vehicle_type',
-            entityId: vehicleType.id.toString(),
-            metadata: {
-              vehicleTypeName: vehicleType.name,
-              availableCount,
-              threshold,
-            },
-          });
-          created++;
-        }
+  /**
+   * 7. Verifica cotizaciones por vencer y auto-expira las vencidas
+   */
+  async checkExpiringQuotes(): Promise<number> {
+    const now = new Date();
+    const twoDaysFromNow = new Date();
+    twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
+
+    // Buscar cotizaciones activas (draft o sent) que vencen pronto o ya vencieron
+    const quotes = await Quote.findAll({
+      where: {
+        valid_until: {
+          [Op.lte]: twoDaysFromNow,
+        },
+        status: {
+          [Op.in]: [QuoteStatus.DRAFT, QuoteStatus.SENT],
+        },
+      },
+      include: [
+        {
+          model: Customer,
+          as: 'customer',
+          attributes: ['id', 'name', 'email'],
+        },
+      ],
+    });
+
+    let created = 0;
+
+    // Auto-expirar cotizaciones vencidas (must happen before batch check)
+    for (const quote of quotes) {
+      const validUntil = new Date(quote.valid_until);
+      if (validUntil < now) {
+        await quote.update({ status: QuoteStatus.EXPIRED, updated_at: new Date() });
       }
+    }
+
+    // Batch check for existing alerts
+    const existingIds = await this.getExistingAlertEntityIds(
+      'quote_expiring', 'quote', quotes.map(q => q.id.toString())
+    );
+
+    for (const quote of quotes) {
+      if (existingIds.has(quote.id.toString())) continue;
+
+      const validUntil = new Date(quote.valid_until);
+      const customer = quote.get('customer') as any;
+      const isExpired = validUntil < now;
+
+      await this.createAlert({
+        alertType: 'custom',
+        severity: isExpired ? 'critical' : 'warning',
+        title: isExpired ? 'Cotización Expirada' : 'Cotización Por Vencer',
+        message: isExpired
+          ? `La cotización ${quote.quote_code} ha expirado (${validUntil.toLocaleDateString()}). Cliente: ${customer?.name || 'N/A'}. Total: $${quote.total_amount}.`
+          : `La cotización ${quote.quote_code} vence el ${validUntil.toLocaleDateString()}. Cliente: ${customer?.name || 'N/A'}. Total: $${quote.total_amount}.`,
+        entityType: 'quote',
+        entityId: quote.id.toString(),
+        metadata: {
+          quoteCode: quote.quote_code,
+          validUntil: quote.valid_until,
+          customerId: quote.customer_id,
+          totalAmount: quote.total_amount,
+          isExpired,
+        },
+      });
+      created++;
     }
 
     return created;
@@ -445,9 +537,10 @@ class AlertService {
     maintenanceDue: number;
     expiringInsurance: number;
     lowInventory: number;
+    expiringQuotes: number;
     total: number;
   }> {
-    console.log('[AlertService] Iniciando verificación de alertas...');
+    logger.info('[AlertService] Iniciando verificación de alertas...');
 
     const [
       expiringRentals,
@@ -456,6 +549,7 @@ class AlertService {
       maintenanceDue,
       expiringInsurance,
       lowInventory,
+      expiringQuotes,
     ] = await Promise.all([
       this.checkExpiringRentals(),
       this.checkOverdueRentals(),
@@ -463,6 +557,7 @@ class AlertService {
       this.checkMaintenanceDue(),
       this.checkExpiringInsurance(),
       this.checkLowInventory(),
+      this.checkExpiringQuotes(),
     ]);
 
     const total =
@@ -471,15 +566,17 @@ class AlertService {
       pendingPayments +
       maintenanceDue +
       expiringInsurance +
-      lowInventory;
+      lowInventory +
+      expiringQuotes;
 
-    console.log('[AlertService] Verificación completa:', {
+    logger.info('[AlertService] Verificación completa', {
       expiringRentals,
       overdueRentals,
       pendingPayments,
       maintenanceDue,
       expiringInsurance,
       lowInventory,
+      expiringQuotes,
       total,
     });
 
@@ -490,6 +587,7 @@ class AlertService {
       maintenanceDue,
       expiringInsurance,
       lowInventory,
+      expiringQuotes,
       total,
     };
   }
@@ -504,7 +602,7 @@ class AlertService {
     oldResolvedDeleted: number;
     total: number;
   }> {
-    console.log('[AlertService] Iniciando limpieza de alertas antiguas...');
+    logger.info('[AlertService] Iniciando limpieza de alertas antiguas...');
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -531,7 +629,7 @@ class AlertService {
 
     const total = expiredDeleted + oldResolvedDeleted;
 
-    console.log('[AlertService] Limpieza completada:', {
+    logger.info('[AlertService] Limpieza completada', {
       expiredDeleted,
       oldResolvedDeleted,
       total,

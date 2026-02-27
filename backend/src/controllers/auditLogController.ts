@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import AuditLog from '../models/AuditLog';
 import User from '../models/User';
+import logger from '../config/logger';
 
 // ====================================
 // GET ALL AUDIT LOGS
@@ -102,7 +103,7 @@ export const getAuditLogs = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Error fetching audit logs:', error);
+    logger.error('Error fetching audit logs', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching audit logs'
@@ -154,7 +155,7 @@ export const getAuditLogById = async (req: Request, res: Response) => {
       data: transformedLog
     });
   } catch (error: any) {
-    console.error('Error fetching audit log:', error);
+    logger.error('Error fetching audit log', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching audit log'
@@ -212,7 +213,7 @@ export const getAuditStats = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Error fetching audit stats:', error);
+    logger.error('Error fetching audit stats', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching audit stats'
@@ -269,7 +270,7 @@ export const getAuditLogsByUser = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Error fetching user audit logs:', error);
+    logger.error('Error fetching user audit logs', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching user audit logs'
@@ -296,7 +297,7 @@ export const getEntityTypes = async (req: Request, res: Response) => {
       data: types
     });
   } catch (error: any) {
-    console.error('Error fetching entity types:', error);
+    logger.error('Error fetching entity types', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching entity types'

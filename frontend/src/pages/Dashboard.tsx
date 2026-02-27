@@ -57,7 +57,8 @@ import { DashboardData, InventoryItem, ItemCategory } from '../types';
 import { useThemeStyles } from '../hooks/useThemeStyles';
 import { StyledKPI, StyledSection } from '../components/styled';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { Doughnut, Line } from 'react-chartjs-2';
+import { useLocation as useLocationContext } from '../contexts/LocationContext';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import InventoryMap from '../components/maps/InventoryMap';
 import {
   Chart as ChartJS,
@@ -90,6 +91,7 @@ const Dashboard: React.FC = () => {
   const { isDarkMode, text, chart, tooltip, background, border, purple, status } = useThemeStyles();
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
+  const { selectedLocationId } = useLocationContext();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -116,6 +118,7 @@ const Dashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [performanceData, setPerformanceData] = useState<any[]>([]);
   const [maintenanceData, setMaintenanceData] = useState<any>(null);
+  const [vehiclesByLocation, setVehiclesByLocation] = useState<any[]>([]);
 
   // Moneda global desde CurrencyContext (persistida en localStorage)
   const { currency, currencies, setCurrency, formatCompactCurrency, formatExactCurrency, formatChartValue } = useCurrency();
@@ -370,6 +373,83 @@ const Dashboard: React.FC = () => {
     }]
   }), [fleetTypes, isDarkMode]);
 
+  // Vehicles by Location Chart Data
+  const vehiclesByLocationChartData = useMemo(() => {
+    if (!vehiclesByLocation.length) return null;
+    const labels = vehiclesByLocation.map(loc => loc.location);
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Disponibles',
+          data: vehiclesByLocation.map(loc => loc.available || 0),
+          backgroundColor: isDarkMode ? '#10b981' : '#059669',
+          borderRadius: 4,
+        },
+        {
+          label: 'Rentados',
+          data: vehiclesByLocation.map(loc => loc.rented || 0),
+          backgroundColor: isDarkMode ? '#3b82f6' : '#2563eb',
+          borderRadius: 4,
+        },
+        {
+          label: 'Mantenimiento',
+          data: vehiclesByLocation.map(loc => loc.maintenance || 0),
+          backgroundColor: isDarkMode ? '#f59e0b' : '#d97706',
+          borderRadius: 4,
+        }
+      ]
+    };
+  }, [vehiclesByLocation, isDarkMode]);
+
+  const vehiclesByLocationOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top' as const,
+        labels: {
+          color: text.primary,
+          usePointStyle: true,
+          padding: isMobile ? 8 : 15,
+          font: { size: 12, family: 'Poppins', weight: 500 as const }
+        }
+      },
+      tooltip: {
+        backgroundColor: tooltip.backgroundColor,
+        titleColor: tooltip.titleColor,
+        bodyColor: tooltip.bodyColor,
+        borderColor: tooltip.borderColor,
+        borderWidth: 1,
+        padding: 10,
+        bodyFont: { size: 12, family: 'Poppins' },
+        titleFont: { size: 13, family: 'Poppins', weight: 600 as const },
+      }
+    },
+    scales: {
+      x: {
+        stacked: true,
+        ticks: {
+          color: chart.tickColor,
+          font: { size: isMobile ? 10 : 12 },
+          maxRotation: isMobile ? 45 : 0
+        },
+        grid: { display: false }
+      },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        ticks: {
+          color: chart.tickColor,
+          stepSize: 1,
+          font: { size: isMobile ? 10 : 12 }
+        },
+        grid: { color: chart.gridColor }
+      }
+    }
+  }), [text.primary, chart.tickColor, chart.gridColor, tooltip, isMobile]);
+
   // Calcular fechas según el periodo seleccionado
   const getDateRange = (period: number): { start: Date; end: Date } => {
     const now = new Date();
@@ -400,10 +480,10 @@ const Dashboard: React.FC = () => {
     return { start, end };
   };
 
-  // Carga inicial: todos los endpoints (solo una vez)
+  // Carga inicial + cuando cambia la sucursal seleccionada
   useEffect(() => {
     loadAllData();
-  }, []);
+  }, [selectedLocationId]);
 
   // Cambio de periodo: solo endpoints que dependen del periodo
   useEffect(() => {
@@ -433,15 +513,17 @@ const Dashboard: React.FC = () => {
         alertsResponse,
         performanceResponse,
         maintenanceResponse,
+        vehiclesByLocationResponse,
         categoriesData,
         itemsData
       ] = await Promise.all([
-        dashboardService.getMain({ start_date: start.toISOString(), end_date: end.toISOString() }),
+        dashboardService.getMain({ location_id: selectedLocationId || undefined, start_date: start.toISOString(), end_date: end.toISOString() }),
         dashboardService.getRecentRentals(5).catch(() => ({ data: [] })),
         dashboardService.getTopCustomers(5).catch(() => ({ data: [] })),
         dashboardService.getCriticalAlerts().catch(() => ({ data: [] })),
         dashboardService.getPerformanceData(selectedPeriod).catch(() => ({ data: [] })),
         dashboardService.getMaintenanceSchedule().catch(() => ({ data: { overdue: [], upcoming: [] } })),
+        dashboardService.getVehiclesByLocation().catch(() => ({ data: [] })),
         inventoryService.getAllCategories().catch(() => ({ data: [] })),
         inventoryService.getAllItems().catch(() => ({ data: [] }))
       ]);
@@ -452,11 +534,11 @@ const Dashboard: React.FC = () => {
       setAlerts(alertsResponse.data || []);
       setPerformanceData(performanceResponse.data || []);
       setMaintenanceData(maintenanceResponse.data || { overdue: [], upcoming: [] });
+      setVehiclesByLocation(vehiclesByLocationResponse.data || []);
       setCategories(categoriesData.data?.length > 0 ? categoriesData.data : []);
       setInventoryItems(itemsData.data?.length > 0 ? itemsData.data : []);
 
     } catch (error: any) {
-      console.error('Error loading dashboard:', error);
       const errorMessage = error?.response?.data?.message || error?.message || 'Error al cargar el dashboard';
       setError(errorMessage);
       enqueueSnackbar(errorMessage, { variant: 'error' });
@@ -474,7 +556,7 @@ const Dashboard: React.FC = () => {
       const selectedPeriod = getPeriodParam(periodTab);
 
       const [mainResponse, performanceResponse] = await Promise.all([
-        dashboardService.getMain({ start_date: start.toISOString(), end_date: end.toISOString() }),
+        dashboardService.getMain({ location_id: selectedLocationId || undefined, start_date: start.toISOString(), end_date: end.toISOString() }),
         dashboardService.getPerformanceData(selectedPeriod).catch(() => ({ data: [] }))
       ]);
 
@@ -482,7 +564,6 @@ const Dashboard: React.FC = () => {
       setPerformanceData(performanceResponse.data || []);
 
     } catch (error: any) {
-      console.error('Error refreshing period data:', error);
       enqueueSnackbar('Error al actualizar datos del periodo', { variant: 'warning' });
     } finally {
       setRefreshing(false);
@@ -537,6 +618,9 @@ const Dashboard: React.FC = () => {
     todayIncome: data?.kpis?.financial?.todayIncome || 0,
     monthRevenue: data?.kpis?.financial?.monthIncome || 0,
     pendingPayments: data?.kpis?.financial?.pendingPayments || 0,
+    monthExpenses: data?.kpis?.financial?.monthExpenses || 0,
+    pendingExpensesCount: data?.kpis?.financial?.pendingExpensesCount || 0,
+    profitMargin: data?.kpis?.financial?.profitMargin || 0,
 
     // Clientes
     totalCustomers: data?.kpis?.customers?.total || 0,
@@ -632,8 +716,8 @@ const Dashboard: React.FC = () => {
         ))}
       </Menu>
 
-      {/* KPI Grid - 3 columnas (2 filas de 3) */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' }, gap: { xs: 1.5, sm: 2 }, mb: { xs: 3, sm: 4 } }}>
+      {/* KPI Grid - 4 columnas desktop, 2 mobile */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, gap: { xs: 1.5, sm: 2 }, mb: { xs: 3, sm: 4 } }}>
         {/* KPI 1: Ocupación de Flota con barra de progreso */}
         <StyledKPI
           icon={<TrendingUpIcon />}
@@ -746,6 +830,33 @@ const Dashboard: React.FC = () => {
             />
           </Box>
         </Tooltip>
+
+        {/* KPI 7: Gastos del Mes */}
+        <Tooltip title={formatExactCurrency(kpiData.monthExpenses)} arrow placement="top">
+          <Box sx={{ height: '100%', cursor: 'pointer' }} onClick={() => navigate('/expenses')}>
+            <StyledKPI
+              icon={<TrendingDownIcon />}
+              label="Gastos del Mes"
+              value={formatCompactCurrency(kpiData.monthExpenses)}
+              color="#ef4444"
+              subtitle={kpiData.pendingExpensesCount > 0
+                ? `${kpiData.pendingExpensesCount} pendiente${kpiData.pendingExpensesCount > 1 ? 's' : ''} de aprobación`
+                : 'gastos aprobados'
+              }
+              index={6}
+            />
+          </Box>
+        </Tooltip>
+
+        {/* KPI 8: Margen de Ganancia */}
+        <StyledKPI
+          icon={kpiData.profitMargin >= 0 ? <TrendingUpIcon /> : <TrendingDownIcon />}
+          label="Margen de Ganancia"
+          value={`${kpiData.profitMargin}%`}
+          color={kpiData.profitMargin >= 30 ? '#10b981' : kpiData.profitMargin >= 0 ? '#f59e0b' : '#ef4444'}
+          subtitle={`Ingresos: ${formatCompactCurrency(kpiData.monthRevenue)} - Gastos: ${formatCompactCurrency(kpiData.monthExpenses)}`}
+          index={7}
+        />
       </Box>
 
       {/* Fila 1: Desempeño (75%) + Distribución Flota (25%) */}
@@ -1464,44 +1575,82 @@ const Dashboard: React.FC = () => {
           </Box>
         </StyledSection>
 
-        {/* Critical Alerts - ACTUALIZADO con datos reales (Fase 2.3) */}
+        {/* Critical Alerts - Compacto con navegación a /alerts */}
         <StyledSection
           title="Alertas Críticas"
-          action={<Chip label={alerts.filter((a: any) => a.severity === 'warning' || a.severity === 'critical').length} color="error" size="small" />}
+          action={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip label={alerts.filter((a: any) => a.severity === 'warning' || a.severity === 'critical').length} color="error" size="small" />
+              <Box
+                component="button"
+                onClick={() => navigate('/alerts')}
+                sx={{
+                  py: 0.5, px: 1.5,
+                  borderRadius: '8px',
+                  border: `1px solid ${isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)'}`,
+                  bgcolor: 'transparent',
+                  color: isDarkMode ? '#ff8a80' : '#dc2626',
+                  cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+                  },
+                }}
+              >
+                Ver alertas →
+              </Box>
+            </Box>
+          }
         >
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxHeight: 280, overflow: 'hidden', position: 'relative' }}>
             {alerts.length > 0 ? (
-              alerts.map((alert: any) => {
-                const alertColor =
-                  alert.severity === 'critical' ? '#ef4444' :
-                  alert.severity === 'warning' ? '#f59e0b' :
-                  alert.severity === 'info' ? '#3b82f6' :
-                  '#6b7280';
+              <>
+                {alerts.map((alert: any) => {
+                  const alertColor =
+                    alert.severity === 'critical' ? '#ef4444' :
+                    alert.severity === 'warning' ? '#f59e0b' :
+                    alert.severity === 'info' ? '#3b82f6' :
+                    '#6b7280';
 
-                const alertIcon =
-                  alert.severity === 'critical' ? <ErrorIcon /> :
-                  alert.severity === 'warning' ? <WarningIcon /> :
-                  <AssessmentIcon />;
+                  const alertIcon =
+                    alert.severity === 'critical' ? <ErrorIcon /> :
+                    alert.severity === 'warning' ? <WarningIcon /> :
+                    <AssessmentIcon />;
 
-                return (
-                  <Box key={alert.id} sx={{
-                    display: 'flex',
-                    alignItems: 'start',
-                    gap: 1.5,
-                    p: 1.5,
-                    borderRadius: 1,
-                    bgcolor: isDarkMode ? alpha(alertColor, 0.1) : alpha(alertColor, 0.05),
-                    border: `1px solid ${alpha(alertColor, 0.2)}`
-                  }}>
-                    <Box sx={{ color: alertColor, mt: 0.25 }}>
-                      {React.cloneElement(alertIcon, { sx: { fontSize: 18 } })}
+                  return (
+                    <Box key={alert.id} sx={{
+                      display: 'flex',
+                      alignItems: 'start',
+                      gap: 1.5,
+                      p: 1.5,
+                      borderRadius: 1,
+                      flexShrink: 0,
+                      bgcolor: isDarkMode ? alpha(alertColor, 0.1) : alpha(alertColor, 0.05),
+                      border: `1px solid ${alpha(alertColor, 0.2)}`
+                    }}>
+                      <Box sx={{ color: alertColor, mt: 0.25 }}>
+                        {React.cloneElement(alertIcon, { sx: { fontSize: 18 } })}
+                      </Box>
+                      <Typography variant="body2" sx={{ fontSize: '0.78rem', lineHeight: 1.5 }}>
+                        {alert.message}
+                      </Typography>
                     </Box>
-                    <Typography variant="body2" sx={{ fontSize: '0.78rem', lineHeight: 1.5 }}>
-                      {alert.message}
-                    </Typography>
-                  </Box>
-                );
-              })
+                  );
+                })}
+                {/* Fade overlay */}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    bottom: 0, left: 0, right: 0,
+                    height: 60,
+                    background: isDarkMode
+                      ? 'linear-gradient(to bottom, transparent, rgba(6, 11, 40, 0.95))'
+                      : 'linear-gradient(to bottom, transparent, #ffffff)',
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                  }}
+                />
+              </>
             ) : (
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
                 No hay alertas críticas
@@ -1511,7 +1660,34 @@ const Dashboard: React.FC = () => {
         </StyledSection>
       </Box>
 
-      {/* Fila 4: Autos Ociosos - Movido al final */}
+      {/* Fila 4: Vehículos por Ubicación */}
+      {vehiclesByLocationChartData && (
+        <Box sx={{ mt: { xs: 2, sm: 3 } }}>
+          <StyledSection
+            title="Vehículos por Ubicación"
+            subtitle={isMobile ? undefined : `Distribución en ${vehiclesByLocation.length} ubicaciones`}
+            action={
+              <Chip
+                icon={<LocationIcon sx={{ fontSize: 16 }} />}
+                label={`${vehiclesByLocation.reduce((sum, loc) => sum + loc.total, 0)} total`}
+                size="small"
+                sx={{
+                  bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : alpha('#3b82f6', 0.1),
+                  color: isDarkMode ? '#93c5fd' : '#2563eb',
+                  fontWeight: 600,
+                  fontSize: '0.75rem',
+                }}
+              />
+            }
+          >
+            <Box sx={{ height: { xs: 250, sm: 300, md: 350 } }}>
+              <Bar data={vehiclesByLocationChartData} options={vehiclesByLocationOptions} />
+            </Box>
+          </StyledSection>
+        </Box>
+      )}
+
+      {/* Fila 5: Autos Ociosos - Movido al final */}
       <Box sx={{ mt: { xs: 2, sm: 3 } }}>
         <Paper sx={{
           p: { xs: 2, sm: 3 },

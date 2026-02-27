@@ -3,6 +3,8 @@ import { env } from '../config/env';
 import Customer from '../models/Customer';
 import Rental from '../models/Rental';
 import Invoice from '../models/Invoice';
+import Quote from '../models/Quote';
+import logger from '../config/logger';
 
 /**
  * Servicio de Emails con Nodemailer
@@ -88,9 +90,9 @@ export class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`[EMAIL] Confirmación de renta enviada a ${customer.email}`);
+      logger.info(`[EMAIL] Confirmacion de renta enviada a ${customer.email}`);
     } catch (error) {
-      console.error('[EMAIL] Error enviando email de confirmación:', error);
+      logger.error('[EMAIL] Error enviando email de confirmacion', { error });
       throw error;
     }
   }
@@ -143,9 +145,9 @@ export class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`[EMAIL] Confirmación de devolución enviada a ${customer.email}`);
+      logger.info(`[EMAIL] Confirmacion de devolucion enviada a ${customer.email}`);
     } catch (error) {
-      console.error('[EMAIL] Error enviando email de devolución:', error);
+      logger.error('[EMAIL] Error enviando email de devolucion', { error });
       throw error;
     }
   }
@@ -211,9 +213,9 @@ export class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`[EMAIL] Factura enviada a ${customer.email}`);
+      logger.info(`[EMAIL] Factura enviada a ${customer.email}`);
     } catch (error) {
-      console.error('[EMAIL] Error enviando factura:', error);
+      logger.error('[EMAIL] Error enviando factura', { error });
       throw error;
     }
   }
@@ -270,9 +272,77 @@ export class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`[EMAIL] Recordatorio de pago enviado a ${customer.email}`);
+      logger.info(`[EMAIL] Recordatorio de pago enviado a ${customer.email}`);
     } catch (error) {
-      console.error('[EMAIL] Error enviando recordatorio de pago:', error);
+      logger.error('[EMAIL] Error enviando recordatorio de pago', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Envía email con cotización al cliente
+   */
+  static async sendQuote(
+    customer: Customer,
+    quote: Quote,
+    quotePdfPath?: string
+  ): Promise<void> {
+    if (!this.transporter) {
+      this.initialize();
+    }
+
+    const mailOptions = {
+      from: env.EMAIL_FROM || 'noreply@movicar.com',
+      to: customer.email,
+      subject: `Cotización ${quote.quote_code} - MOVICAR`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2c3e50;">Cotización de Renta</h2>
+
+          <p>Estimado/a ${customer.name},</p>
+
+          <p>Adjuntamos la cotización solicitada para su revisión.</p>
+
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="color: #2c3e50; margin-top: 0;">Detalles de la Cotización</h3>
+            <p><strong>Código:</strong> ${quote.quote_code}</p>
+            ${quote.start_date ? `<p><strong>Fecha de inicio:</strong> ${new Date(quote.start_date).toLocaleDateString()}</p>` : ''}
+            ${quote.end_date ? `<p><strong>Fecha de fin:</strong> ${new Date(quote.end_date).toLocaleDateString()}</p>` : ''}
+            ${quote.days ? `<p><strong>Días:</strong> ${quote.days}</p>` : ''}
+            <p><strong>Total:</strong> $${quote.total_amount}</p>
+          </div>
+
+          <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
+            <p style="margin: 0;"><strong>Vigencia:</strong> Esta cotización es válida hasta el ${new Date(quote.valid_until).toLocaleDateString()}.</p>
+          </div>
+
+          <p>La cotización completa se encuentra adjunta en formato PDF.</p>
+
+          <p>Si tiene alguna pregunta, no dude en contactarnos.</p>
+
+          <p style="margin-top: 30px;">
+            Saludos cordiales,<br>
+            <strong>Equipo MOVICAR</strong>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+          <p style="font-size: 12px; color: #7f8c8d; text-align: center;">
+            Este es un correo automático, por favor no responda a este mensaje.
+          </p>
+        </div>
+      `,
+      attachments: quotePdfPath ? [{
+        filename: `cotizacion-${quote.quote_code}.pdf`,
+        path: quotePdfPath
+      }] : []
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      logger.info(`[EMAIL] Cotizacion enviada a ${customer.email}`);
+    } catch (error) {
+      logger.error('[EMAIL] Error enviando cotizacion', { error });
       throw error;
     }
   }
@@ -347,10 +417,10 @@ Sistema de Gestión de Renta de Vehículos
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log('[EMAIL] Password reset email sent to', email);
+      logger.info(`[EMAIL] Password reset email sent to ${email}`);
       return true;
     } catch (error) {
-      console.error('[EMAIL] Error sending password reset email:', error);
+      logger.error('[EMAIL] Error sending password reset email', { error });
       return false;
     }
   }
@@ -416,10 +486,10 @@ Sistema de Gestión de Renta de Vehículos
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log('[EMAIL] Password changed confirmation sent to', email);
+      logger.info(`[EMAIL] Password changed confirmation sent to ${email}`);
       return true;
     } catch (error) {
-      console.error('[EMAIL] Error sending password changed email:', error);
+      logger.error('[EMAIL] Error sending password changed email', { error });
       return false;
     }
   }

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { AuthRequest } from '../types';
 import { Op } from 'sequelize';
 import sequelize from '../config/database';
 import User from '../models/User';
@@ -6,6 +7,8 @@ import Role from '../models/Role';
 import UserRole from '../models/UserRole';
 import Location from '../models/Location';
 import bcrypt from 'bcryptjs';
+import { createAuditLog, getClientIp } from '../utils/auditLogger';
+import logger from '../config/logger';
 
 // ====================================
 // GET ALL USERS
@@ -73,7 +76,7 @@ export const getUsers = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching users:', error);
+    logger.error('Error fetching users', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching users',
@@ -117,7 +120,7 @@ export const getUserById = async (req: Request, res: Response) => {
       data: user,
     });
   } catch (error: any) {
-    console.error('Error fetching user:', error);
+    logger.error('Error fetching user', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching user',
@@ -130,7 +133,7 @@ export const getUserById = async (req: Request, res: Response) => {
 // CREATE USER
 // ====================================
 
-export const createUser = async (req: Request, res: Response) => {
+export const createUser = async (req: AuthRequest, res: Response) => {
   try {
     const { email, password, first_name, last_name, phone, location_id, roles } = req.body;
 
@@ -192,6 +195,19 @@ export const createUser = async (req: Request, res: Response) => {
         attributes: { exclude: ['password_hash'] },
       });
 
+      // Audit log
+      const reqUser = req.user;
+      if (reqUser) {
+        createAuditLog({
+          userId: reqUser.id,
+          entityType: 'user',
+          entityId: user.id,
+          action: 'create',
+          newValues: { email, first_name, last_name, roles },
+          ipAddress: getClientIp(req),
+        });
+      }
+
       res.status(201).json({
         success: true,
         message: 'User created successfully',
@@ -202,7 +218,7 @@ export const createUser = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error: any) {
-    console.error('Error creating user:', error);
+    logger.error('Error creating user', { error });
     res.status(500).json({
       success: false,
       message: 'Error creating user',
@@ -215,7 +231,7 @@ export const createUser = async (req: Request, res: Response) => {
 // UPDATE USER
 // ====================================
 
-export const updateUser = async (req: Request, res: Response) => {
+export const updateUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { email, first_name, last_name, phone, location_id, roles } = req.body;
@@ -290,6 +306,20 @@ export const updateUser = async (req: Request, res: Response) => {
         attributes: { exclude: ['password_hash'] },
       });
 
+      // Audit log
+      const reqUser = req.user;
+      if (reqUser) {
+        createAuditLog({
+          userId: reqUser.id,
+          entityType: 'user',
+          entityId: Number(id),
+          action: 'update',
+          oldValues: { email: user.email, first_name: user.first_name, last_name: user.last_name },
+          newValues: { email, first_name, last_name, roles },
+          ipAddress: getClientIp(req),
+        });
+      }
+
       res.json({
         success: true,
         message: 'User updated successfully',
@@ -300,7 +330,7 @@ export const updateUser = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error: any) {
-    console.error('Error updating user:', error);
+    logger.error('Error updating user', { error });
     res.status(500).json({
       success: false,
       message: 'Error updating user',
@@ -313,7 +343,7 @@ export const updateUser = async (req: Request, res: Response) => {
 // TOGGLE USER STATUS (Activate/Deactivate)
 // ====================================
 
-export const toggleUserStatus = async (req: Request, res: Response) => {
+export const toggleUserStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -325,9 +355,24 @@ export const toggleUserStatus = async (req: Request, res: Response) => {
       });
     }
 
+    const oldActive = user.is_active;
     await user.update({
       is_active: !user.is_active,
     });
+
+    // Audit log
+    const reqUser = req.user;
+    if (reqUser) {
+      createAuditLog({
+        userId: reqUser.id,
+        entityType: 'user',
+        entityId: user.id,
+        action: 'update',
+        oldValues: { is_active: oldActive },
+        newValues: { is_active: user.is_active },
+        ipAddress: getClientIp(req),
+      });
+    }
 
     res.json({
       success: true,
@@ -338,7 +383,7 @@ export const toggleUserStatus = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error toggling user status:', error);
+    logger.error('Error toggling user status', { error });
     res.status(500).json({
       success: false,
       message: 'Error toggling user status',
@@ -381,7 +426,7 @@ export const resetUserPassword = async (req: Request, res: Response) => {
       message: 'Password reset successfully',
     });
   } catch (error: any) {
-    console.error('Error resetting password:', error);
+    logger.error('Error resetting password', { error });
     res.status(500).json({
       success: false,
       message: 'Error resetting password',
@@ -427,7 +472,7 @@ export const getUserStats = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching user stats:', error);
+    logger.error('Error fetching user stats', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching user stats',
@@ -451,7 +496,7 @@ export const getRoles = async (req: Request, res: Response) => {
       data: roles,
     });
   } catch (error: any) {
-    console.error('Error fetching roles:', error);
+    logger.error('Error fetching roles', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching roles',

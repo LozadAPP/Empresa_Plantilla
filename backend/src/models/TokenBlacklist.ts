@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional, Op } from 'sequelize';
 import sequelize from '../config/database';
+import logger from '../config/logger';
 
 /**
  * TokenBlacklist Model
@@ -66,7 +67,7 @@ class TokenBlacklist extends Model<TokenBlacklistAttributes, TokenBlacklistCreat
   static async revokeAllUserTokens(userId: number, reason: string = 'manual_revocation'): Promise<void> {
     // This is a placeholder - in a real implementation, you'd need to track all issued tokens
     // For now, this marks the user's tokens as requiring re-authentication
-    console.log(`All tokens for user ${userId} should be revoked. Reason: ${reason}`);
+    logger.info(`All tokens for user ${userId} should be revoked. Reason: ${reason}`);
   }
 
   /**

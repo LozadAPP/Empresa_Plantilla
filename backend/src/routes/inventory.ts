@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { body, param, query } from 'express-validator';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { requireRole } from '../middleware/roleMiddleware';
 import * as inventoryController from '../controllers/inventoryController';
 
 const router = Router();
@@ -477,28 +478,33 @@ const getAllMovementsValidation = [
 // Todas las rutas requieren autenticación
 router.use(authMiddleware);
 
-// Artículos
+// Roles con acceso de escritura al inventario
+const inventoryWriteRoles = requireRole(
+  'admin', 'director_general', 'jefe_inventarios', 'encargado_inventario'
+);
+
+// Artículos — lectura: todos los autenticados, escritura: roles de inventario
 router.get('/items', getAllItemsValidation, inventoryController.getAllItems);
 router.get('/items/:id', getItemByIdValidation, inventoryController.getItemById);
-router.post('/items', createItemValidation, inventoryController.createItem);
-router.put('/items/:id', updateItemValidation, inventoryController.updateItem);
-router.delete('/items/:id', deleteItemValidation, inventoryController.deleteItem);
+router.post('/items', inventoryWriteRoles, createItemValidation, inventoryController.createItem);
+router.put('/items/:id', inventoryWriteRoles, updateItemValidation, inventoryController.updateItem);
+router.delete('/items/:id', inventoryWriteRoles, deleteItemValidation, inventoryController.deleteItem);
 
-// Movimientos
+// Movimientos — lectura: todos, escritura: roles de inventario
 router.get('/movements', getAllMovementsValidation, inventoryController.getAllMovements);
 router.get('/movements/:itemId/history', getItemHistoryValidation, inventoryController.getItemHistory);
 router.get('/movements/:id/document', downloadDocumentValidation, inventoryController.downloadMovementDocument);
-router.post('/movements', createMovementValidation, inventoryController.createMovement);
+router.post('/movements', inventoryWriteRoles, createMovementValidation, inventoryController.createMovement);
 
-// Estadísticas
+// Estadísticas — lectura: todos
 router.get('/stats', inventoryController.getInventoryStats);
 
-// Categorías
+// Categorías — lectura: todos
 router.get('/categories', inventoryController.getAllCategories);
 
-// Ubicaciones
+// Ubicaciones — lectura: todos, escritura: roles de inventario
 router.get('/locations', inventoryController.getAllLocations);
-router.post('/locations', [
+router.post('/locations', inventoryWriteRoles, [
   body('name').notEmpty().withMessage('El nombre es requerido').trim(),
   body('address').notEmpty().withMessage('La dirección es requerida').trim(),
   body('city').notEmpty().withMessage('La ciudad es requerida').trim(),

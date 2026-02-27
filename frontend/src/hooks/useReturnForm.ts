@@ -71,7 +71,6 @@ export const useReturnForm = ({ rentalId }: UseReturnFormOptions) => {
         end_mileage: response.data.start_mileage || 0
       }));
     } catch (error) {
-      console.error('Error loading rental:', error);
       enqueueSnackbar('Error al cargar la renta', { variant: 'error' });
       navigate('/rentals');
     }

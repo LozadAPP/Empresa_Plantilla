@@ -5,6 +5,7 @@ import { AuthRequest } from '../types';
 import { env } from '../config/env';
 import { TokenBlacklist } from '../models';
 import { hashToken, getTokenExpiration, getUserIdFromToken } from '../utils/tokenUtils';
+import logger from '../config/logger';
 
 /**
  * Cookie configuration for secure JWT storage
@@ -78,11 +79,8 @@ class AuthController {
    */
   async login(req: Request, res: Response): Promise<void> {
     try {
-      console.log('🔐 Login attempt:', { email: req.body.email });
-
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        console.log('❌ Validation errors:', errors.array());
         res.status(400).json({
           success: false,
           message: 'Validation error',
@@ -92,19 +90,10 @@ class AuthController {
       }
 
       const { email, password } = req.body;
-      console.log('📧 Email:', email);
-      console.log('🔑 Password received:', password ? '***' : 'NO PASSWORD');
 
       const result = await authService.login(email, password);
 
-      console.log('📊 Login result:', {
-        success: result.success,
-        message: result.message,
-        hasData: !!result.data
-      });
-
       if (!result.success) {
-        console.log('❌ Login failed:', result.message);
         res.status(401).json(result);
         return;
       }
@@ -113,7 +102,6 @@ class AuthController {
       const { token, refreshToken, user } = result.data!;
       this.setAuthCookies(res, token, refreshToken);
 
-      console.log('✅ Login successful for:', email);
       // Return only user data, tokens are in HTTP-only cookies
       res.status(200).json({
         success: true,
@@ -121,7 +109,7 @@ class AuthController {
         data: { user }
       });
     } catch (error) {
-      console.error('💥 Login controller error:', error);
+      logger.error('Login controller error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -164,7 +152,7 @@ class AuthController {
 
       res.status(201).json(result);
     } catch (error) {
-      console.error('Register controller error:', error);
+      logger.error('Register controller error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -207,7 +195,7 @@ class AuthController {
         message: 'Token refreshed successfully'
       });
     } catch (error) {
-      console.error('Refresh token controller error:', error);
+      logger.error('Refresh token controller error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -267,7 +255,7 @@ class AuthController {
         message: 'Logout successful'
       });
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error', { error });
       // Still clear cookies even if blacklisting fails
       this.clearAuthCookies(res);
 
@@ -297,7 +285,7 @@ class AuthController {
         data: req.user
       });
     } catch (error) {
-      console.error('Me controller error:', error);
+      logger.error('Me controller error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -339,7 +327,7 @@ class AuthController {
 
       res.status(200).json(result);
     } catch (error) {
-      console.error('Change password controller error:', error);
+      logger.error('Change password controller error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -368,7 +356,7 @@ class AuthController {
 
       res.status(200).json(result);
     } catch (error) {
-      console.error('Forgot password controller error:', error);
+      logger.error('Forgot password controller error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -401,7 +389,7 @@ class AuthController {
 
       res.status(200).json(result);
     } catch (error) {
-      console.error('Verify reset token controller error:', error);
+      logger.error('Verify reset token controller error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -435,7 +423,7 @@ class AuthController {
 
       res.status(200).json(result);
     } catch (error) {
-      console.error('Reset password controller error:', error);
+      logger.error('Reset password controller error', { error });
       res.status(500).json({
         success: false,
         message: 'Internal server error'

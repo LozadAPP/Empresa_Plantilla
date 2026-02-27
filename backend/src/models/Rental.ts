@@ -3,6 +3,7 @@ import sequelize from '../config/database';
 import Alert from './Alert';
 import Customer from './Customer';
 import Vehicle from './Vehicle';
+import logger from '../config/logger';
 
 export enum RentalStatus {
   PENDING_APPROVAL = 'pending_approval',  // Requiere aprobación de supervisor
@@ -344,7 +345,7 @@ Rental.addHook('afterUpdate', async (rental: Rental) => {
           },
           isResolved: false
         });
-        console.log(`[Hook] Alerta OVERDUE creada para renta ${rental.rental_code}`);
+        logger.debug(`[Hook] Alerta OVERDUE creada para renta ${rental.rental_code}`);
       }
     }
 
@@ -398,11 +399,11 @@ Rental.addHook('afterUpdate', async (rental: Rental) => {
           },
           isResolved: false
         });
-        console.log(`[Hook] Alerta EXPIRING creada para renta ${rental.rental_code}`);
+        logger.debug(`[Hook] Alerta EXPIRING creada para renta ${rental.rental_code}`);
       }
     }
   } catch (error) {
-    console.error('[Hook] Error creando alerta en Rental:', error);
+    logger.error('[Hook] Error creando alerta en Rental:', error);
   }
 });
 

@@ -168,7 +168,7 @@ const PaymentTable: React.FC<PaymentTableProps> = ({
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
-                    {payment.customer?.first_name} {payment.customer?.last_name}
+                    {payment.customer?.name}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {payment.customer?.email}

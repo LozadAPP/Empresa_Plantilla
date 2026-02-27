@@ -610,10 +610,10 @@ const Returns: React.FC = () => {
                     {/* Vehicle Info */}
                     <Box sx={{ mb: 1.5 }}>
                       <Typography variant="body2" fontWeight="500">
-                        {returnRecord.vehicle?.brand} {returnRecord.vehicle?.model}
+                        {returnRecord.vehicle?.make} {returnRecord.vehicle?.model}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {returnRecord.vehicle?.plate}
+                        {returnRecord.vehicle?.license_plate}
                       </Typography>
                     </Box>
 
@@ -764,10 +764,10 @@ const Returns: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {returnRecord.vehicle?.brand} {returnRecord.vehicle?.model}
+                        {returnRecord.vehicle?.make} {returnRecord.vehicle?.model}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {returnRecord.vehicle?.plate}
+                        {returnRecord.vehicle?.license_plate}
                       </Typography>
                     </TableCell>
                     <TableCell>

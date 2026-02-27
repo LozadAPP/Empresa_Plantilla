@@ -5,6 +5,8 @@ import VehicleType from '../models/VehicleType';
 import Location from '../models/Location';
 import User from '../models/User';
 import { Op } from 'sequelize';
+import logger from '../config/logger';
+import { AuthRequest } from '../types';
 
 // ====================================
 // SYSTEM CONFIGURATION
@@ -34,7 +36,7 @@ export const getSystemConfigs = async (req: Request, res: Response) => {
       data: configs,
     });
   } catch (error: any) {
-    console.error('Error fetching system configs:', error);
+    logger.error('Error fetching system configs', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching system configs',
@@ -62,7 +64,7 @@ export const getConfigByKey = async (req: Request, res: Response) => {
       data: config,
     });
   } catch (error: any) {
-    console.error('Error fetching configuration:', error);
+    logger.error('Error fetching configuration', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching configuration',
@@ -70,11 +72,11 @@ export const getConfigByKey = async (req: Request, res: Response) => {
   }
 };
 
-export const updateSystemConfig = async (req: Request, res: Response) => {
+export const updateSystemConfig = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { configValue, description } = req.body;
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
 
     const config = await SystemConfig.findByPk(id);
     if (!config) {
@@ -108,7 +110,7 @@ export const updateSystemConfig = async (req: Request, res: Response) => {
       data: config,
     });
   } catch (error: any) {
-    console.error('Error updating configuration:', error);
+    logger.error('Error updating configuration', { error });
     res.status(500).json({
       success: false,
       message: 'Error updating configuration',
@@ -116,10 +118,10 @@ export const updateSystemConfig = async (req: Request, res: Response) => {
   }
 };
 
-export const createSystemConfig = async (req: Request, res: Response) => {
+export const createSystemConfig = async (req: AuthRequest, res: Response) => {
   try {
     const { configKey, configValue, configType, category, description, isEditable } = req.body;
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
 
     const config = await SystemConfig.create({
       configKey,
@@ -137,7 +139,7 @@ export const createSystemConfig = async (req: Request, res: Response) => {
       data: config,
     });
   } catch (error: any) {
-    console.error('Error creating configuration:', error);
+    logger.error('Error creating configuration', { error });
     res.status(500).json({
       success: false,
       message: 'Error creating configuration',
@@ -185,7 +187,7 @@ export const getPriceConfigs = async (req: Request, res: Response) => {
       data: configs,
     });
   } catch (error: any) {
-    console.error('Error fetching price configs:', error);
+    logger.error('Error fetching price configs', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching price configs',
@@ -246,7 +248,7 @@ export const getActivePriceConfig = async (req: Request, res: Response) => {
       data: config,
     });
   } catch (error: any) {
-    console.error('Error fetching active price config:', error);
+    logger.error('Error fetching active price config', { error });
     res.status(500).json({
       success: false,
       message: 'Error fetching active price config',
@@ -254,7 +256,7 @@ export const getActivePriceConfig = async (req: Request, res: Response) => {
   }
 };
 
-export const createPriceConfig = async (req: Request, res: Response) => {
+export const createPriceConfig = async (req: AuthRequest, res: Response) => {
   try {
     const {
       vehicleTypeId,
@@ -275,7 +277,7 @@ export const createPriceConfig = async (req: Request, res: Response) => {
       notes,
     } = req.body;
 
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
 
     // Validate FK references exist
     if (vehicleTypeId) {
@@ -338,7 +340,7 @@ export const createPriceConfig = async (req: Request, res: Response) => {
       data: configWithDetails,
     });
   } catch (error: any) {
-    console.error('Error creating price configuration:', error);
+    logger.error('Error creating price configuration', { error });
     res.status(500).json({
       success: false,
       message: 'Error creating price configuration',
@@ -393,7 +395,7 @@ export const updatePriceConfig = async (req: Request, res: Response) => {
       data: updatedConfig,
     });
   } catch (error: any) {
-    console.error('Error updating price configuration:', error);
+    logger.error('Error updating price configuration', { error });
     res.status(500).json({
       success: false,
       message: 'Error updating price configuration',
@@ -421,7 +423,7 @@ export const deactivatePriceConfig = async (req: Request, res: Response) => {
       data: config,
     });
   } catch (error: any) {
-    console.error('Error deactivating price configuration:', error);
+    logger.error('Error deactivating price configuration', { error });
     res.status(500).json({
       success: false,
       message: 'Error deactivating price configuration',

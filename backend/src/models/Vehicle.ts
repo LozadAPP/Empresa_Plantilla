@@ -1,6 +1,7 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 import Alert from './Alert';
+import logger from '../config/logger';
 
 // Enum para estados del vehículo
 export enum VehicleStatus {
@@ -267,7 +268,7 @@ Vehicle.addHook('afterUpdate', async (vehicle: Vehicle) => {
           },
           isResolved: false
         });
-        console.log(`[Hook] Alerta MAINTENANCE creada para vehículo ${vehicle.license_plate}`);
+        logger.debug(`[Hook] Alerta MAINTENANCE creada para vehiculo ${vehicle.license_plate}`);
       }
     }
 
@@ -314,7 +315,7 @@ Vehicle.addHook('afterUpdate', async (vehicle: Vehicle) => {
             },
             isResolved: false
           });
-          console.log(`[Hook] Alerta INSURANCE EXPIRING creada para vehículo ${vehicle.license_plate}`);
+          logger.debug(`[Hook] Alerta INSURANCE EXPIRING creada para vehiculo ${vehicle.license_plate}`);
         }
       }
     }
@@ -361,12 +362,12 @@ Vehicle.addHook('afterUpdate', async (vehicle: Vehicle) => {
             },
             isResolved: false
           });
-          console.log(`[Hook] Alerta MAINTENANCE DUE creada para vehículo ${vehicle.license_plate}`);
+          logger.debug(`[Hook] Alerta MAINTENANCE DUE creada para vehiculo ${vehicle.license_plate}`);
         }
       }
     }
   } catch (error) {
-    console.error('[Hook] Error en Vehicle afterUpdate:', error);
+    logger.error('[Hook] Error en Vehicle afterUpdate:', error);
   }
 });
 

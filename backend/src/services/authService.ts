@@ -5,6 +5,7 @@ import { jwtConfig } from '../config/jwt';
 import { User, Role, UserRole, Location } from '../models';
 import { IUserPayload } from '../types';
 import { EmailService } from './emailService';
+import logger from '../config/logger';
 
 interface LoginResult {
   success: boolean;
@@ -32,8 +33,6 @@ class AuthService {
    */
   async login(email: string, password: string): Promise<LoginResult> {
     try {
-      console.log('🔍 AuthService: Finding user with email:', email.toLowerCase());
-
       // Find user with roles
       const user = await User.findOne({
         where: { email: email.toLowerCase() },
@@ -50,21 +49,14 @@ class AuthService {
         ]
       });
 
-      console.log('👤 User found:', !!user);
-
       if (!user) {
-        console.log('❌ User not found');
         return {
           success: false,
           message: 'Invalid email or password.'
         };
       }
 
-      console.log('✓ User active:', user.is_active);
-      console.log('🔑 Password hash in DB:', user.password_hash ? 'EXISTS' : 'MISSING');
-
       if (!user.is_active) {
-        console.log('❌ Account is deactivated');
         return {
           success: false,
           message: 'Account is deactivated. Please contact administrator.'
@@ -72,12 +64,9 @@ class AuthService {
       }
 
       // Compare password
-      console.log('🔐 Comparing passwords...');
       const isPasswordValid = await user.comparePassword(password);
-      console.log('🔐 Password valid:', isPasswordValid);
 
       if (!isPasswordValid) {
-        console.log('❌ Invalid password');
         return {
           success: false,
           message: 'Invalid email or password.'
@@ -89,7 +78,6 @@ class AuthService {
 
       // Get user roles
       const roles = (user as any).roles?.map((r: Role) => r.name) || [];
-      console.log('👥 User roles:', roles);
 
       // Create user payload
       const userPayload: IUserPayload = {
@@ -105,8 +93,6 @@ class AuthService {
       const token = this.generateToken(userPayload);
       const refreshToken = this.generateRefreshToken(userPayload);
 
-      console.log('✅ Login successful, generating tokens');
-
       return {
         success: true,
         message: 'Login successful.',
@@ -117,7 +103,7 @@ class AuthService {
         }
       };
     } catch (error) {
-      console.error('💥 AuthService Login error:', error);
+      logger.error('AuthService Login error', { error });
       return {
         success: false,
         message: 'An error occurred during login.'
@@ -209,7 +195,7 @@ class AuthService {
         }
       };
     } catch (error) {
-      console.error('Registration error:', error);
+      logger.error('Registration error', { error });
       return {
         success: false,
         message: 'An error occurred during registration.'
@@ -296,7 +282,7 @@ class AuthService {
 
       return { success: true, message: 'Password changed successfully.' };
     } catch (error) {
-      console.error('Change password error:', error);
+      logger.error('Change password error', { error });
       return { success: false, message: 'An error occurred while changing password.' };
     }
   }
@@ -354,7 +340,7 @@ class AuthService {
       );
 
       if (!emailSent) {
-        console.error('[AUTH] Failed to send password reset email');
+        logger.error('[AUTH] Failed to send password reset email');
       }
 
       return {
@@ -362,7 +348,7 @@ class AuthService {
         message: 'Si el correo existe en nuestro sistema, recibirás un enlace para restablecer tu contraseña.'
       };
     } catch (error) {
-      console.error('[AUTH] Request password reset error:', error);
+      logger.error('[AUTH] Request password reset error', { error });
       return {
         success: false,
         message: 'Ocurrió un error al procesar la solicitud.'
@@ -399,7 +385,7 @@ class AuthService {
         userId: user.id
       };
     } catch (error) {
-      console.error('[AUTH] Verify reset token error:', error);
+      logger.error('[AUTH] Verify reset token error', { error });
       return {
         success: false,
         message: 'Error al verificar el token.'
@@ -452,7 +438,7 @@ class AuthService {
         message: 'Contraseña actualizada correctamente.'
       };
     } catch (error) {
-      console.error('[AUTH] Reset password error:', error);
+      logger.error('[AUTH] Reset password error', { error });
       return {
         success: false,
         message: 'Error al restablecer la contraseña.'

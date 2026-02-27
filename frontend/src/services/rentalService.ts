@@ -152,6 +152,16 @@ export const rentalService = {
   rejectRental: async (id: number, reason: string): Promise<SingleRentalResponse> => {
     const response = await api.post<SingleRentalResponse>(`/rentals/${id}/reject`, { reason });
     return response.data;
+  },
+
+  /**
+   * Descargar contrato PDF de una renta
+   */
+  downloadContract: async (id: number) => {
+    const response = await api.get(`/rentals/${id}/contract-pdf`, {
+      responseType: 'blob',
+    });
+    return response;
   }
 };
 

@@ -5,6 +5,7 @@
  * Used by both the CORS middleware and CSRF protection middleware.
  */
 import { env } from './env';
+import logger from './logger';
 
 /**
  * Parse allowed origins from environment variable.
@@ -76,7 +77,7 @@ export const getCorsOptions = () => {
       }
 
       // Log blocked origins for debugging
-      console.warn(`[CORS] Blocked request from origin: ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
+      logger.warn(`[CORS] Blocked request from origin: ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
       return callback(new Error('Not allowed by CORS'), false);
     },
     credentials: true,
@@ -88,7 +89,7 @@ export const getCorsOptions = () => {
 
 // Log allowed origins at module load (once at startup)
 const origins = getAllowedOrigins();
-console.log(`[CORS] Configured origins: ${origins.join(', ')}`);
+logger.info(`[CORS] Configured origins: ${origins.join(', ')}`);
 
 export default {
   getAllowedOrigins,

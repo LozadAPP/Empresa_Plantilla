@@ -1,5 +1,6 @@
 import { Sequelize } from 'sequelize';
 import { env } from './env';
+import logger from './logger';
 
 // Determine logging level based on environment
 const getLoggingConfig = () => {
@@ -13,11 +14,11 @@ const getLoggingConfig = () => {
     // Only log slow queries (> 1 second)
     return (msg: string, timing?: number) => {
       if (timing && timing > 1000) {
-        console.log(`WARNING: Slow query (${timing}ms):`, msg);
+        logger.warn(`Slow query (${timing}ms): ${msg}`);
       }
     };
   }
-  return console.log; // Full logging in development by default
+  return (msg: string) => logger.info(msg); // Full logging in development by default
 };
 
 const sequelize = new Sequelize({
@@ -44,9 +45,9 @@ const sequelize = new Sequelize({
 export const testConnection = async (): Promise<void> => {
   try {
     await sequelize.authenticate();
-    console.log('Database connection established successfully.');
+    logger.info('Database connection established successfully.');
   } catch (error) {
-    console.error('Unable to connect to the database:', error);
+    logger.error('Unable to connect to the database:', error);
     throw error;
   }
 };

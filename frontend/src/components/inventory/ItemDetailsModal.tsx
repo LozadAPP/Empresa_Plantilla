@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
   Box,
   Typography,
@@ -26,6 +25,12 @@ import {
   Edit as EditIcon,
   History as HistoryIcon,
   Download as DownloadIcon,
+  DirectionsCar as CarIcon,
+  LocalShipping as TruckIcon,
+  Construction as ConstructionIcon,
+  Build as BuildIcon,
+  Bolt as BoltIcon,
+  Category as CategoryIcon,
 } from '@mui/icons-material';
 import { inventoryService } from '../../services/inventoryService';
 import { InventoryItem, InventoryMovement } from '../../types/inventory';
@@ -70,7 +75,6 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
       setMovements(response.data || []);
     } catch (err) {
       setError('Error al cargar el historial de movimientos');
-      console.error('Error loading movement history:', err);
     } finally {
       setLoading(false);
     }
@@ -151,6 +155,22 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
     return labels[subtype] || subtype;
   };
 
+  const getHeroConfig = (type: string): { gradient: [string, string]; Icon: React.ElementType } => {
+    const configs: Record<string, { gradient: [string, string]; Icon: React.ElementType }> = {
+      'sedán':           { gradient: ['#667eea', '#764ba2'], Icon: CarIcon },
+      'suv':             { gradient: ['#11998e', '#38ef7d'], Icon: CarIcon },
+      'camioneta':       { gradient: ['#f59e0b', '#ef4444'], Icon: TruckIcon },
+      'compacto':        { gradient: ['#3b82f6', '#06b6d4'], Icon: CarIcon },
+      'montacargas':     { gradient: ['#f97316', '#ea580c'], Icon: ConstructionIcon },
+      'retroexcavadora': { gradient: ['#eab308', '#ca8a04'], Icon: ConstructionIcon },
+      'generador':       { gradient: ['#8b5cf6', '#6366f1'], Icon: BoltIcon },
+      'compresor':       { gradient: ['#64748b', '#475569'], Icon: BuildIcon },
+      'soldadora':       { gradient: ['#dc2626', '#991b1b'], Icon: BoltIcon },
+      'taladro':         { gradient: ['#0891b2', '#0e7490'], Icon: BuildIcon },
+    };
+    return configs[type?.toLowerCase()] || { gradient: ['#6366f1', '#8b5cf6'], Icon: CategoryIcon };
+  };
+
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString('es-MX', {
       year: 'numeric',
@@ -184,12 +204,13 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Error downloading document:', err);
       alert('Error al descargar el documento');
     }
   };
 
   if (!item) return null;
+
+  const { gradient, Icon: HeroIcon } = getHeroConfig(item.type);
 
   return (
     <Dialog
@@ -205,33 +226,68 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
         },
       }}
     >
-      <DialogTitle
-        component="div"
+      {/* Hero Header */}
+      <Box
         sx={{
+          height: 160,
+          background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`,
+          borderRadius: '12px 12px 0 0',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: `1px solid ${isDarkMode ? '#2d2d44' : '#e5e7eb'}`,
-          pb: 2,
+          alignItems: 'flex-end',
+          p: 3,
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        <Box>
-          <Typography variant="h5" component="span" fontWeight={700}>
+        {/* Item info */}
+        <Box sx={{ zIndex: 1, flex: 1 }}>
+          <Typography variant="h5" fontWeight={700} sx={{ color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
             {item.name}
           </Typography>
-          <Typography variant="body2" component="p" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)', mt: 0.5 }}>
             {item.serialNumber} • {item.categoryName}
           </Typography>
+          <Chip
+            label={getStatusLabel(item.status)}
+            size="small"
+            sx={{
+              mt: 1,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              color: '#fff',
+              fontWeight: 600,
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255,255,255,0.15)',
+            }}
+          />
         </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+
+        {/* Decorative icon */}
+        <HeroIcon
+          sx={{
+            position: 'absolute',
+            right: -10,
+            bottom: -20,
+            fontSize: 180,
+            opacity: 0.15,
+            color: '#fff',
+          }}
+        />
+
+        {/* Action buttons */}
+        <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, display: 'flex', gap: 1 }}>
           {onEdit && (
             <Button
               startIcon={<EditIcon />}
               onClick={() => onEdit(item)}
+              size="small"
               sx={{
                 borderRadius: 2,
                 textTransform: 'none',
                 fontWeight: 600,
+                color: '#fff',
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                backdropFilter: 'blur(10px)',
+                '&:hover': { backgroundColor: 'rgba(255,255,255,0.25)' },
               }}
             >
               Editar
@@ -239,27 +295,35 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
           )}
           {onNewMovement && (
             <Button
-              variant="contained"
               startIcon={<TransferIcon />}
               onClick={() => onNewMovement(item)}
+              size="small"
               sx={{
                 borderRadius: 2,
                 textTransform: 'none',
                 fontWeight: 600,
-                backgroundColor: isDarkMode ? '#a78bfa' : '#8b5cf6',
-                '&:hover': {
-                  backgroundColor: isDarkMode ? '#8b5cf6' : '#7c3aed',
-                },
+                color: '#fff',
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(10px)',
+                '&:hover': { backgroundColor: 'rgba(255,255,255,0.3)' },
               }}
             >
               Nuevo Movimiento
             </Button>
           )}
-          <IconButton onClick={onClose} sx={{ ml: 1 }}>
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              color: '#fff',
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              '&:hover': { backgroundColor: 'rgba(255,255,255,0.25)' },
+            }}
+          >
             <CloseIcon />
           </IconButton>
         </Box>
-      </DialogTitle>
+      </Box>
 
       <DialogContent sx={{ pt: 3 }}>
         <Grid container spacing={3}>
@@ -268,8 +332,8 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
             <Card
               sx={{
                 borderRadius: 3,
-                backgroundColor: isDarkMode ? '#13131f' : '#f8f9fa',
-                border: `1px solid ${isDarkMode ? '#2d2d44' : '#e5e7eb'}`,
+                backgroundColor: isDarkMode ? '#1e1e35' : '#f8f9fa',
+                border: `1px solid ${isDarkMode ? '#3d3d5c' : '#e5e7eb'}`,
               }}
             >
               <CardContent>
@@ -333,8 +397,8 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
             <Card
               sx={{
                 borderRadius: 3,
-                backgroundColor: isDarkMode ? '#13131f' : '#f8f9fa',
-                border: `1px solid ${isDarkMode ? '#2d2d44' : '#e5e7eb'}`,
+                backgroundColor: isDarkMode ? '#1e1e35' : '#f8f9fa',
+                border: `1px solid ${isDarkMode ? '#3d3d5c' : '#e5e7eb'}`,
               }}
             >
               <CardContent>
@@ -389,8 +453,8 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
             <Card
               sx={{
                 borderRadius: 3,
-                backgroundColor: isDarkMode ? '#13131f' : '#f8f9fa',
-                border: `1px solid ${isDarkMode ? '#2d2d44' : '#e5e7eb'}`,
+                backgroundColor: isDarkMode ? '#1e1e35' : '#f8f9fa',
+                border: `1px solid ${isDarkMode ? '#3d3d5c' : '#e5e7eb'}`,
               }}
             >
               <CardContent>
@@ -442,8 +506,8 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
             <Card
               sx={{
                 borderRadius: 3,
-                backgroundColor: isDarkMode ? '#13131f' : '#f8f9fa',
-                border: `1px solid ${isDarkMode ? '#2d2d44' : '#e5e7eb'}`,
+                backgroundColor: isDarkMode ? '#1e1e35' : '#f8f9fa',
+                border: `1px solid ${isDarkMode ? '#3d3d5c' : '#e5e7eb'}`,
               }}
             >
               <CardContent>
@@ -498,6 +562,12 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                       </Typography>
                     </Box>
                   )}
+
+                  {!item.purchaseDate && !item.lastMaintenanceDate && !item.nextMaintenanceDate && !item.lastMovementDate && (
+                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                      Sin fechas registradas
+                    </Typography>
+                  )}
                 </Box>
               </CardContent>
             </Card>
@@ -509,8 +579,8 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
               <Card
                 sx={{
                   borderRadius: 3,
-                  backgroundColor: isDarkMode ? '#13131f' : '#f8f9fa',
-                  border: `1px solid ${isDarkMode ? '#2d2d44' : '#e5e7eb'}`,
+                  backgroundColor: isDarkMode ? '#1e1e35' : '#f8f9fa',
+                  border: `1px solid ${isDarkMode ? '#3d3d5c' : '#e5e7eb'}`,
                 }}
               >
                 <CardContent>
@@ -566,7 +636,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                           top: '40px',
                           bottom: '-12px',
                           width: '2px',
-                          backgroundColor: isDarkMode ? '#2d2d44' : '#e5e7eb',
+                          backgroundColor: isDarkMode ? '#3d3d5c' : '#e5e7eb',
                         }}
                       />
                     )}
@@ -595,8 +665,8 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                     <Card
                       sx={{
                         borderRadius: 2,
-                        backgroundColor: isDarkMode ? '#13131f' : '#f8f9fa',
-                        border: `1px solid ${isDarkMode ? '#2d2d44' : '#e5e7eb'}`,
+                        backgroundColor: isDarkMode ? '#1e1e35' : '#f8f9fa',
+                        border: `1px solid ${isDarkMode ? '#3d3d5c' : '#e5e7eb'}`,
                       }}
                     >
                       <CardContent>

@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { ExtraService, VehicleType, Location, RentalService } from '../models';
 import { Op } from 'sequelize';
+import { createAuditLog, getClientIp } from '../utils/auditLogger';
+import logger from '../config/logger';
+import { AuthRequest } from '../types';
 
 // ====================================
 // GET ALL EXTRA SERVICES (Active only)
@@ -41,7 +44,7 @@ export const getExtraServices = async (req: Request, res: Response) => {
       data: services,
     });
   } catch (error: any) {
-    console.error('Error fetching extra services:', error);
+    logger.error('Error fetching extra services', { error });
     res.status(500).json({
       success: false,
       message: 'Error al obtener servicios adicionales',
@@ -84,7 +87,7 @@ export const getAllExtraServices = async (req: Request, res: Response) => {
       data: services,
     });
   } catch (error: any) {
-    console.error('Error fetching all extra services:', error);
+    logger.error('Error fetching all extra services', { error });
     res.status(500).json({
       success: false,
       message: 'Error al obtener servicios adicionales',
@@ -126,7 +129,7 @@ export const getExtraServiceById = async (req: Request, res: Response) => {
       data: service,
     });
   } catch (error: any) {
-    console.error('Error fetching extra service:', error);
+    logger.error('Error fetching extra service', { error });
     res.status(500).json({
       success: false,
       message: 'Error al obtener servicio',
@@ -137,7 +140,7 @@ export const getExtraServiceById = async (req: Request, res: Response) => {
 // ====================================
 // CREATE EXTRA SERVICE
 // ====================================
-export const createExtraService = async (req: Request, res: Response) => {
+export const createExtraService = async (req: AuthRequest, res: Response) => {
   try {
     const { name, description, price, price_type, category, vehicle_type_id, location_id } = req.body;
 
@@ -174,13 +177,25 @@ export const createExtraService = async (req: Request, res: Response) => {
       ],
     });
 
+    // Audit log
+    if (req.user) {
+      createAuditLog({
+        userId: req.user.id,
+        entityType: 'extra_service',
+        entityId: service.id,
+        action: 'create',
+        newValues: { name, price, price_type, category },
+        ipAddress: getClientIp(req),
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Servicio creado exitosamente',
       data: serviceWithDetails,
     });
   } catch (error: any) {
-    console.error('Error creating extra service:', error);
+    logger.error('Error creating extra service', { error });
     res.status(500).json({
       success: false,
       message: 'Error al crear servicio',
@@ -191,7 +206,7 @@ export const createExtraService = async (req: Request, res: Response) => {
 // ====================================
 // UPDATE EXTRA SERVICE
 // ====================================
-export const updateExtraService = async (req: Request, res: Response) => {
+export const updateExtraService = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { name, description, price, price_type, category, vehicle_type_id, location_id, is_active } = req.body;
@@ -203,6 +218,8 @@ export const updateExtraService = async (req: Request, res: Response) => {
         message: 'Servicio no encontrado',
       });
     }
+
+    const oldValues = { name: service.name, price: service.price, price_type: service.price_type, category: service.category, is_active: service.is_active };
 
     const updates: any = {};
     if (name !== undefined) updates.name = name;
@@ -216,6 +233,19 @@ export const updateExtraService = async (req: Request, res: Response) => {
     updates.updated_at = new Date();
 
     await service.update(updates);
+
+    // Audit log
+    if (req.user) {
+      createAuditLog({
+        userId: req.user.id,
+        entityType: 'extra_service',
+        entityId: Number(id),
+        action: 'update',
+        oldValues,
+        newValues: updates,
+        ipAddress: getClientIp(req),
+      });
+    }
 
     const updatedService = await ExtraService.findByPk(id, {
       include: [
@@ -238,7 +268,7 @@ export const updateExtraService = async (req: Request, res: Response) => {
       data: updatedService,
     });
   } catch (error: any) {
-    console.error('Error updating extra service:', error);
+    logger.error('Error updating extra service', { error });
     res.status(500).json({
       success: false,
       message: 'Error al actualizar servicio',
@@ -249,7 +279,7 @@ export const updateExtraService = async (req: Request, res: Response) => {
 // ====================================
 // TOGGLE SERVICE ACTIVE STATUS
 // ====================================
-export const toggleExtraServiceStatus = async (req: Request, res: Response) => {
+export const toggleExtraServiceStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -261,10 +291,24 @@ export const toggleExtraServiceStatus = async (req: Request, res: Response) => {
       });
     }
 
+    const oldActive = service.is_active;
     await service.update({
       is_active: !service.is_active,
       updated_at: new Date(),
     });
+
+    // Audit log
+    if (req.user) {
+      createAuditLog({
+        userId: req.user.id,
+        entityType: 'extra_service',
+        entityId: Number(id),
+        action: 'update',
+        oldValues: { is_active: oldActive },
+        newValues: { is_active: service.is_active },
+        ipAddress: getClientIp(req),
+      });
+    }
 
     res.json({
       success: true,
@@ -272,7 +316,7 @@ export const toggleExtraServiceStatus = async (req: Request, res: Response) => {
       data: service,
     });
   } catch (error: any) {
-    console.error('Error toggling extra service status:', error);
+    logger.error('Error toggling extra service status', { error });
     res.status(500).json({
       success: false,
       message: 'Error al cambiar estado del servicio',
@@ -283,7 +327,7 @@ export const toggleExtraServiceStatus = async (req: Request, res: Response) => {
 // ====================================
 // DELETE EXTRA SERVICE (Soft delete - deactivate)
 // ====================================
-export const deleteExtraService = async (req: Request, res: Response) => {
+export const deleteExtraService = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -300,12 +344,27 @@ export const deleteExtraService = async (req: Request, res: Response) => {
       where: { extra_service_id: id },
     });
 
+    const serviceData = { name: service.name, price: service.price, category: service.category };
+
     if (usageCount > 0) {
       // Soft delete - just deactivate
       await service.update({
         is_active: false,
         updated_at: new Date(),
       });
+
+      // Audit log
+      if (req.user) {
+        createAuditLog({
+          userId: req.user.id,
+          entityType: 'extra_service',
+          entityId: Number(id),
+          action: 'update',
+          oldValues: { ...serviceData, is_active: true },
+          newValues: { is_active: false },
+          ipAddress: getClientIp(req),
+        });
+      }
 
       return res.json({
         success: true,
@@ -317,12 +376,24 @@ export const deleteExtraService = async (req: Request, res: Response) => {
     // Hard delete if never used
     await service.destroy();
 
+    // Audit log
+    if (req.user) {
+      createAuditLog({
+        userId: req.user.id,
+        entityType: 'extra_service',
+        entityId: Number(id),
+        action: 'delete',
+        oldValues: serviceData,
+        ipAddress: getClientIp(req),
+      });
+    }
+
     res.json({
       success: true,
       message: 'Servicio eliminado exitosamente',
     });
   } catch (error: any) {
-    console.error('Error deleting extra service:', error);
+    logger.error('Error deleting extra service', { error });
     res.status(500).json({
       success: false,
       message: 'Error al eliminar servicio',
@@ -356,7 +427,7 @@ export const getServicesByCategory = async (req: Request, res: Response) => {
       data: grouped,
     });
   } catch (error: any) {
-    console.error('Error fetching services by category:', error);
+    logger.error('Error fetching services by category', { error });
     res.status(500).json({
       success: false,
       message: 'Error al obtener servicios por categoría',

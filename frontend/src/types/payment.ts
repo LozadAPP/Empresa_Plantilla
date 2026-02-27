@@ -35,8 +35,8 @@ export interface Payment {
   // Relaciones
   customer?: {
     id: number;
-    first_name: string;
-    last_name: string;
+    name: string;
+    contact_person?: string;
     email: string;
   };
   rental?: {
@@ -64,8 +64,13 @@ export interface CreatePaymentDTO {
 export interface PaymentFilters {
   customer_id?: number;
   rental_id?: number;
+  location_id?: number;
   status?: PaymentStatus;
   payment_type?: PaymentType;
+  payment_method?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
   page?: number;
   limit?: number;
 }
